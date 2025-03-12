@@ -66,7 +66,7 @@ export default function Dashboard() {
 
         {/* Logo da empresa no canto direito */}
         <div className="flex-shrink-0 ml-auto pr-4">
-          <img src="/logobranca.png" alt="Logo da Empresa" className="h-[40px] w-auto" />
+          <img src="/Logobranca.png" alt="Logo da Empresa" className="h-[40px] w-auto" />
         </div>
       </div>
 
