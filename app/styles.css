@@ -1,0 +1,388 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
+
+/* Remove as margens do body e html */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%; /* Garante que a altura ocupe toda a tela */
+}
+
+/* Página mãe */
+.background-tela {
+  width: 100vw;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centraliza horizontalmente */
+  justify-content: flex-start; /* Alinha ao topo */
+  background-image: url('/BackgroundTeladeLogin.png'); 
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  padding: 0px;
+  margin: 0px;
+}
+
+
+/* Div que vai para o topo */
+.LinhaSuperior {
+  align-self: flex-start; /* Alinha no topo */
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between; /* Um em cada ponta */
+  width: 58%; /* Ocupa toda a largura disponível */
+  margin: 0 auto; /* Centraliza no meio da tela */
+  padding: 0px 0px; /* Ajuste de espaçamento */
+  flex-wrap: nowrap; /* Impede quebra de linha */
+  margin-bottom: 70px; /* Menos espaço abaixo */
+  margin-top: 100px; /* Menos espaço abaixo */
+}
+
+              ._12-tec {
+                color: #ffffff;
+                text-align: left;
+                font-family: "Montserrat";
+                font-size: 45px;
+                font-weight: 600;
+                position: relative; /* Removemos absoluto */
+                width: 100%; /* Define o tamanho como 25% do container */
+              }
+              .gerenciamento-de-compras {
+                color: #ffffff;
+                text-align: right; /* Mantém alinhado à direita */
+                font-family: "Montserrat";
+                font-size: 20px;
+                font-weight: 600;
+                position: relative;
+                width: 100%; /* Define o tamanho como 25% do container */
+              }
+
+
+
+
+/* Caixa centralizada */
+.Meiuca {
+  width: 60%;
+  height: 55%;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  
+  /* Borda mais chamativa */
+  border: 2px solid #2b2827; /* Exemplo de borda chamativa, pode mudar a cor */
+  
+  box-shadow: 0px -1px 5px rgba(105, 105, 105, 0.7), /* Sombra superior brilhosa */
+              0px 10px 20px rgba(77, 76, 76, 0.3); /* Sombra inferior mais suave */
+  
+  /* Arredondamento das bordas esquerda e superior */
+  border-top-left-radius: 80px; /* Arredonda apenas a parte superior esquerda */
+  border-top-right-radius: 0px; /* Arredonda apenas a parte superior direita */
+  
+  /* Borda reta nas outras partes */
+  border-bottom-left-radius: 0px; /* Sem arredondamento na parte inferior esquerda */
+  border-bottom-right-radius: 40px; /* Sem arredondamento na parte inferior direita */
+  
+  overflow: visible; /* Para evitar que bordas arredondadas sejam cortadas */
+  gap: 0;
+}
+
+/* Div do lado esquerdo */
+.lado-esquerdo {
+            width: 55%; /* Ocupa metade da caixa */
+            height: 100%;
+            background-image: url('/LadoEsquerdo 1.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-top-left-radius: 80px; /* Arredonda apenas a parte superior esquerda */
+
+            border-bottom-left-radius: 0px; /* Sem arredondamento na parte inferior esquerda */
+            
+        }
+
+
+/* Div do lado direito */
+.lado-direito {
+    width: 45%;
+    height: 100%;
+    background: #ffffff;
+    padding: 0px;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centraliza os elementos por padrão */
+    gap: 0px; /* Espaçamento entre os elementos */
+    margin-top: 0px;  /* Zera a margem superior */
+    margin-bottom: 0px; /* Zera a margem inferior */
+    margin-left: auto; /* Adiciona margens laterais automáticas se necessário */
+    margin-right: auto; /* Adiciona margens laterais automáticas se necessário */
+    border-bottom-right-radius: 40px; /* Sem arredondamento na parte inferior direita */
+}
+
+
+        /* Container do botão */
+        .InfosLadoDireito {
+          display: flex;
+          flex-direction: column;
+          align-items: center; /* Centraliza horizontalmente */
+          justify-content: space-between; /* Centraliza verticalmente */
+          gap:0px;
+          width: 80%;
+          height: 100%;
+          position: relative; /* Alterado de absolute para relative para centralizar corretamente */
+          padding: 0px;
+          
+         }
+
+              .log-in {
+                margin-top: 15%;  /* Zera a margem superior */
+                color: #000000;
+                text-align: left;
+                font-family: "Montserrat";
+                font-size: 40px;
+                font-weight: 600;
+                align-self: flex-start;
+                margin-bottom:8%;
+                }
+
+            .inputs {
+              display: flex; /* Usado para exibir os itens de forma flexível */
+              flex-direction: column;
+              align-items: center; /* Centraliza o conteúdo na vertical */
+              justify-content: center; /* Alinha os itens de maneira adequada, conforme o seu layout */
+              width: 100%; /* Ocupa toda a largura da div mãe */
+              margin-bottom:30%;
+              background: none;
+              border:none;
+              box-shadow: none;
+              gap: 20px;
+          }
+
+
+
+
+              .input-container {
+                width: 100%; /* Ocupa toda a largura da div mãe */
+                height: 100%; /* Ocupa toda a altura da div mãe (se necessário) */
+                display: flex; /* Usado para exibir os itens de forma flexível */
+                flex-direction: column;
+                align-items: center; /* Centraliza o conteúdo na vertical */
+                justify-content: center; /* Alinha os itens de maneira adequada, conforme o seu layout */
+                gap: 0px;
+              }
+              
+                        /* Wrapper do input com ícones */
+                        .input-wrapper {
+                          position: relative;
+                          display: flex;
+                          align-items: center;
+                          width: 100%;
+                          margin-bottom:0px;
+                        }
+              
+                                    /* Imagem do usuário à esquerda */
+                                    .senha-icon-left {
+                                      width: 30px; /* Tamanho pequeno da imagem */
+                                      height: 20px; /* Tamanho pequeno da imagem */
+                                      margin-right: 5px; /* Espaço entre a imagem e o input */
+                                    }
+
+                                    /* Imagem do usuário à esquerda */
+                                    .user-icon-left {
+                                      width: 18px; /* Tamanho pequeno da imagem */
+                                      height: 14px; /* Tamanho pequeno da imagem */
+                                      margin-right: 10px; /* Espaço entre a imagem e o input */
+                                      margin-left: 5px; /* Espaço entre a imagem e o input */
+                                      margin-bottom: 0;
+                                    }                            
+              
+                                  /* Input box */
+                                  .senha-input {
+                                    width: 100%;
+                                    padding-left: 10px; /* Dá um espaço à esquerda para o ícone */
+                                    padding-right: 30px; /* Dá um espaço à direita para o ícone */
+                                    padding-top: 5px;
+                                    padding-bottom: 5px;
+                                    font-size: 12px;
+                                    font-style: italic; /* Placeholder em itálico */
+                                    font-family: "Montserrat";
+                                    border: 0px solid #ccc;
+                                    border-radius: 4px;
+                                    height: 25px;
+                                    margin-bottom: 2;
+                                  }
+
+                                  /* Estilo para quando o input é focado (selecionado) */
+                                  .senha-input:focus {
+                                    border: none; /* Não exibe a borda */
+                                    box-shadow: none; /* Remove qualquer sombra */
+                                    outline: none; /* Remove o contorno ao focar no input */
+                                    font-style: normal; /* Remove o itálico */
+                                  }
+              
+                                  /* Imagem do usuário à direita */
+                                  .senha-icon-right {
+                                    width: 20px; /* Tamanho pequeno da imagem */
+                                    height: 20px; /* Tamanho pequeno da imagem */
+                                    position: absolute;
+                                    right: 10px;
+                                  }
+
+
+
+              
+                        /* Linha abaixo do input */
+                        .input-line {
+                          width: 100%;
+                          border: none;
+                          border-top: 2px solid #ccc;
+                          margin-top: 0px;
+                          margin-bottom:0px;
+                        }
+
+              
+                        /* Linha abaixo do input */
+                        .input-line-usuario {
+                          width: 100%;
+                          border: none;
+                          border-top: 2px solid #ccc;
+                          margin-top: 0px;
+                          margin-bottom:2px;
+                        }                
+
+
+
+
+
+
+
+
+
+
+
+            .Grupo-lembrar-credendicial {
+              display: flex;
+              align-items: center; /* Alinha os itens verticalmente */
+              width: 100%;
+              justify-content: space-between; /* Distribui os itens nas extremidades */
+              margin-bottom:10%;
+              margin-top:2%;
+              padding: 0;
+              
+            }
+
+                    .left-container {
+                      display: flex;
+                      align-items: center; /* Alinha o retângulo e o texto verticalmente */
+                      justify-content: flex-start;
+                      cursor: pointer;
+                      gap: 5px; /* Define o espaço entre o retângulo e o texto */
+                      width:50%;
+                      padding: 0;
+                    }
+                              /* Oculta o checkbox padrão */
+                              .left-container input {
+                                display: none;
+                              }
+
+                              /* Cria um checkbox customizado */
+                              .checkmark {
+                                width: 15px;
+                                height: 15px;
+                                border: 1px solid rgba(0, 0, 0, 0.5);
+                                border-radius: 2px;
+                                background-color: white;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                transition: background 0.2s;
+                              }
+                              /* Marca de seleção ao ativar o checkbox */
+                              .left-container input:checked + .checkmark {
+                                background-color: rgb(23, 10, 139); /* Cor de fundo quando marcado */
+                              }
+                              /* Ícone de check (✔) dentro do checkbox */
+                              .left-container input:checked + .checkmark::after {
+                                content: "✔";
+                                color: white;
+                                font-size: 12px;
+                                font-weight: bold;
+                              }
+                              .lembrar-de-mim {
+                                color: #383636;
+                                font-family: "Montserrat";
+                                font-size: 12px;
+                                font-weight: 300;
+                                font-style: "regular";
+                                /* Removemos position absolute */
+                              }
+                              .lembrar-de-mim:hover {
+                                color: #200fbe;
+                                border:none;
+                                background: none;
+                                
+                            }
+
+                    .esqueceu-sua-senha {
+                      width:50%;
+                      background: none;
+                      border: none;  
+                      font-family: "Montserrat";
+                      font-size: 12px;
+                      font-weight: 300;
+                      text-align: right; /* Garante o texto alinhado à direita */
+                      align-self: right;
+                      cursor: pointer;
+                      transition: color 0.3s ease;
+                      border: 0;
+                      color: #383636; /* Cor padrão */
+                      padding: 0;
+                                           
+                    }
+
+                    .esqueceu-sua-senha:hover {
+                      color: #200fbe;
+                      border:none;
+                      background: none;
+                      
+                  }
+
+      
+
+                      .botao-entrar {
+                        display: inline-block;
+                        padding: 12px 24px;
+                        background-color: #000000;
+                        color: white;
+                        font-size: 16px;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        transition: background 0.3s ease;
+                        text-align: center;
+                        width: 100%;
+                        box-sizing: border-box;
+                        margin-bottom:10%;
+                        font-family: "Montserrat";
+                        }
+
+                            .botao-entrar:hover {
+                                background-color: #100791;
+                            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,367 @@
+@import url('https://fonts.googleapis.com/css?family=Poppis:200,300,400,500,600,700,800,900&display=swap');
+
+:root
+{
+    --clr: #ffffff;
+}
+
+
+
+
+.sidebar {
+    position: fixed;  /* Fixa na lateral */
+    left: 0;
+    top: 0;
+    width: 80px; /* Largura padrão */
+    height: 100vh;
+    background: radial-gradient(circle, #5f0202, #410101, #200101);
+
+
+
+
+    transition: 0.5s;
+    padding-left: 10px;
+    overflow-y: auto; /* Permite rolagem vertical */
+    font-size: 0.8em;    
+   
+}
+
+
+
+.Menu {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: space-between; /* Distribui o espaço entre os itens */
+}
+
+.Menulist {
+    flex:1;
+}
+
+  
+  /* Esconde a barra de rolagem, mas mantém a funcionalidade de rolagem */
+  .sidebar::-webkit-scrollbar {
+    width: 0px; /* Esconde a barra de rolagem */
+  }
+  
+  .sidebar::-webkit-scrollbar-track {
+    background: transparent; /* Torna o fundo da área de rolagem transparente */
+  }
+  
+  .sidebar::-webkit-scrollbar-thumb {
+    background-color: #4a0303; /* Torna o "polegar" (parte movível) da barra transparente */
+  }
+.sidebar.active 
+{
+    width: 300px;
+}
+.sidebar ul
+{
+    position: relative;
+    height: 100vh;
+}
+.sidebar ul li {
+    position: relative;
+    list-style: none;    
+    height: 65px; /* Ajuste a altura dos itens */
+}
+.menu-active .sidebar ul li{
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Linha suave entre os itens */
+}
+
+
+.sidebar ul li.active 
+{
+    background: var(--clr);
+    border-top-left-radius: 50px;
+    border-bottom-left-radius: 50px;
+}
+/* Quando o menu ESTÁ ativo, remove as bordas arredondadas */
+.menu-active .sidebar ul li.active {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+.sidebar ul li.active::before
+{
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    border-bottom-right-radius: 20px;
+    box-shadow: 5px 5px 0 5px var(--clr);
+    background: transparent;
+}
+.sidebar ul li.active::after
+{
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    border-top-right-radius: 20px;
+    box-shadow: 5px -5px 0 5px var(--clr);
+    background: transparent;
+}
+.sidebar ul li.logo
+{
+    margin-bottom: 50px
+}
+.sidebar ul li.logo .icon
+{
+    font-size: 2em;
+    color: var(--clr);
+}
+.sidebar ul li.logo .text
+{
+    font-size: 1.2em;
+    font-weight: 500;
+    color: var(--clr);
+}
+.sidebar ul li a
+{
+    position: relative;
+    display: flex;
+    white-space: nowrap;
+    text-decoration: none;
+}
+.sidebar ul li a .icon
+{
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items:center;
+    min-width: 60px;
+    padding-left: 8px;
+    height: 70px;
+    font-size: 1.5em;
+    color: #ffffff;
+    transition: 0.5s;
+}
+.sidebar ul li a .text
+{
+    position: relative;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    font-size:1em;
+    color: #ffffff;
+    padding-left: 15px;
+    text-transform: uppercase;
+    letter-spacing:0.05em;
+    transition: 0.5s;
+}
+.sidebar ul li.active a .icon
+{
+    color: #000000;
+}
+.sidebar ul li.active:hover a .icon
+{
+    color: #ffffff;
+}
+.sidebar ul li.active:hover a .text
+{
+    color: #ffffff;
+}
+.sidebar ul li.active a .text
+{
+    color: #000000;
+}
+/* Estilo para quando o item for "hover" sem estar ativo */
+.sidebar ul li:hover {
+    background: #4a0303; /* Um tom um pouco mais claro que #2e0101 */
+    color: #fff;
+    border-top-left-radius: 50px;
+    border-bottom-left-radius: 50px;
+}
+
+/* Estilo para quando o menu está ativo e o item está "hover" */
+.menu-active .sidebar ul li.active:hover {
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+}
+
+/* Estilo para quando o menu está ativo e o item está "hover" */
+.menu-active .sidebar ul li:hover {
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+}
+
+
+.sidebar ul li.active:hover::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    border-bottom-right-radius: 20px;
+    box-shadow: 5px 5px 0 5px #4a0303; /* Cor mais suave */
+    background: transparent;
+}
+
+.sidebar ul li.active:hover::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    border-top-right-radius: 20px;
+    box-shadow: 5px -5px 0 5px #4a0303; /* Cor mais suave */
+    background: transparent;
+    
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+.sidebar ul li.active a .icon::before
+{
+    content: '';
+    position: absolute;
+    inset: 5px;
+    width: 60px;
+    background: transparent;
+    color:#ffffff;
+    border-radius: 50%;
+    transition: 0.5s;
+}
+.sidebar ul li:hover.active a .icon::before
+{
+    color:#ffffff;
+}
+.bottom
+{
+    position: relative;
+    bottom:0;
+    width: 100%;
+}
+
+.sidebar ul .Perfil .Perfil2 {
+    display: flex; /* Mantém o Flexbox */
+    flex-direction: row; /* Alinha os itens na horizontal */
+    justify-content: flex-start; /* Centraliza os itens horizontalmente */
+    width: 100%; /* Ocupa toda a largura disponível */
+    height: auto; /* Ajusta a altura conforme o conteúdo */
+    gap: 0px; /* Adiciona um espaçamento entre os itens */
+    padding: 0px; /* Adiciona um pequeno padding */
+    margin-left:0px;
+}
+
+
+.sidebar ul .Perfil {
+    display: flex; /* Mantém o Flexbox */
+    flex-direction: row; /* Alinha os itens na horizontal */
+    justify-content: flex-start; /* Centraliza os itens horizontalmente */
+    align-items: center; /* Centraliza os itens verticalmente */
+    text-align: center; /* Centraliza o texto */
+    width: 100%; /* Ocupa toda a largura disponível */
+    height: 125px; /* Ajusta a altura conforme o conteúdo */
+    gap: 0px; /* Adiciona um espaçamento entre os itens */
+    padding: 0px; /* Adiciona um pequeno padding */
+}
+
+.menu-active .sidebar ul .Perfil  {
+    padding: 10px;
+    width: 100%;
+    height: 250px;    
+}
+
+.menu-active .sidebar ul .Perfil .Perfil2  {
+    display: flex;
+    flex-direction: column; /* Empilha os itens verticalmente */
+    justify-content: center; /* Alinha os itens ao topo */
+    align-items: center; /* Centraliza horizontalmente */
+    text-align: center;  
+    gap: 10px; 
+    
+}
+
+.menu-active .sidebar ul .Perfil a {
+    display: flex;
+    flex-direction: column; /* Empilha os itens verticalmente */
+    justify-content: center; /* Alinha os itens ao topo */
+    align-items: center; /* Centraliza horizontalmente */
+    text-align: center;    
+    height: 105%;
+    width: 100%;
+
+}
+
+.menu-active .sidebar  ul .Perfil:hover a {
+
+    border: 1px solid rgb(255, 255, 255); /* Borda branca mais grossa */
+    border-radius: 9px; /* Arredondamento das bordas */
+    padding: 1px; /* Pequeno espaçamento interno */
+}
+
+
+
+.menu-active .sidebar  ul .Perfil .Perfil2 .icon {
+    margin-bottom:70px; /* Menor espaço abaixo do nome */
+    margin-top: 58px;
+    height: 0px;
+}
+
+.menu-active .sidebar  ul .Perfil .Perfil2 .text {
+    margin-bottom:20px; /* Menor espaço abaixo do nome */
+    height: 0px;
+}
+
+/* Cargo */
+.menu-active .sidebar  ul .Perfil .Perfil2 .text:last-of-type {
+    margin-top: 0px;
+    height: 0px;
+    font-size: 1.2em;
+    font-weight: 200;
+}
+
+
+.menu-active .sidebar ul .Perfil .imgBx {
+    width: 100px; /* Ajuste o tamanho da imagem se necessário */
+    height: 100px; /* Ajuste o tamanho da imagem se necessário */
+}
+
+
+
+.sidebar ul .Perfil .imgBx {
+    width: 55px; /* Ajuste o tamanho da imagem se necessário */
+    height: 55px; /* Ajuste o tamanho da imagem se necessário */
+    
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;    
+}
+
+
+.sidebar ul .Perfil .imgBx img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    border:2px #ffffff;
+    top: 0;
+    left:0;
+}
+.sidebar ul .Perfil .text {
+    font-size: 0.8em;
+    font-weight: 500;
+    color: var(--clr); /* Ajuste a cor conforme necessário */
+    word-wrap: break-all; /* Quebra palavras longas para caber na linha */
+}
+
+
+
