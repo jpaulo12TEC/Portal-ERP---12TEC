@@ -12,9 +12,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<string>('Compras'); // Estado para o item ativo
   const router = useRouter();
 
-
-
-
   const handleNavClick = async (tab: string) => {
     try {
       setActiveTab(tab); // Atualiza o tab ativo
@@ -23,7 +20,6 @@ export default function Dashboard() {
       console.error("Erro ao navegar:", error);
     }
   };
-
   const handleBarras = async (tab: string) => {
       setSelectedTab(tab); // Atualiza o estado do componente selecionado
   };
