@@ -1,123 +1,176 @@
-import React from 'react';
-import { FaApple, FaHome, FaUser, FaComment, FaChartBar, FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { FaHome, FaUser, FaComment, FaChartBar, FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import Link from 'next/link';
 import '../app/stylesidebar.css';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+
 
 interface SidebarProps {
   className?: string;
   onNavClickAction: (tab: string) => void;
-  menuActive: boolean; 
+  menuActive: boolean;
   setMenuActive: React.Dispatch<React.SetStateAction<boolean>>;
-  activeTab: string; // Recebe o item ativo
+  activeTab: string;
 }
 
 const Sidebar = ({ className = '', onNavClickAction, menuActive, setMenuActive, activeTab }: SidebarProps) => {
+  const router = useRouter();
+  const supabase = createClientComponentClient();
+  const [fotoCaminho, setFotoCaminho] = useState<string | null>(null);
+
+  const [openFinanceiro, setOpenFinanceiro] = useState(false);
+  const [nome, setNome] = useState<string | null>(null);
+  const [cargo, setCargo] = useState<string | null>(null);
+
   const toggleSidebar = () => {
     setMenuActive(!menuActive);
   };
 
-  const activeLink = (e: React.MouseEvent, tab: string) => {
-    onNavClickAction(tab); // Chama a função do pai para atualizar o item ativo
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
   };
+
+  const activeLink = (e: React.MouseEvent, tab: string) => {
+    onNavClickAction(tab);
+  };
+
+  // 🔥 Puxando dados do Supabase
+useEffect(() => {
+  const fetchUserData = async () => {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) {
+      console.error('Erro ao obter usuário:', userError.message);
+      return;
+    }
+
+    if (user) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('nome, cargo, fotocaminho')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Erro ao buscar perfil:', error.message);
+      } else {
+        setNome(data?.nome);
+        setCargo(data?.cargo);
+
+        if (data?.fotocaminho) {
+          // gera signed URL para a foto
+          const { data: signedUrlData, error: signedUrlError } = await supabase
+            .storage
+            .from('fotoperfil')
+            .createSignedUrl(data.fotocaminho, 60); // expira em 60 segundos
+
+          if (signedUrlError) {
+            console.error('Erro ao gerar URL da foto:', signedUrlError.message);
+            setFotoCaminho(null);
+          } else {
+            setFotoCaminho(signedUrlData.signedUrl);
+          }
+        } else {
+          setFotoCaminho(null);
+        }
+      }
+    }
+  };
+
+  fetchUserData();
+}, [supabase]);
 
   return (
     <div>
       <div className={`sidebarWrapper ${menuActive ? 'menu-active' : ''}`} onClick={toggleSidebar}>
         <div className={`sidebar ${menuActive ? 'active' : ''}`} onClick={toggleSidebar}>
-
-
-          
           <ul>
-            <div className = "Menu">
-
-              
-            <div className= "Primeiro">
-            <li className="Perfil">
-              <a href="#">
-                <div className="Perfil2">
-                  <div className="icon">
-                    <div className="imgBx">
-                      <img src="/img.png" alt="Profile" />
+            <div className="Menu">
+              <div className="Primeiro" >
+                <li className={"Perfil"} onClick={(e) => activeLink(e, '')}>
+                  <a href="/dashboard/meuperfil">
+                    <div className="Perfil2">
+                      <div className="icon">
+                        <div className="imgBx">
+                          <img src={fotoCaminho || '/img.png'} alt="Profile" />
+                        </div>
+                      </div>
+                      <div className={`text ${menuActive ? '' : 'collapsed'}`}>{nome || 'Carregando...'}</div>
+                      <div className={`text ${menuActive ? '' : 'collapsed'}`}>{cargo || ''}</div>
                     </div>
-                  </div>
-                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>João Paulo Santana Melo</div>
-                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>Gestor de compras</div>
-                </div>
-              </a>
-            </li>
+                  </a>
+                </li>
+              </div>
+
+              <div className="Menulist">
+                <li className={activeTab === 'Início' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
+                  <Link href="">
+                    <div className="icon">
+                      <FaHome />
+                    </div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Início</div>
+                  </Link>
+                </li>
+                <li className={activeTab === 'Pessoal' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
+                  <Link href="/">
+                    <div className="icon">
+                      <FaUser />
+                    </div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Pessoal</div>
+                  </Link>
+                </li>
+                <li className={activeTab === 'Solicitação' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
+                  <Link href="/">
+                    <div className="icon">
+                      <FaComment />
+                    </div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Solicitação</div>
+                  </Link>
+                </li>
+                <li className={activeTab === 'Financeiro' ? 'active' : ''} onClick={(e) => activeLink(e, 'Financeiro')}>
+                  <Link href="">
+                    <div className="icon">
+                      <FaChartBar />
+                    </div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Financeiro</div>
+                  </Link>
+                </li>
+                <li className={activeTab === 'Compras' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
+                  <Link href="">
+                    <div className="icon">
+                      <FaShoppingCart />
+                    </div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Compra</div>
+                  </Link>
+                </li>
+                <li className={activeTab === 'Configurações' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
+                  <Link href="/">
+                    <div className="icon">
+                      <FaCog />
+                    </div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Configurações</div>
+                  </Link>
+                </li>
+              </div>
+
+              <div className="bottom">
+                <li onClick={handleLogout} style={{ cursor: 'pointer' }}>
+                  <a href="#">
+                    <div className="icon">
+                      <FaSignOutAlt />
+                    </div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Logout</div>
+                  </a>
+                </li>
+              </div>
             </div>
-
-
-
-
-            <div className="Menulist">
-              <li className={activeTab === 'Início' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
-                <Link href="">
-                  <div className="icon">
-                    <FaHome />
-                  </div>
-                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>Início</div>
-                </Link>
-              </li>
-              <li className={activeTab === 'Pessoal' ? 'active' : ''} onClick={(e) => activeLink(e, 'Pessoal')}>
-                <Link href="/pessoal">
-                  <div className="icon">
-                    <FaUser />
-                  </div>
-                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>Pessoal</div>
-                </Link>
-              </li>
-              <li className={activeTab === 'Solicitação' ? 'active' : ''} onClick={(e) => activeLink(e, 'Solicitação')}>
-                <Link href="/solicitacao">
-                  <div className="icon">
-                    <FaComment />
-                  </div>
-                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>Solicitação</div>
-                </Link>
-              </li>
-              <li className={activeTab === 'Financeiro' ? 'active' : ''} onClick={(e) => activeLink(e, 'Financeiro')}>
-                <a href="">
-                  <div className="icon">
-                    <FaChartBar />
-                  </div>
-                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>Financeiro</div>
-                </a>
-              </li>
-              <li className={activeTab === 'Compras' ? 'active' : ''} onClick={(e) => activeLink(e, 'Compras')}>
-                <Link href="">
-                  <div className="icon">
-                    <FaShoppingCart />
-                  </div>
-                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>Compra</div>
-                </Link>
-              </li>
-              <li className={activeTab === 'Configurações' ? 'active' : ''} onClick={(e) => activeLink(e, 'Configurações')}>
-                <Link href="/configuracoes">
-                  <div className="icon">
-                    <FaCog />
-                  </div>
-                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>Configurações</div>
-                </Link>
-              </li>
-            </div>
-
-
-
-
-            <div className="bottom">
-              <li>
-                <a href="#">
-                  <div className="icon">
-                    <FaSignOutAlt />
-                  </div>
-                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>Logout</div>
-                </a>
-              </li>
-            </div>
-
-            </div>
-
-
           </ul>
         </div>
       </div>

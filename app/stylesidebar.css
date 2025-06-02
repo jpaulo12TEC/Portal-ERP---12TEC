@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css?family=Poppis:200,300,400,500,600,700,800,900&display=swap');
+@import url('https://fonts.googleapis.com/css?family=Poppins:200,300,400,500,600,700,800,900&display=swap');
 
 :root
 {
@@ -15,14 +15,11 @@
     width: 80px; /* Largura padrão */
     height: 100vh;
     background: radial-gradient(circle, #5f0202, #410101, #200101);
-
-
-
-
     transition: 0.5s;
     padding-left: 10px;
     overflow-y: auto; /* Permite rolagem vertical */
     font-size: 0.8em;    
+    overflow-x: hidden;
    
 }
 
@@ -215,16 +212,6 @@
     background: transparent;
     
 }
-
-
-
-
-
-
-
-
-
-
 
 
 

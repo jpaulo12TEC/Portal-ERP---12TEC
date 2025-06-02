@@ -1,11 +1,12 @@
 import React from "react";
 
-type InputProps = {
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   type?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   className?: string;
+  required?: boolean;
 };
 
 const Input = ({ type = "text", value, onChange, placeholder, className }: InputProps) => {

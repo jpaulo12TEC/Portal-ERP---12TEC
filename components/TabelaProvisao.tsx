@@ -109,7 +109,7 @@ export default function FilterableTable() {
 
 
     return (
-      (!codigo || (item.codigo && item.codigo.toFixed(0).includes(codigo.toString()))) &&
+      (!codigo || (item.codigo && item.codigo.toString().includes(codigo.toString()))) &&
       (!origem || (item.origem && item.origem.toLowerCase().includes(origem.toLowerCase()))) &&
       (!empresa || (item.empresa && item.empresa.toLowerCase().includes(empresa.toLowerCase()))) &&
       (!cnpj || (item.cnpj && item.cnpj.includes(cnpj))) &&
@@ -122,59 +122,48 @@ export default function FilterableTable() {
       isPaid
     );
   };
+const headers = [
+  { label: "Código", key: "codigo" },
+  { label: "Vencimento", key: "venceem" },
+  { label: "Empresa", key: "empresa" },
+  { label: "CNPJ", key: "cnpj" },
+  { label: "Lançado em", key: "lancadoem" },
+  { label: "Valor", key: "valor" },
+  { label: "Origem", key: "origem" },
+  { label: "Pago em", key: "pagoem" },
+];
 
 
+const [sortConfig, setSortConfig] = useState<{ key: keyof DataItem; direction: 'asc' | 'desc' }>({
+  key: 'codigo',
+  direction: 'asc',
+});
+const handleSort = (key: keyof DataItem) => {
+  setSortConfig(prev => ({
+    key,
+    direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+  }));
+};
 
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "venceem" , direction: 'asc' });
-  const handleSort = (key: keyof DataItem) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
+const sortedData = () => {
+  const sorted = [...data].sort((a, b) => {
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+
+    if (aValue === undefined) return 1;
+    if (bValue === undefined) return -1;
+
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
     }
-    setSortConfig({ key, direction });
-  };
 
-  const sortedData = () => {
-    if (data.length === 0) return []; // Evita erro ao acessar data[0]
-    let sortableData = [...data];
-  
-    if (sortConfig.key && sortConfig.key in data[0]) {
-      sortableData.sort((a, b) => {
-        let aValue = a[sortConfig.key];
-        let bValue = b[sortConfig.key];
-  
-        // Se um dos valores for null ou undefined, move para o final
-        if (aValue == null) return 1;
-        if (bValue == null) return -1;
-  
-        // Ordenação para datas (certifica que são strings antes de parsear)
-        if (["lancadoem", "venceem", "pagoem"].includes(sortConfig.key)) {
-          return sortConfig.direction === "asc"
-            ? parseDate(String(aValue)).getTime() - parseDate(String(bValue)).getTime()
-            : parseDate(String(bValue)).getTime() - parseDate(String(aValue)).getTime();
-        }
-  
-        // Comparação para strings (garante que são strings)
-        if (typeof aValue === "string" && typeof bValue === "string") {
-          return sortConfig.direction === "asc"
-            ? aValue.localeCompare(bValue, 'pt-BR', { numeric: true })
-            : bValue.localeCompare(aValue, 'pt-BR', { numeric: true });
-        }
-  
-        // Comparação para números
-        if (typeof aValue === "number" && typeof bValue === "number") {
-          return sortConfig.direction === "asc" ? aValue - bValue : bValue - aValue;
-        }
-  
-        // Se for tipo misto (string + número), converte tudo para string antes de comparar
-        return sortConfig.direction === "asc"
-          ? String(aValue).localeCompare(String(bValue), 'pt-BR', { numeric: true })
-          : String(bValue).localeCompare(String(aValue), 'pt-BR', { numeric: true });
-      });
-    }
-  
-    return sortableData;
-  };
+    return sortConfig.direction === 'asc'
+      ? String(aValue).localeCompare(String(bValue))
+      : String(bValue).localeCompare(String(aValue));
+  });
+
+  return sorted;
+};
 
   const handleRowClick = (rowData: any) => {
     setSelectedRow(rowData);
@@ -187,8 +176,8 @@ export default function FilterableTable() {
   return (
     <div className="p-4 h-screen">
       {/* Filtros */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" >
-        {["Origem", "Empresa", "CNPJ"].map((field) => (
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4" >
+        {["Codigo","Origem", "Empresa", "CNPJ"].map((field) => (
           <div key={field} className="flex flex-col">
             <input
               type="text"
@@ -244,42 +233,85 @@ export default function FilterableTable() {
       {/* Tabela */}
       <div className="overflow-x-auto h-screen mt-0">
         <table className="min-w-full table-auto border-collapse border border-gray-900">
-          <thead className="sticky top-0 border border-gray-900 bg-gray-800 text-white text-xs">
-            <tr>
-              {["Código", "Vencimento", "Empresa", "CNPJ", "Lançado em", "Valor", "Origem", "Pago em"].map(header => (
-                <th
-                  key={header}
-                  className="px-4 py-2 border-b text-xs text-center cursor-pointer"
-                  onClick={() => handleSort(header.toLowerCase().replace(/\s+/g, '') as keyof DataItem)}
-                >
-                  {header}
-                  {sortConfig.key === header.toLowerCase().replace(/\s+/g, '') ? (
-                    sortConfig.direction === 'asc' ? ' 🔼' : ' 🔽'
-                  ) : null}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sortedData().filter(applyFilters).map((item, index) => (
-              <tr
-                key={index}
-                className={`cursor-pointer ${
-                  selectedRow === index ? "bg-yellow-300" : index % 2 === 0 ? "bg-red-50" : "bg-gray-200"
-                } hover:bg-red-300`}
-                onClick={() => handleRowClick(item)}
-              >
-                <td className="px-4 py-2 border-b text-xs text-center">{formatCodigo(item.codigo)}</td>
-                <td className="px-4 py-2 border-b text-xs text-center">{formatDate(item.venceem)}</td>
-                <td className="px-4 py-2 border-b text-xs text-center">{item.empresa || "-"}</td>
-                <td className="px-4 py-2 border-b text-xs text-center">{item.cnpj || "-"}</td>
-                <td className="px-4 py-2 border-b text-xs text-center">{formatDate(item.lancadoem)}</td>
-                <td className="px-4 py-2 border-b text-xs text-center">{formatCurrency(item.valor)}</td>
-                <td className="px-4 py-2 border-b text-xs text-center">{item.origem || "-"}</td>
-                <td className="px-4 py-2 border-b text-xs text-center">{formatDate(item.pagoem)}</td>
-              </tr>
-            ))}
-          </tbody>
+<thead className="sticky top-0 bg-gray-900 text-white text-sm z-10 shadow">
+  <tr>
+    {headers.map(({ label, key }) => (
+      <th
+        key={key}
+        className="px-4 py-2 border-b text-xs text-center cursor-pointer"
+        onClick={() => handleSort(key as keyof DataItem)}
+      >
+        {label}
+        {sortConfig.key === key ? (
+          sortConfig.direction === 'asc' ? ' 🔼' : ' 🔽'
+        ) : null}
+      </th>
+    ))}
+  </tr>
+</thead>
+<tbody>
+  {sortedData().filter(applyFilters).map((item, index) => {
+    const isVencido = new Date(item.venceem) < new Date() && !item.pagoem;
+    const isPago = item.pagoem;
+    const isSelecionado = selectedRow === index;
+
+    return (
+      <tr
+        key={index}
+        onClick={() => handleRowClick(item)}
+        className={`
+          cursor-pointer transition 
+          ${
+            isSelecionado 
+              ? 'bg-yellow-200' 
+              : isVencido 
+                ? 'bg-red-50' 
+                : isPago 
+                  ? 'bg-green-50' 
+                  : 'hover:bg-gray-100'
+          }
+          rounded-xl
+        `}
+      >
+        <td className="px-4 py-4 text-sm text-center">
+          <div className="font-semibold">{formatCodigo(item.codigo)}</div>
+        </td>
+        <td className="px-4 py-4 text-sm text-center">
+          <div className="">{formatDate(item.venceem)}</div>
+          {isVencido && (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-red-200 text-red-800">
+              Vencido
+            </span>
+          )}
+          {isPago && (
+            <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-green-200 text-green-800">
+              Pago
+            </span>
+          )}
+        </td>
+        <td className="px-4 py-4 text-sm text-center">
+          {item.empresa || <span className="text-gray-400">-</span>}
+        </td>
+        <td className="px-4 py-4 text-sm text-center">
+          {item.cnpj || <span className="text-gray-400">-</span>}
+        </td>
+        <td className="px-4 py-4 text-sm text-center">
+          {formatDate(item.lancadoem)}
+        </td>
+        <td className="px-4 py-4 text-sm text-center">
+          <span className="font-medium">{formatCurrency(item.valor)}</span>
+        </td>
+        <td className="px-4 py-4 text-sm text-center">
+          {item.origem || <span className="text-gray-400">-</span>}
+        </td>
+        <td className="px-4 py-4 text-sm text-center">
+          {formatDate(item.pagoem)}
+        </td>
+      </tr>
+    );
+  })}
+</tbody>
+
         </table>
          {/* Modal */}
       {isModalOpen && selectedRow && (

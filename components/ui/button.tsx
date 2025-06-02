@@ -11,6 +11,7 @@ type ButtonProps = {
 const Button = ({ children, onClick, className, disabled }: ButtonProps) => {
   return (
     <button
+     type="button"
       className={`${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`} // Estilo para botão desabilitado
       onClick={disabled ? undefined : onClick} // Desabilita o clique se disabled for true
       disabled={disabled}
