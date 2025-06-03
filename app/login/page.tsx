@@ -12,29 +12,35 @@ export default function Login() {
   const [error, setError] = useState(""); // Para armazenar erros
   const [passwordVisible, setPasswordVisible] = useState(false); // Para alternar a visibilidade da senha
   const router = useRouter();
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-  
-    const supabase = createClientComponentClient();
-  
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-  
-      if (error) {
-        setError('Erro ao entrar! Verifique suas credenciais.');
-      } else {
-        setError('');
-        router.refresh(); // <-- importante!
-        router.push("/dashboard");
-      }
-    } catch (err) {
-      setError('Erro desconhecido. Tente novamente.');
-      console.error(err);
+  const [loading, setLoading] = useState(false);
+const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (loading) return; // ✅ impede clique duplo
+
+  setLoading(true);
+  const supabase = createClientComponentClient();
+
+  try {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError('Erro ao entrar! Verifique suas credenciais.');
+    } else {
+      setError('');
+      router.refresh(); // ✅ recarrega dados do servidor
+      router.push('/dashboard');
     }
-  };
+  } catch (err) {
+    setError('Erro desconhecido. Tente novamente.');
+    console.error(err);
+  } finally {
+    setLoading(false); // ✅ libera o botão
+  }
+};
   
   return (
     <div className="background-tela">
