@@ -13,6 +13,8 @@ export default function Login() {
   const [passwordVisible, setPasswordVisible] = useState(false); // Para alternar a visibilidade da senha
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  
 const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
 

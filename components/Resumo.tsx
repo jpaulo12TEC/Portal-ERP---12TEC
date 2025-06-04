@@ -113,14 +113,14 @@ const [selectedReembolso, setSelectedReembolso] = useState<number[]>([])
   const sumSelected = (list: Pagamento[], selected: number[]) =>
     list
       .filter(p => selected.includes(p.id))
-      .reduce((acc, cur) => acc + (cur.valor_total || 0), 0)
+      .reduce((acc, cur) => acc + (cur.valor || 0), 0)
 
 
         // 🔥 Resumos gerais
-  const totalVencidos = vencidos.reduce((acc, cur) => acc + (cur.valor_total || 0), 0)
+  const totalVencidos = vencidos.reduce((acc, cur) => acc + (cur.valor || 0), 0)
   const qtdVencidos = vencidos.length
 
-  const totalAVencer = aVencer.reduce((acc, cur) => acc + (cur.valor_total || 0), 0)
+  const totalAVencer = aVencer.reduce((acc, cur) => acc + (cur.valor || 0), 0)
   const qtdAVencer = aVencer.length
 
 const totalSelecionado = 
@@ -195,7 +195,7 @@ const totalSelecionado =
                 <div>
                   <span className="font-semibold text-gray-700">Valor Total:</span>{' '}
                   <span>
-                    {p.valor_total.toLocaleString('pt-BR', {
+                    {p.valor.toLocaleString('pt-BR', {
                       style: 'currency',
                       currency: 'BRL'
                     })}
