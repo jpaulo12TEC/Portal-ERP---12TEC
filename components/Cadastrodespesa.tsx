@@ -78,7 +78,7 @@ export default function CadastroDespesa() {
 
 
 
-
+const [isLoading, setIsLoading] = useState(false);
 
 
 
@@ -123,6 +123,7 @@ export default function CadastroDespesa() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+      setIsLoading(true);
 
 // Verificar campos obrigatórios
 if (
@@ -362,6 +363,11 @@ if (formData.boleto) {
     contrato: null,
     centrosDeCusto: [],
   });
+
+
+
+  setIsLoading(false);
+  window.location.reload(); // 🔄 Atualiza a página
 };
 
 
@@ -555,7 +561,17 @@ if (formData.boleto) {
           </button>
         </div>
       </form>
+
+      {isLoading && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-lg shadow-lg">
+      <p className="text-lg font-semibold">Salvando informações...</p>
+      <div className="mt-4 animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500 border-solid"></div>
     </div>
+  </div>
+)}
+    </div>
+    
   );
 }
 
