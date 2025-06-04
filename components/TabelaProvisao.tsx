@@ -13,7 +13,7 @@ type DataItem = {
   venceem: string
   pagoem: string;
   data: string;
-  codigo: number;
+  codigo: string;
 };
 
 const parseDate = (date: string | null) => date ? new Date(date) : new Date(0);
@@ -46,28 +46,34 @@ export default function FilterableTable() {
   
 
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const { data, error } = await supabase
-        .from('provisao_pagamentos')
-        .select('*');
-  
-      if (error) {
-        console.error('Erro ao buscar dados:', error);
+useEffect(() => {
+  const fetchData = async () => {
+    const { data, error } = await supabase
+      .from('provisao_pagamentos')
+      .select('*')
+      .order('lancadoem', { ascending: false }) // Ordena pela data mais recente
+      
+
+    if (error) {
+      console.error('Erro ao buscar dados:', error);
+    } else {
+      if (Array.isArray(data)) {
+        const parsedData = data.map(item => ({
+          ...item,
+          codigo: String(item.codigo) // Garante que seja string
+        }));
+        setData(parsedData);
       } else {
-        if (Array.isArray(data)) {
-          setData(data as DataItem[]);
-        } else {
-          console.error('Dados retornados não são um array:', data);
-          setData([]);
-        }
+        console.error('Dados não são array:', data);
+        setData([]);
       }
-    };
+    }
+  };
+
+  fetchData();
+}, []);
 
 
-  
-    fetchData();
-  }, []);
 
 
 
@@ -76,14 +82,23 @@ export default function FilterableTable() {
     return new Date(String(date)).toLocaleDateString('pt-BR');
   };
   
-  const formatCodigo = (codigo: any) => {
-    if (codigo == null) return "-";
-    // Se o número estiver em notação científica, converte para string
-    if (typeof codigo === 'number' && !Number.isInteger(codigo)) {
-      return codigo.toFixed(0); // Isso vai forçar o número a ser exibido sem notação científica
-    }
-    return codigo.toLocaleString('pt-BR');
-  };
+const formatCodigo = (codigo: any) => {
+  if (codigo == null || codigo === "") return "-";
+
+  const codStr = String(codigo);
+
+  // Remove espaços e verifica se é número puro
+  const cleanCode = codStr.trim();
+
+  // Se for um número muito grande, evita notação científica
+  if (!isNaN(Number(cleanCode))) {
+    return cleanCode;
+  }
+
+  // Se não for número, apenas retorna como string limpa
+  return cleanCode;
+};
+
   
 
   const formatCurrency = (value: number | null) => {
