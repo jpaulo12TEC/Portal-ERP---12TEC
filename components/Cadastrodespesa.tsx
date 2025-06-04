@@ -84,10 +84,18 @@ const [isLoading, setIsLoading] = useState(false);
 
 
 
-  const gerarDataParcela = (dataInicial: Date, indice: number, periodicidade: string) => {
+const gerarDataParcela = (dataInicial: Date, indice: number, periodicidade: string) => {
   const data = new Date(dataInicial);
 
   switch (periodicidade.toLowerCase()) {
+    case "pagamento único":
+    case "único":
+    case "unico":
+      if (indice === 0) {
+        return data.toISOString();
+      } else {
+        throw new Error("Pagamento único não pode ter mais de uma parcela.");
+      }
     case "semanal":
       data.setDate(data.getDate() + 7 * indice);
       break;
@@ -112,12 +120,6 @@ const [isLoading, setIsLoading] = useState(false);
 
   return data.toISOString();
 };
-
-
-
-
-
-
 
 
 
@@ -374,17 +376,32 @@ if (formData.boleto) {
 
 
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
-    if (type === "checkbox") {
-      const { checked } = e.target as HTMLInputElement;
-      setFormData({ ...formData, [name]: checked });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
-  };
+const handleChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+) => {
+  const { name, value, type } = e.target;
+
+  if (type === "checkbox") {
+    const { checked } = e.target as HTMLInputElement;
+    setFormData((prev) => ({ ...prev, [name]: checked }));
+  } else {
+    setFormData((prev) => {
+      let updatedForm = { ...prev, [name]: value };
+
+      // Se periodicidade for "Pagamento Único", força parcela como "1"
+      if (name === "periodicidade" && value === "Pagamento Único") {
+        updatedForm.parcela = "1";
+      }
+
+      // Se tentar mudar a parcela enquanto periodicidade for "Pagamento Único", mantém como "1"
+      if (name === "parcela" && prev.periodicidade === "Pagamento Único") {
+        updatedForm.parcela = "1";
+      }
+
+      return updatedForm;
+    });
+  }
+};
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, files } = e.target;
@@ -448,7 +465,21 @@ if (formData.boleto) {
         {/* Dados Financeiros */}
         <div className="space-y-5">
           <Input label="Valor da Parcela (R$):" name="valorParcela" type="number" value={formData.valorParcela} onChange={handleChange} />
-          <Input label="Parcela:" name="parcela" placeholder="Ex.: 1/12" value={formData.parcela} onChange={handleChange} />
+<label>Quantidade de parcelas:</label>
+<select
+  name="parcela"
+  value={formData.parcela}
+  onChange={handleChange}
+  disabled={formData.periodicidade === 'Pagamento Único'}
+  className="w-full border bg-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500"
+>
+  <option value="">Selecione</option>
+  {Array.from({ length: 36 }, (_, i) => (
+    <option key={i + 1} value={i + 1}>
+      {i + 1}
+    </option>
+  ))}
+</select>
           <div>
             <label className="block mb-1 font-medium">Periodicidade:</label>
             <select
@@ -458,6 +489,7 @@ if (formData.boleto) {
               className="w-full border bg-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500"
             >
               <option value="">Selecione</option>
+              <option value="Pagamento Único">Pagamento Único</option>
               <option value="semanal">Semanal</option>
               <option value="quinzenal">Quinzenal</option>
               <option value="mensal">Mensal</option>
@@ -479,11 +511,11 @@ if (formData.boleto) {
               className="border rounded-xl px-4 py-2 w-1/2"
             >
               <option value="">Selecione o centro</option>
-              <option value="Financeiro">Financeiro</option>
-              <option value="Comercial">Comercial</option>
-              <option value="TI">TI</option>
-              <option value="RH">RH</option>
-              <option value="Administrativo">Administrativo</option>
+              <option value="GE">GE</option>
+              <option value="ENEVA">ENEVA</option>
+              <option value="MOSAIC">MOSAIC</option>
+              <option value="Galpão">Galpão</option>
+              <option value="SP">SP</option>
             </select>
             <input
               type="number"
