@@ -61,14 +61,18 @@ const getNomeReembolso = (formapagamento: string | null) => {
     fetchPagamentos()
   }, [])
 
-  const fetchPagamentos = async () => {
-    const { data, error } = await supabase.from('provisao_pagamentos').select('*')
-    if (error) {
-      console.error('Erro ao buscar dados:', error)
-    } else {
-      setPagamentos(data as Pagamento[])
-    }
+const fetchPagamentos = async () => {
+  const { data, error } = await supabase
+    .from('provisao_pagamentos')
+    .select('*')
+    .order('lancadoem', { ascending: false }) // 👈 ordenando DESC
+
+  if (error) {
+    console.error('Erro ao buscar dados:', error)
+  } else {
+    setPagamentos(data as Pagamento[])
   }
+}
 
 const hoje = startOfDay(new Date())
 
