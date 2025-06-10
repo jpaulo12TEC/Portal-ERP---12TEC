@@ -42,6 +42,16 @@ export default function Resumo() {
   const [selectedAVencer, setSelectedAVencer] = useState<number[]>([])
   const [period, setPeriod] = useState<Period>('Semana')
 
+const [modalAberto, setModalAberto] = useState(true)
+const [pagamentoSelecionado, setPagamentoSelecionado] = useState<Pagamento | null>(null)
+const [dataPagamento, setDataPagamento] = useState('')
+const [comprovante, setComprovante] = useState<File | null>(null)
+
+const abrirModalPagamento = (pagamento: Pagamento) => {
+  setPagamentoSelecionado(pagamento)
+  setModalAberto(true)
+}
+
 
 const getNomeReembolso = (formapagamento: string | null) => {
   if (!formapagamento) return null;
@@ -153,6 +163,7 @@ const totalSelecionado =
         return (
           <Card
             key={p.id}
+            onClick={() => abrirModalPagamento(p)} // 👈 Abre modal
             className={cn(
               'transition-shadow border rounded-lg shadow-sm hover:shadow-md',
               isChecked ? 'border-blue-500 shadow-lg' : 'border-gray-200'
@@ -215,6 +226,16 @@ const totalSelecionado =
     )}
                   
               </div>
+               {/* Botão "Pagar" ao lado direito */}
+      <button
+      onClick={(e) => {
+        e.stopPropagation(); // evita que clique no botão abra o modal
+        abrirModalPagamento(p);
+      }}
+      className="text-blue-600 hover:text-blue-800 transition-all"
+    >
+      Pagar
+      </button>
             </CardContent>
           </Card>
         )
@@ -273,7 +294,84 @@ const totalSelecionado =
 
 
 
- 
+ {modalAberto && pagamentoSelecionado && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+    <div className="bg-white p-6 rounded-lg w-full max-w-md space-y-4">
+      <h2 className="text-lg font-semibold">Registrar Pagamento</h2>
+      
+      <div>
+        <label className="block text-sm">Data do Pagamento</label>
+        <input
+          type="date"
+          value={dataPagamento}
+          onChange={e => setDataPagamento(e.target.value)}
+          className="w-full border px-3 py-2 rounded"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm">Comprovante</label>
+        <input
+          type="file"
+          onChange={e => setComprovante(e.target.files?.[0] ?? null)}
+          className="w-full"
+        />
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <button onClick={() => setModalAberto(false)} className="text-gray-600">Cancelar</button>
+<button
+  onClick={async () => {
+    if (!dataPagamento) {
+      alert('Informe a data!');
+      return;
+    }
+
+    let comprovanteFileName = null;
+
+    if (comprovante) {
+      const timestamp = Date.now();
+      const fileExtension = comprovante.name.split('.').pop();
+      comprovanteFileName = `comprovante_${pagamentoSelecionado!.id}_${timestamp}.${fileExtension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('comprovantes-pagamentos')
+        .upload(comprovanteFileName, comprovante);
+
+      if (uploadError) {
+        console.error('Erro no upload:', uploadError);
+        alert('Erro ao fazer upload do comprovante.');
+        return;
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from('provisao_pagamentos')
+      .update({
+        pagoem: dataPagamento, // 👈 aqui vai a data com hora, se estiver incluída em `dataPagamento`
+        comprovante_pagamento: comprovanteFileName,
+      })
+      .eq('id', pagamentoSelecionado!.id);
+
+    if (updateError) {
+      console.error('Erro na atualização:', updateError);
+      alert('Erro ao salvar as informações.');
+      return;
+    }
+
+    alert('Pagamento registrado com sucesso!');
+    setModalAberto(false);
+    fetchPagamentos(); // recarrega os dados
+  }}
+  className="bg-blue-600 text-white px-4 py-2 rounded"
+>
+  Salvar
+</button>
+
+      </div>
+    </div>
+  </div>
+)}
 
 
 
@@ -356,6 +454,8 @@ const totalSelecionado =
   </AccordionContent>
 </AccordionItem>
       </Accordion>
+
+      
 
 
 

@@ -3,6 +3,7 @@ import React from "react";
 type CardProps = {
   children: React.ReactNode;
   className?: string;
+  onClick?: () => void; // 👈 adicione isso
 };
 
 export const Card = ({ children, className }: CardProps) => {

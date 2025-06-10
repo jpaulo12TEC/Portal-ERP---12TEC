@@ -2,7 +2,7 @@ import React from 'react';
 
 type ButtonProps = {
   children: React.ReactNode;
-  onClick: () => void;
+onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   className?: string; // className para customizar
   disabled?: boolean; // Adicionando a propriedade disabled
   variant?: string; // Aqui estamos adicionando a propriedade variant

@@ -194,38 +194,53 @@ const buscarDados = async () => {
     console.log('📊 Gráfico Provisão:', dadosGraficoProvisao);
     setDataProvisao(dadosGraficoProvisao);
 
-    // 🔸 Centros de Custo
-    const { data: centros, error: errorCentros } = await supabase
-      .from('centros_de_custo')
-      .select('centro, valor, data_compra')
-      .gte('data_compra', (intervalo.start as Date).toISOString())
-      .lte('data_compra', (intervalo.end as Date).toISOString());
+// 🔸 Centros de Custo a partir da provisão
+const { data: centros, error: errorCentros } = await supabase
+  .from('centros_de_custo')
+  .select('codigo, centro');
 
-    if (errorCentros) throw errorCentros;
-    console.log('🏢 Dados Centros:', centros);
+if (errorCentros) throw errorCentros;
 
-    const agrupadoCentros = centros?.reduce((acc: any, item: any) => {
-      const chave = item.centro || 'Outro';
-      acc[chave] = (acc[chave] || 0) + (item.valor || 0);
-      return acc;
-    }, {});
+// Cria um dicionário para mapear código → nome do centro
+const mapaCentros = centros?.reduce((acc: any, item: any) => {
+  acc[item.codigo] = item.centro || 'Outro';
+  return acc;
+}, {});
 
-    const dadosGraficoCentros = Object.entries(agrupadoCentros).map(
-      ([centro, valor]) => ({
-        centro,
-        valor: Number(valor),
-      })
-    );
+// Agora busca os dados da tabela provisao_pagamentos
+const { data: pagamentosCentro, error: errorPagamentosCentro } = await supabase
+  .from('provisao_pagamentos')
+  .select('codigo, valor, venceem')
+  .gte('venceem', (intervalo.start as Date).toISOString())
+  .lte('venceem', (intervalo.end as Date).toISOString());
 
-    console.log('📊 Gráfico Centros:', dadosGraficoCentros);
-    setDataCentros(dadosGraficoCentros);
+if (errorPagamentosCentro) throw errorPagamentosCentro;
+console.log('💼 Pagamentos com código:', pagamentosCentro);
+
+// Agrupa os valores da provisão por centro de custo (usando o código)
+const agrupadoCentros = pagamentosCentro?.reduce((acc: any, item: any) => {
+  const nomeCentro = mapaCentros[item.codigo] || 'Outro';
+  acc[nomeCentro] = (acc[nomeCentro] || 0) + (item.valor || 0);
+  return acc;
+}, {});
+
+// Prepara os dados para o gráfico
+const dadosGraficoCentros = Object.entries(agrupadoCentros).map(
+  ([centro, valor]) => ({
+    centro,
+    valor: Number(valor),
+  })
+);
+
+console.log('📊 Gráfico Centros:', dadosGraficoCentros);
+setDataCentros(dadosGraficoCentros);
 
     // 🔸 Forma de Pagamento
     const { data: pagamentos, error: errorPagamentos } = await supabase
       .from('provisao_pagamentos')
-      .select('formapagamento, valor, data_compra')
-      .gte('data_compra', (intervalo.start as Date).toISOString())
-      .lte('data_compra', (intervalo.end as Date).toISOString());
+      .select('formapagamento, valor, venceem')
+      .gte('venceem', (intervalo.start as Date).toISOString())
+      .lte('venceem', (intervalo.end as Date).toISOString());
 
     if (errorPagamentos) throw errorPagamentos;
     console.log('💳 Dados Pagamentos:', pagamentos);
@@ -257,7 +272,20 @@ const buscarDados = async () => {
 };
 
 
-
+const calcularTotal = () => {
+  switch (chartType) {
+    case 'Documentos':
+      return dataCompras.reduce((acc, item) => acc + item.valor, 0);
+    case 'Parcela x Total':
+      return dataProvisao.reduce((acc, item) => acc + item.valor_parcela, 0);
+    case 'Centros de Custo':
+      return dataCentros.reduce((acc, item) => acc + item.valor, 0);
+    case 'Formas de Pagamento':
+      return dados.reduce((acc, item) => acc + item.valor, 0);
+    default:
+      return 0;
+  }
+};
 
 
 
@@ -267,6 +295,19 @@ const buscarDados = async () => {
 
 return (
   <div className="w-full border rounded-xl bg-white p-6">
+
+
+
+  <div className="mb-4 p-4 bg-gray-100 rounded-lg shadow-sm">
+  <h2 className="text-lg font-semibold text-gray-700">
+    Total do período ({period}):{" "}
+    <span className="text-indigo-600">
+      R$ {calcularTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+    </span>
+  </h2>
+</div>
+
+
     {/* 🔹 Filtros */}
     <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
       <div className="flex flex-wrap justify-between items-center mb-4 gap-3">
@@ -286,6 +327,8 @@ return (
     value={dataSelecionada}
     onChange={(e) => setDataSelecionada(e.target.value)}
   />
+
+
   </div>
 
       <div className="flex gap-2">
