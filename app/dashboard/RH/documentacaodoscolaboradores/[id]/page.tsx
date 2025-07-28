@@ -72,6 +72,7 @@ interface ComprovanteFuncionario {
   mes_referencia: string | null;
   referente_a: string | null;
   valido: boolean;
+  nome_arquivo: string;
 }
 
 interface Documento {
@@ -99,12 +100,13 @@ const [nomeDocumentoComprovantes, setNomeDocumentoComprovantes] = useState("");
 const [mesReferencia, setMesReferencia] = useState("");
 const [referenteA, setReferenteA] = useState("");
 const [mostrarModalComprovantes, setMostrarModalComprovantes] = useState(false);
- const [arquivocomprovantes, setArquivoComprovante] = useState<File | null>(null);
- const [abaAtivaPorSelecao, setAbaAtivaPorSelecao] = useState<string | null>(null);
+const [arquivocomprovantes, setArquivoComprovante] = useState<File | null>(null);
+const [abaAtivaPorSelecao, setAbaAtivaPorSelecao] = useState<string | null>(null);
+const [idComprovanteSelecionado, setIDDocumento] = useState("");
+const [nomeArquivos, setNomeArquivo] = useState("");
 
-
-
-
+const [nomeDocumentoDesabilitado, setNomeDocumentoDesabilitado] = useState(false);
+const [updateOrNot, setupdateOrNot] = useState(false);
 
 const [activeTabLocal, setActiveTabLocal] = useState("documentacao"); // controla aba ativa
 const [documentoSelecionado, setDocumentoSelecionado] = useState('')
@@ -157,21 +159,28 @@ const handleCheckboxChange = (docId: string, isChecked: boolean, aba: string) =>
 
 const handleDownloadSelectedDocs = async () => {
   if (!funcionario || selectedDocs.size === 0) return;
-type Documentosenviar = {
-  id: string;
-  nome_arquivo: string;
-};
+
+  type Documentosenviar = {
+    id: string;
+    nome_arquivo: string;
+  };
 
   let bucket = "";
   let pasta = "";
   let tabela = "";
 
-let docs: Documentosenviar[] = [];
+  let docs: Documentosenviar[] = [];
 
-  if (abaAtivaPorSelecao  === "documentacaogeral") {
+  console.log("Aba ativa:", abaAtivaPorSelecao);
+
+  if (abaAtivaPorSelecao === "documentacaogeral") {
     bucket = "documentacaocolaboradores";
     tabela = "documentoscolaboradores";
     pasta = limparString(`docs/${funcionario.cpf}-${funcionario.nome_completo}`);
+
+    console.log("Bucket:", bucket);
+    console.log("Tabela:", tabela);
+    console.log("Pasta:", pasta);
 
     const { data, error } = await supabase
       .from(tabela)
@@ -184,11 +193,16 @@ let docs: Documentosenviar[] = [];
     }
 
     docs = data;
+    console.log("Documentos encontrados:", docs);
 
   } else if (abaAtivaPorSelecao === "contracheques") {
-    bucket = "contracheques";
-    tabela = "comprovantesfuncionarios"; // Substitua se o nome real for diferente
+    bucket = "comprovantes-funcionarios";
+    tabela = "comprovantesfuncionarios";
     pasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
+
+    console.log("Bucket:", bucket);
+    console.log("Tabela:", tabela);
+    console.log("Pasta:", pasta);
 
     const { data, error } = await supabase
       .from(tabela)
@@ -201,11 +215,16 @@ let docs: Documentosenviar[] = [];
     }
 
     docs = data;
+    console.log("Contracheques encontrados:", docs);
 
-  } else if (abaAtivaPorSelecao  === "demaisComprovantes") {
+  } else if (abaAtivaPorSelecao === "demaisComprovantes") {
     bucket = "comprovantes-funcionarios";
-    tabela = "comprovantesfuncionarios"; // Substitua se o nome real for diferente
+    tabela = "comprovantesfuncionarios";
     pasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
+
+    console.log("Bucket:", bucket);
+    console.log("Tabela:", tabela);
+    console.log("Pasta:", pasta);
 
     const { data, error } = await supabase
       .from(tabela)
@@ -218,9 +237,12 @@ let docs: Documentosenviar[] = [];
     }
 
     docs = data;
+    console.log("Comprovantes encontrados:", docs);
   }
 
   for (const doc of docs) {
+    console.log(`Baixando: ${doc.nome_arquivo} de ${bucket}/${pasta}`);
+    
     const { data, error: downloadError } = await supabase.storage
       .from(bucket)
       .download(`${pasta}/${doc.nome_arquivo}`);
@@ -236,8 +258,9 @@ let docs: Documentosenviar[] = [];
     a.download = doc.nome_arquivo;
     a.click();
   }
-};
 
+  console.log("Download finalizado para todos os documentos selecionados.");
+};
 
 
 const fetchDocumentos = async () => {
@@ -276,16 +299,11 @@ const { data: docsSalvos, error: errorSalvos } = await supabase
 };
 
 
-
-
-
 const handleAbrirModal = (docInfo: Documento | undefined) => {
   if (!docInfo) return;
   setDocSelecionado(docInfo);
   setMostrarModal(true);
 };
-
-
 
 
 const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
@@ -635,13 +653,17 @@ console.log("Retorno do update:", data);
 
        {/* Botão */}
       <div className="mt-10 flex justify-start px-4">
-        <button
-          onClick={() => setMostrarModalComprovantes(true)}
-          className="flex items-center gap-2 px-5 py-2 mb-20 bg-[#5a0d0d] hover:bg-[#7a1a1a] text-white text-sm font-semibold rounded-full shadow-md transition-all"
-        >
-          <PlusCircle size={18} />
-          Adicionar Comprovantes
-        </button>
+<button
+  onClick={() => {
+    setMostrarModalComprovantes(true);
+    setNomeDocumentoDesabilitado(false); // desativa o campo
+    setupdateOrNot(false)
+  }}
+  className="flex items-center gap-2 px-5 py-2 mb-20 bg-[#5a0d0d] hover:bg-[#7a1a1a] text-white text-sm font-semibold rounded-full shadow-md transition-all"
+>
+  <PlusCircle size={18} />
+  Adicionar Comprovantes
+</button>
       </div>
     </>
   );
@@ -660,6 +682,56 @@ const toggleAno = (ano: string) => {
 };
 
 
+const mesesMap: Record<string, number> = {
+  janeiro: 1,
+  fevereiro: 2,
+  março: 3,
+  abril: 4,
+  maio: 5,
+  junho: 6,
+  julho: 7,
+  agosto: 8,
+  setembro: 9,
+  outubro: 10,
+  novembro: 11,
+  dezembro: 12,
+};
+
+
+
+// --- logo acima do componente ou no início dele
+interface Contracheques {
+  id: string;
+  funcionario_id: string;
+  nome_documento: string;
+  mes_referencia: string;      // AAAA-MM
+  valido: boolean;
+  nome_arquivo: string;
+  referente_a:string
+}
+
+const [contracheques, setContracheques] = useState<Contracheques[]>([]);
+
+// Busca sempre que mudar o funcionário
+// Busca sempre que mudar o funcionário
+useEffect(() => {
+  if (!funcionario?.id) return;
+
+  (async () => {
+    const { data, error } = await supabase
+      .from("comprovantesfuncionarios")
+      .select("id, funcionario_id, nome_documento, mes_referencia, valido, nome_arquivo, referente_a")
+      .eq("funcionario_id", funcionario.id);
+
+    if (error) {
+      console.error("Erro ao buscar comprovantes:", error.message);
+      return;
+    }
+
+    console.log("📄 Comprovantes recebidos do Supabase:", data);
+    setContracheques(data ?? []);
+  })();
+}, [funcionario?.id]);
 
 
 const renderContracheques = () => {
@@ -669,6 +741,7 @@ const renderContracheques = () => {
   const hoje = new Date();
   const dadosPorAno: Record<string, string[]> = {};
 
+  // --- gera meses desde a admissão ---
   let cursor = new Date(admissao.getFullYear(), admissao.getMonth(), 1);
 
   while (cursor <= hoje) {
@@ -676,36 +749,33 @@ const renderContracheques = () => {
     const dataExibicao = new Date(mesRef.getFullYear(), mesRef.getMonth() + 1, 5);
 
     if (hoje >= dataExibicao) {
-      const nomeMes = mesRef.toLocaleString("pt-BR", {
-        month: "long",
-        year: "numeric",
-      });
-      const nomeCapitalizado = capitalize(nomeMes);
+      const nomeMes = mesRef.toLocaleString("pt-BR", { month: "long", year: "numeric" });
       const ano = mesRef.getFullYear().toString();
 
       if (!dadosPorAno[ano]) dadosPorAno[ano] = [];
-      dadosPorAno[ano].push(nomeCapitalizado);
+      dadosPorAno[ano].push(capitalize(nomeMes));   // ex.: “Março de 2025”
     }
-
     cursor.setMonth(cursor.getMonth() + 1);
   }
 
+  // --- renderização ---
   return (
     <div className="p-6 bg-white mb-5">
       <h3 className="text-xl font-semibold text-gray-800 mb-4 border-b border-gray-300 pb-2 mt-10">
         Contracheques e Folhas de Ponto
       </h3>
+
       {Object.entries(dadosPorAno)
-        .sort(([anoA], [anoB]) => parseInt(anoB) - parseInt(anoA)) // ordena do mais recente pro mais antigo
+        .sort(([a], [b]) => parseInt(b) - parseInt(a))        // ano mais recente primeiro
         .map(([ano, meses]) => (
           <div key={ano} className="mb-4">
-            <button
-              className="w-full text-left font-bold text-lg text-blue-800 mb-1 hover:underline"
-              onClick={() => toggleAno(ano)}
-            >
+            {/* botão para abrir/fechar o ano */}
+            <button className="w-full text-left font-bold text-lg text-blue-800 mb-1 hover:underline"
+                    onClick={() => toggleAno(ano)}>
               {anosAbertos[ano] ? "▼" : "▶"} {ano}
             </button>
 
+            {/* tabela somente se o ano estiver expandido */}
             {anosAbertos[ano] && (
               <table className="w-full table-auto text-sm text-gray-700 border-collapse">
                 <thead>
@@ -717,71 +787,117 @@ const renderContracheques = () => {
                     <th className="py-2 px-4 text-center">Ações</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {meses.flatMap((mesRef) => {
+                  {meses.flatMap((mesPtBr) => {
                     const tipos = ["Contracheque", "Folha de Ponto"];
 
                     return tipos.map((tipo) => {
-                      const doc = documentos.find(
-                        (d) =>
-                          d.tipo_documento === tipo &&
-                          d.nome_documento === mesRef &&
-                          d.valido
-                      );
+                      /* converte “Março de 2025” → “2025-03” */
+                      const [mesNome, anoRef] = mesPtBr.toLowerCase().split(" de ");
+                      const mesNumero = mesesMap[mesNome];
+                      const mesReferencia = `${anoRef}-${String(mesNumero).padStart(2, "0")}`;
+
+                      /* procura na lista trazida do Supabase */
+const doc = contracheques.find((c) => {
+  const tipoAtual = tipo;
+  
+  // Extrai e limpa o nome do documento vindo do banco
+  const nomeDoc = c.nome_documento?.trim();
+
+  // Constrói a referência do mês no formato AAAA-MM
+  const mesRef = c.mes_referencia;
+
+  // Faz o log para você entender o que está sendo comparado
+  console.log("Comparando:", {
+    nomeDoc,
+    tipoAtual,
+    mesRef,
+    esperadoMesRef: mesReferencia,
+    valido: c.valido,
+  });
+
+  return (
+    nomeDoc === tipoAtual &&
+    mesRef === mesReferencia &&
+    c.valido
+  );
+});
+
                       const disponivel = !!doc;
                       const idDocumento = doc?.id;
-                      const isSelecionado = idDocumento && selectedDocs.has(idDocumento);
+                      const isSelecionado = !!(idDocumento && selectedDocs.has(idDocumento));
 
                       return (
-                        <tr
-                          key={`${mesRef}-${tipo}`}
-                          className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
-                            isSelecionado ? "bg-blue-200" : ""
-                          }`}
-                        >
+                        <tr key={`${mesReferencia}-${tipo}`}
+                            className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
+                              isSelecionado ? "bg-blue-200" : ""
+                            }`}>
+
                           {modoSelecao && (
                             <td className="py-2 px-4 text-center">
                               {disponivel && idDocumento && (
                                 <input
                                   type="checkbox"
-                                  checked={selectedDocs.has(idDocumento)}
+                                  checked={isSelecionado}
                                   onChange={(e) =>
                                     handleCheckboxChange(
                                       idDocumento,
                                       e.target.checked,
-                                      tipo === "Contracheque"
-                                        ? "contracheques"
-                                        : "folhasdeponto"
+                                      tipo === "Contracheque" ? "contracheques" : "folhasdeponto"
                                     )
                                   }
                                 />
                               )}
                             </td>
                           )}
-                          <td className="py-2 px-4">{mesRef}</td>
+
+                          <td className="py-2 px-4">{mesPtBr}</td>
                           <td className="py-2 px-4">{tipo}</td>
-                          <td
-                            className={`py-2 px-4 text-center font-semibold ${
-                              disponivel
-                                ? "text-green-700 bg-green-100 rounded"
-                                : "text-red-700 bg-red-100 rounded"
-                            }`}
-                          >
+
+                          <td className={`py-2 px-4 text-center font-semibold ${
+                              disponivel ? "text-green-700 bg-green-100 rounded"
+                                         : "text-red-700 bg-red-100 rounded"
+                            }`}>
                             {disponivel ? "Sim" : "Não"}
                           </td>
+
                           <td className="py-2 px-4 text-center">
                             <button
                               className="text-blue-600 hover:text-blue-800 transition-all"
                               onClick={() => {
                                 setDocSelecionado(
-                                  doc || {
-                                    nome_documento: mesRef,
-                                    categoria: tipo,
-                                  }
+                                  doc || { nome_documento: mesPtBr, categoria: tipo }
                                 );
-                                setMostrarModal(true);
-                              }}
-                            >
+                                if (doc) {
+                                setNomeDocumentoComprovantes(tipo || "");
+                                setMesReferencia(doc?.mes_referencia || "");                                                                
+                                setReferenteA(doc?.referente_a || "");
+                                setIDDocumento(doc?.id || "");
+                                setNomeArquivo(doc?.nome_arquivo || "");
+                                console.log("doc.mes_referencia:", doc?.mes_referencia);
+                                setupdateOrNot(true)
+                              } else {
+                                setNomeDocumentoComprovantes(tipo);
+                                
+                              if (tipo === "Contracheque") {
+                                  setReferenteA("Pagamento mensal da remuneração do colaborador");
+                                }
+                                if (tipo === "Folha de Ponto") {
+                                  setReferenteA("Comprovante de comparecimento e assiduidade do colaborador");
+                                };
+
+
+                                setMesReferencia(mesReferencia);
+                                setupdateOrNot(false)
+                              }
+                                  // Desabilitar o campo se for abrir como "substituir"
+                                setNomeDocumentoDesabilitado(true);
+
+
+                                
+                                setMostrarModalComprovantes(true);
+                              }}>
                               {disponivel ? "Substituir" : "Inserir"}
                             </button>
                           </td>
@@ -800,12 +916,14 @@ const renderContracheques = () => {
 
 
 
+
 const renderDemaisComprovantes = () => {
   if (!comprovantesFunc?.length) return null;
 
-  const demaisDocs = comprovantesFunc.filter(
-    (doc) => doc.referente_a !== "Contracheque"
-  );
+const tiposExcluidos = ["Contracheque", "Folha de Ponto"];
+const demaisDocs = comprovantesFunc.filter(
+  (doc) => !tiposExcluidos.includes(doc.nome_documento)
+);
 
   if (demaisDocs.length === 0) return null;
 
@@ -868,15 +986,28 @@ const renderDemaisComprovantes = () => {
                 </td>
                 <td className="py-2 px-4">{doc.referente_a || "-"}</td>
                 <td className="py-2 px-4 text-center">
-                  <button
-                    className="text-blue-600 hover:text-blue-800 transition-all"
-                    onClick={() => {
-                      setDocSelecionado(doc);
-                      setMostrarModal(true);
-                    }}
-                  >
-                    Visualizar / Substituir
-                  </button>
+                            <button
+                              className="text-blue-600 hover:text-blue-800 transition-all"
+                              onClick={() => {
+                                setDocSelecionado(doc);
+                                if (doc) {
+                                setNomeDocumentoComprovantes(doc.nome_documento || "");
+                                setMesReferencia(doc?.mes_referencia || "");
+                                setReferenteA(doc?.referente_a || "");
+                                setIDDocumento(doc?.id || "");
+                                setNomeArquivo(doc?.nome_arquivo || "");
+                                console.log("doc.mes_referencia:", doc?.mes_referencia);
+                              } else {
+                                setNomeDocumentoComprovantes("");
+                                setMesReferencia(mesReferencia);
+                              }
+                                  // Desabilitar o campo se for abrir como "substituir"
+                                setNomeDocumentoDesabilitado(true);
+                                setupdateOrNot(true)
+                                setMostrarModalComprovantes(true);
+                              }}>
+                              {"Substituir"}
+                            </button>
                 </td>
               </tr>
             );
@@ -941,70 +1072,92 @@ function capitalize(text: string): string {
 
 
 
-
-
-
-
-
 const handleSalvarComprovantes = async () => {
   if (!arquivocomprovantes || !funcionario?.id) {
     alert("Selecione um arquivo e certifique-se que o funcionário está definido.");
     return;
   }
 
-  try {
+  const modoSalvamento = updateOrNot ? "update" : "novo"; 
+console.log("Modo de salvamento:", modoSalvamento);
 
+  try {
     const dataAtual = new Date();
     const dataFormatada = `${dataAtual.toLocaleDateString('pt-BR').replace(/\//g, '-')}_${dataAtual.toLocaleTimeString('pt-BR')}`;
     const nomeArquivo = `${nomeDocumentoComprovantes} - ${funcionario.abreviatura} - ${dataFormatada}`;
     const nomeArquivoLimpo = limparString(nomeArquivo);
     const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
-  
-    const caminhoArquivo = `${nomePasta}/${nomeArquivoLimpo}`; // Cria a "pasta" com ID do funcionário
-    
-    
-    // 1. Upload para o bucket
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("comprovantes-funcionarios")
-      .upload(caminhoArquivo, arquivocomprovantes);
+    const caminhoArquivo = `${nomePasta}/${nomeArquivoLimpo}`;
+    const caminhoArquivo2 = `${nomePasta}/${nomeArquivos}`;
 
-    if (uploadError) {
-      console.error("Erro ao enviar arquivo:", uploadError.message);
-      alert("Erro ao enviar o arquivo.");
-      return;
-    }
+    if (modoSalvamento === "novo") {
+      // 1. Upload
+      const { error: uploadError } = await supabase.storage
+        .from("comprovantes-funcionarios")
+        .upload(caminhoArquivo, arquivocomprovantes);
 
+      if (uploadError) {
+        console.error("Erro ao enviar arquivo:", uploadError.message);
+        alert("Erro ao enviar o arquivo.");
+        return;
+      }
 
-    // 2. Inserir no banco de dados
-    const { error: insertError } = await supabase
-      .from("comprovantesfuncionarios")
-      .insert([
-        {
+      // 2. Inserção no banco
+      const { error: insertError } = await supabase
+        .from("comprovantesfuncionarios")
+        .insert([{
           funcionario_id: funcionario.id,
           nome_documento: nomeDocumentoComprovantes,
           mes_referencia: mesReferencia,
           referente_a: referenteA,
           nome_arquivo: nomeArquivoLimpo
-          
-          
-        },
-      ]);
+        }]);
 
-    if (insertError) {
-      console.error("Erro ao salvar no banco:", insertError.message);
-      alert("Erro ao salvar informações no banco.");
-      return;
+      if (insertError) {
+        console.error("Erro ao salvar no banco:", insertError.message);
+        alert("Erro ao salvar informações no banco.");
+        return;
+      }
+
+    } else if (modoSalvamento === "update") {
+      // 1. Opcionalmente, reenvio o arquivo (sobrescrevendo)
+      const { error: uploadError } = await supabase.storage
+        .from("comprovantes-funcionarios")
+        .upload(caminhoArquivo2, arquivocomprovantes, { upsert: true });
+
+      if (uploadError) {
+        console.error("Erro ao atualizar arquivo:", uploadError.message);
+        alert("Erro ao atualizar o arquivo.");
+        return;
+      }
+
+      // 2. Atualização no banco
+      const { error: updateError } = await supabase
+        .from("comprovantesfuncionarios")
+        .update({
+          nome_documento: nomeDocumentoComprovantes,
+          mes_referencia: mesReferencia,
+          referente_a: referenteA,                   
+        })
+        .eq("id", idComprovanteSelecionado); // você precisa ter esse ID disponível
+
+      if (updateError) {
+        console.error("Erro ao atualizar no banco:", updateError.message);
+        alert("Erro ao atualizar o banco de dados.");
+        return;
+      }
     }
 
-    // 3. Limpar e fechar
+    // Finalização
+    setIDDocumento("");
+    setNomeArquivo("");
     setNomeDocumentoComprovantes("");
     setMesReferencia("");
-    setReferenteA("");    
+    setReferenteA("");
     setArquivo(null);
     setMostrarModalComprovantes(false);
     alert("Comprovante salvo com sucesso!");
 
-    // Se desejar, atualize a lista:
     const novos = await carregarComprovantesFuncionario(funcionario.id);
     setComprovantesFunc(novos);
 
@@ -1013,6 +1166,7 @@ const handleSalvarComprovantes = async () => {
     alert("Erro inesperado ao salvar o comprovante.");
   }
 };
+
 
 
 
@@ -1658,6 +1812,7 @@ if (ehDocumentoNovo) {
               type="text"
               value={nomeDocumentoComprovantes}
               onChange={(e) => setNomeDocumentoComprovantes(e.target.value)}
+               disabled={nomeDocumentoDesabilitado}
               className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#5a0d0d]"
             />
           </div>
@@ -1668,21 +1823,24 @@ if (ehDocumentoNovo) {
             <input
               type="month"
               value={mesReferencia}
+              disabled={nomeDocumentoDesabilitado}
               onChange={(e) => setMesReferencia(e.target.value)}
               className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#5a0d0d]"
             />
           </div>
 
           {/* Referente a */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Referente a</label>
-            <input
-              type="text"
-              value={referenteA}
-              onChange={(e) => setReferenteA(e.target.value)}
-              className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#5a0d0d]"
-            />
-          </div>
+{!nomeDocumentoDesabilitado && (
+  <div className="mb-4">
+    <label className="block text-sm font-medium mb-1">Referente a</label>
+    <input
+      type="text"
+      value={referenteA}
+      onChange={(e) => setReferenteA(e.target.value)}
+      className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#5a0d0d]"
+    />
+  </div>
+)}
 
           {/* Arquivo */}
           <div className="mb-4">

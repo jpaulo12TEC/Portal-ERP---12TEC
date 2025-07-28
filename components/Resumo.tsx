@@ -33,6 +33,8 @@ type Pagamento = {
   formapagamento: string
 }
 
+
+
 const periodOptions = ['Semana', 'Quinzena', 'Mês', 'Bimestre'] as const
 type Period = (typeof periodOptions)[number]
 
@@ -45,13 +47,22 @@ export default function Resumo() {
 const [modalAberto, setModalAberto] = useState(true)
 const [pagamentoSelecionado, setPagamentoSelecionado] = useState<Pagamento | null>(null)
 const [dataPagamento, setDataPagamento] = useState('')
+const [valorpago, setValorPago] = useState('')
 const [comprovante, setComprovante] = useState<File | null>(null)
 
 const abrirModalPagamento = (pagamento: Pagamento) => {
-  setPagamentoSelecionado(pagamento)
-  setModalAberto(true)
+  setPagamentoSelecionado(pagamento);
+  setDataPagamento('');
+  setValorPago('');
+  setComprovante(null);
+  setModalAberto(true);
 }
 
+
+const formatarDataComoLocal = (dataStr: string) => {
+  const [ano, mes, dia] = dataStr.split('T')[0].split('-');
+  return `${dia}/${mes}/${ano}`;
+};
 
 const getNomeReembolso = (formapagamento: string | null) => {
   if (!formapagamento) return null;
@@ -151,14 +162,16 @@ const totalSelecionado =
 
 
 
-  const renderTabela = (
-    list: Pagamento[],
-    selected: number[],
-    setSelected: (ids: number[]) => void,
-    isReembolsoTab = false
-  ) => (
-    <div className="space-y-3">
-      {list.map(p => {
+const renderTabela = (
+  list: Pagamento[],
+  selected: number[],
+  setSelected: (ids: number[]) => void,
+  isReembolsoTab = false
+) => (
+  <div className="space-y-3">
+    {[...list] // faz cópia da lista original
+      .sort((a, b) => new Date(a.venceem).getTime() - new Date(b.venceem).getTime()) // ordena por data
+      .map(p => {
         const isChecked = selected.includes(p.id)
         return (
           <Card
@@ -181,8 +194,8 @@ const totalSelecionado =
               />
               <div className="grid grid-cols-1 sm:grid-cols-7 gap-x-6 gap-y-2 w-full text-sm">
                 <div>
-                  <span className="font-semibold text-gray-700">Venceu em:</span>{' '}
-                  <span>{format(new Date(p.venceem), 'dd/MM/yyyy')}</span>
+                  <span className="font-semibold text-gray-700">Vence em:</span>{' '}
+                  <span>{formatarDataComoLocal(p.venceem)}</span>
                 </div>
                 <div>
                   <span className="font-semibold text-gray-700">Código:</span> <span>{p.codigo}</span>
@@ -310,6 +323,16 @@ const totalSelecionado =
       </div>
 
       <div>
+        <label className="block text-sm">Valor pago</label>
+        <input
+          type="number"
+          value={valorpago}
+          onChange={e => setValorPago(e.target.value)}
+          className="w-full border px-3 py-2 rounded"
+        />
+      </div>
+
+      <div>
         <label className="block text-sm">Comprovante</label>
         <input
           type="file"
@@ -345,13 +368,20 @@ const totalSelecionado =
       }
     }
 
-    const { error: updateError } = await supabase
-      .from('provisao_pagamentos')
-      .update({
-        pagoem: dataPagamento, // 👈 aqui vai a data com hora, se estiver incluída em `dataPagamento`
-        comprovante_pagamento: comprovanteFileName,
-      })
-      .eq('id', pagamentoSelecionado!.id);
+const updateData: any = {
+  pagoem: dataPagamento,
+  comprovante_pagamento: comprovanteFileName,
+};
+
+if (valorpago !== "") {
+  updateData.valor = valorpago;
+}
+
+const { error: updateError } = await supabase
+  .from('provisao_pagamentos')
+  .update(updateData)
+  .eq('id', pagamentoSelecionado!.id);
+
 
     if (updateError) {
       console.error('Erro na atualização:', updateError);

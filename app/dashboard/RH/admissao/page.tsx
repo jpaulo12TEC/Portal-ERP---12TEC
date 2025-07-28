@@ -5,8 +5,18 @@ import Sidebar from '../../../../components/Sidebar';
 import { Search, ArrowLeft } from "lucide-react";
 import { useUser } from '@/components/UserContext';
 import { supabase } from '../../../../lib/superbase';
+import Select from "react-select";
 
 
+const processos = [
+  { value: "Serviços de Engenharia", label: "Serviços de Engenharia" },
+  { value: "PCO", label: "PCO" },
+  { value: "Treinamento", label: "Treinamento" },
+  { value: "Gestão da Aquisição", label: "Gestão da Aquisição" },
+  { value: "Gestão da Infraestrutura", label: "Gestão da Infraestrutura" },
+  { value: "Gestão Financeira", label: "Gestão Financeira" },
+  { value: "Gestão de RH", label: "Gestão de RH" },
+];
 
 export default function AdmissaoColaborador() {
   const { nome } = useUser();
@@ -85,31 +95,34 @@ const [formData, setFormData] = useState({
       .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
       .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
   }
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value, type } = e.target;
-  
-    let formattedValue: string | boolean | number = value;
-  
-    if (type === "checkbox" && e.target instanceof HTMLInputElement) {
-      formattedValue = e.target.checked;
-    } else {
-      if (name === "cpf") {
-        formattedValue = formatCPF(value);
-      } else if (name === "rg") {
-        formattedValue = formatRG(value);
-      } else if (name === "dependentes") {
-        // Converter para número (ou 0 se vazio)
-        formattedValue = value === "" ? "" : Number(value);
-      }
+const handleChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+) => {
+  const { name, value, type } = e.target;
+
+  let formattedValue: string | boolean | number | string[] = value;
+
+  if (type === "checkbox" && e.target instanceof HTMLInputElement) {
+    formattedValue = e.target.checked;
+  } else if (e.target instanceof HTMLSelectElement && e.target.multiple) {
+    const selectedOptions = Array.from(e.target.selectedOptions).map((opt) => opt.value);
+    formattedValue = selectedOptions;
+  } else {
+    if (name === "cpf") {
+      formattedValue = formatCPF(value);
+    } else if (name === "rg") {
+      formattedValue = formatRG(value);
+    } else if (name === "dependentes") {
+      formattedValue = value === "" ? "" : Number(value);
     }
-  
-    setFormData((prev) => ({
-      ...prev,
-      [name]: formattedValue,
-    }));
-  };
+  }
+
+  setFormData((prev) => ({
+    ...prev,
+    [name]: formattedValue,
+  }));
+};
+
 
   const handleSubmit = async () => {
     setLoading(true); // Inicia o loading
@@ -391,10 +404,38 @@ if (formData.salario_familia && (!formData.qtd_dependentes || formData.qtd_depen
     <label>Cargo</label>
     <select name="cargo" value={formData.cargo} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-4 py-3 text-base" >
     <option value="">Selecione um cargo</option>
+
+    <option value="Engenheiro Civil">Engenheiro Civil</option>
+    <option value="Assistente de Engenharia">Assistente de Engenharia</option>
+    <option value="Engenheiro Mecânico">Engenheiro Mecânico</option>
+    <option value="Arquiteto">Arquiteto</option>
+
     <option value="Auxiliar Administrativo">Auxiliar Administrativo</option>
-    <option value="Analista de RH">Analista de RH</option>
-    <option value="Técnico de Segurança">Técnico de Segurança</option>
-    <option value="Engenheiro">Engenheiro</option>
+    <option value="Assistente Administrativo">Assistente Administrativo</option>
+    <option value="Almoxarife">Almoxarife</option>
+    <option value="Cordenador de Qualidade">Cordenador de Qualidade</option>
+    <option value="Técnico de Segurança do Trabalho">Técnico de Segurança do Trabalho</option>
+    <option value="Gerente de RH">Gerente de RH</option>
+    <option value="Auxiliar de Planejamento">Auxiliar de Planejamento</option>
+
+    <option value="Meio Oficial de Obras">Meio Oficial de Obras</option>
+    <option value="Ajudante">Ajudante</option>
+    <option value="Ajudante de Obras">Ajudante de Obras</option>
+    <option value="Técnico de Campo II">Técnico de Campo II</option>
+    <option value="Auxiliar Técnico Campo I">Auxiliar Técnico Campo I</option>
+    <option value="Encarregado de Mecanica">Encarregado de Mecanica</option>
+    <option value="Encarregado de Caldeiraria">Encarregado de Caldeiraria</option>
+    <option value="Técnico em Mecatrônica">Técnico em Mecatrônica</option>
+
+    <option value="Pedreiro">Pedreiro</option>
+    <option value="Eletricista">Eletricista</option>
+    <option value="Pintor">Pintor</option>
+    <option value="Montador de Andaime">Montador de Andaime</option>
+    <option value="Diretor">Diretor</option>
+    <option value="Mecânico II">Mecânico II</option>
+    <option value="Mecânico">Mecânico</option>
+    <option value="Caldereiro">Caldereiro</option>
+
     <option value="Estagiário">Estagiário</option>
     {/* Adicione mais opções conforme necessário */}
   </select>
@@ -402,10 +443,11 @@ if (formData.salario_familia && (!formData.qtd_dependentes || formData.qtd_depen
   <div>
     <label>Tipo de Regime</label>
     <select name="tipo_regime" value={formData.tipo_regime} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-4 py-3 text-base" >
-    <option value="">Selecione um cargo</option>
+    <option value="">Selecione um regime</option>
     <option value="CLT">CLT</option>
     <option value="PJ">PJ</option>
     <option value="Temporário">Temporário</option>
+    <option value="Estatutário">Estatutário</option>
 
     {/* Adicione mais opções conforme necessário */}
   </select>
@@ -435,8 +477,8 @@ if (formData.salario_familia && (!formData.qtd_dependentes || formData.qtd_depen
     <input name="data_admissao" type="date" value={formData.data_admissao} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-4 py-3 text-base" />
   </div>
   <div>
-    <label>Processo</label>
-    <input name="processo" value={formData.processo} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-4 py-3 text-base" />
+    <label>Departamento</label>
+    <input name="departamento" value={formData.departamento} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-4 py-3 text-base" />
   </div>
   <div>
     <label>Filial</label>
@@ -461,10 +503,30 @@ if (formData.salario_familia && (!formData.qtd_dependentes || formData.qtd_depen
     <label>Endereço</label>
     <input name="endereco" value={formData.endereco} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-4 py-3 text-base" />
   </div>
-  <div>
-    <label>Departamento</label>
-    <input name="departamento" value={formData.departamento} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-4 py-3 text-base" />
-  </div>
+<div className="mb-4">
+  <label className="block text-sm font-medium mb-1">Processo</label>
+<Select
+  isMulti
+  name="processo"
+  options={processos}
+  value={formData.processo
+    ?.split(";")
+    .map((d) => d.trim())
+    .filter(Boolean)
+    .map((d) => ({ value: d, label: d }))
+  }
+  onChange={(selectedOptions) => {
+    const values = selectedOptions.map((opt) => opt.value).join("; ");
+    setFormData((prev) => ({
+      ...prev,
+      processo: values,
+    }));
+  }}
+  className="basic-multi-select"
+  classNamePrefix="select"
+/>
+</div>
+
   <div>
     <label>Estado Civil</label>
     <select name="estado_civil" value={formData.estado_civil} onChange={handleChange} className="w-full border border-gray-300 rounded-md px-4 py-3 text-base">
