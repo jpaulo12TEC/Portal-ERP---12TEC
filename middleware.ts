@@ -23,7 +23,7 @@ export async function middleware(req: NextRequest) {
   }
 
     // 🔒 ID do usuário autorizado para acessar /criar_usuario
-  const adminUserId = '74b31345-1027-45f3-9580-e332a8d83d9b';  // 🔗 Coloque aqui o ID do usuário permitido
+  const adminUserId = '0ec3a584-6807-44ba-afc6-ffdc41afb049';  // 🔗 Coloque aqui o ID do usuário permitido
 
   // 🚫 Bloqueia se tentar acessar rota protegida sem estar logado
   if (isProtected && !user) {

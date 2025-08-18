@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { FaHome, FaUser, FaComment, FaChartBar, FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import { FaFileContract } from 'react-icons/fa';
 import Link from 'next/link';
 import '../app/stylesidebar.css';
 import { useRouter } from 'next/navigation';
@@ -140,6 +141,14 @@ useEffect(() => {
                       <FaChartBar />
                     </div>
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Financeiro</div>
+                  </Link>
+                </li>
+                <li className={activeTab === 'contratos' ? 'active' : ''} onClick={(e) => activeLink(e, 'contratos-servicos')}>
+                  <Link href="">
+                    <div className="icon">
+                      <FaFileContract />
+                    </div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Contratos</div>
                   </Link>
                 </li>
                 <li className={activeTab === 'Compras' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>

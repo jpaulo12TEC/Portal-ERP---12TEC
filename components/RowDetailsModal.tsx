@@ -381,12 +381,19 @@ const fetchReferencia = async () => {
 
 const handleOpenNotaFiscal = async () => {
   const nf = await fetchNotaFiscal();
+
   if (nf) {
-    const url = await fetchNotaFiscalUrl(nf);
-    if (url) {
-      window.open(url, '_blank'); // Abre em nova aba
+    if (nf.startsWith('http://') || nf.startsWith('https://')) {
+      // É um link externo (ex: OneDrive), abre diretamente
+      window.open(nf, '_blank');
     } else {
-      alert("URL da nota fiscal não encontrada.");
+      // É um nome de arquivo salvo no Supabase Storage
+      const url = await fetchNotaFiscalUrl(nf);
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        alert("URL da nota fiscal não encontrada.");
+      }
     }
   } else {
     alert("Nota fiscal não encontrada.");

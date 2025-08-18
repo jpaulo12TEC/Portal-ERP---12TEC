@@ -8,6 +8,8 @@ import {
 import { useState, useEffect } from "react";
 import { useUser } from '@/components/UserContext';
 import { supabase } from '../lib/superbase';
+import { getAccessToken } from "../lib/auth"; // ajuste o caminho
+import { uploadFileToOneDrive } from "../lib/uploadFileToOneDrive";
 
 type CentroCusto = {
   nome: string;
@@ -162,23 +164,46 @@ if (Math.abs(totalPercentual - 100) > 0.01) {
      // 🔥 Gerar nome do arquivo
     
     const fileName = `contrato_${new Date().toISOString().replace(/[:.]/g, "-")}`;
-    const caminho = `${fileName}`;
+    let urlNF: string | null = null; // <-- declare fora
+    const accessToken = await getAccessToken();
+
+if (!accessToken) {
+  console.error("Token de acesso não encontrado.");
+  alert("Token de acesso não encontrado.");
+  return;
+}
+
+if (!formData.contrato) {
+  console.error("Nenhum arquivo selecionado.");
+  alert("Por favor, selecione o comprovante para enviar.");
+  return;
+}
+
 
     // 🔥 Fazer upload do contrato
-    if (formData.contrato) {
-      const { error: uploadError } = await supabase.storage
-        .from("contratos")
-        .upload(caminho, formData.contrato, {
-          cacheControl: "3600",
-          upsert: true,
-        });
+try {
+  // Logs para debug
+  console.log("Iniciando upload para o OneDrive...");
+  console.log("AccessToken:", accessToken);
+  console.log("Arquivo (formData.contrato):", formData.contrato);
+  console.log("Nome do arquivo (fileName):", fileName);
+  console.log("Data da compra:", formData.primeiraParcela);
+  console.log("Fornecedor:", fornecedor);
 
-      if (uploadError) {
-        console.error("Erro no upload do contrato:", uploadError);
-        alert("Erro no upload do contrato.");
-        return;
-      }
-    }
+  // Upload para o OneDrive
+  urlNF = await uploadFileToOneDrive(accessToken, formData.contrato, fileName, formData.primeiraParcela, fornecedor, "contratos");
+
+  if (!urlNF) {
+    throw new Error("URL não retornada pelo OneDrive.");
+  }
+
+  console.log("Arquivo enviado para o OneDrive. Link:", urlNF);
+
+  alert(`Arquivo enviado com sucesso! Link salvo: ${urlNF}`);
+} catch (err) {
+  console.error("Erro geral:", err);
+  alert("Erro ao enviar ou salvar o arquivo.");
+}
 
 
     // ENVIO A TABELA CENTROS DE CUSTO
@@ -255,7 +280,7 @@ if (errorProdutos) {
     const { error: errorGerenciamento  } = await supabase.from("gerenciamento_compras").insert([
       {
         codigo: protocolo,
-        nf: fileName,
+        nf: urlNF,
         data_lancamento: new Date().toISOString(),
         lancadopor: nome,
         comprovante: "Contrato",

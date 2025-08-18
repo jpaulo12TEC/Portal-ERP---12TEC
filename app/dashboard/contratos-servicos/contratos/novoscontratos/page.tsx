@@ -1,12 +1,13 @@
 'use client'
 import { useState } from 'react';
-import Sidebar from "../../../components/Sidebar";
+import Sidebar from "../../../../../components/Sidebar";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
-import { Input, Textarea, Select } from '../../../components/FormularioContratos';
-import { supabase } from '../../../lib/superbase'
+import { Input, Textarea, Select } from '../../../../../components/FormularioContratos';
+import { supabase } from '../../../../../lib/superbase'
 import ContratoLista from '@/components/ContratoLista'
 import { ArrowLeft } from "lucide-react"; // Certifique-se de ter o ícone importado
+
 
 import axios from 'axios'; // Se não usa ainda, instale: npm install axios
 

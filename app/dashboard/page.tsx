@@ -6,6 +6,8 @@ import { Search } from "lucide-react";
 import { supabase } from '../../lib/superbase';
 import { useUser } from '@/components/UserContext';
 import { useRef } from 'react';
+import { getAccessToken } from "../../lib/auth"; // ajuste o caminho
+
 
 interface Aniversariante {
   nome: string;
@@ -62,6 +64,19 @@ export default function Dashboard() {
       console.error('Erro ao remover aviso:', error);
     }
   };
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   
@@ -158,6 +173,64 @@ export default function Dashboard() {
     }
   };
 
+
+
+
+  const sendMessageToCaio = async () => {
+  try {
+    const accessToken = await getAccessToken(); // função que recupera token MSAL ou backend
+
+    // Passo 1: verificar ou criar o chat 1:1 com Caio
+    const chatResponse = await fetch(`https://graph.microsoft.com/v1.0/chats`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chatType: "oneOnOne",
+        members: [
+          {
+            "@odata.type": "#microsoft.graph.aadUserConversationMember",
+            roles: ["owner"],
+            "user@odata.bind": "https://graph.microsoft.com/v1.0/users/caio@12tec.com.br"
+          },
+        ],
+      }),
+    });
+
+    const chatData = await chatResponse.json();
+
+    if (!chatResponse.ok) throw new Error(JSON.stringify(chatData));
+
+    const chatId = chatData.id;
+
+    // Passo 2: enviar mensagem no chat
+    const messageResponse = await fetch(`https://graph.microsoft.com/v1.0/chats/${chatId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        body: {
+          content: "Olá",
+        },
+      }),
+    });
+
+    const messageData = await messageResponse.json();
+
+    if (!messageResponse.ok) throw new Error(JSON.stringify(messageData));
+
+    alert("Mensagem enviada com sucesso!");
+  } catch (error) {
+    console.error("Erro ao enviar mensagem para o Teams:", error);
+    alert("Erro ao enviar mensagem.");
+  }
+};
+
+
   return (
     <div className={`flex flex-col h-screen `}>
        {/* Topbar */}
@@ -173,6 +246,9 @@ export default function Dashboard() {
       <span className="text-sm font-medium"
       onClick={() => setShowMurals((prev) => !prev)}>INTRANET 12 TEC</span>
     </button>
+    <button onClick={sendMessageToCaio}>
+  
+</button>
 
     <div className="px-3 py-3 h-[50px]">
       <button className="w-full text-left hover:text-gray-300">

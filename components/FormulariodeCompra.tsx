@@ -11,6 +11,9 @@ import { ArrowLeft } from "lucide-react";
 import { Camera } from "lucide-react";
 import { useUser } from '@/components/UserContext';
 import { Palette, CreditCard } from "lucide-react";
+import { getAccessToken } from "../lib/auth"; // ajuste o caminho
+import { uploadFileToOneDrive } from "../lib/uploadFileToOneDrive";
+import { NextResponse } from 'next/server';
 
 type FormaPagamento = {
   forma: string;
@@ -889,6 +892,8 @@ setLoading(false)
 
   //ENVIO DE ARQUIVOS AO SUPABASE (BOLETOS E NOTA FISCAL) --------------------------------------------------------------------------------------------------------------------------------
 
+const accessToken = await getAccessToken();
+
 
   // (BOLETOS) ----------------------------------------------------------------------------------------
 
@@ -921,55 +926,49 @@ const arquivosBoleto = await Promise.all(
 
 const arquivosBoletoFiltrados = arquivosBoleto.filter((nome) => nome !== null);
 
+let urlNF: string | null = null; // <-- declare fora
+
+// (NF) ----------------------------------------------------------------------============-------=========--------------
+
+if (!arquivo) {
+  console.error("Nenhum arquivo selecionado.");
+  alert("Por favor, selecione o comprovante para enviar.");
+  return;
+}
+
+if (!accessToken) {
+  console.error("Token de acesso não encontrado.");
+  alert("Token de acesso não encontrado.");
+  return;
+}
 
 
-  // (NF) ----------------------------------------------------------------------============-------=========--------------
+const fileName = `nf_${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`;
+try {
+  console.log("🟡 Iniciando envio para o OneDrive...");
 
-  if (!arquivo) {
-    console.error("Nenhum arquivo selecionado.");
-    alert("Por favor, selecione o comprovante para enviar.");
-    return;
+  console.log("📅 Data da compra recebida:", dataCompra);
+  console.log("🏢 Fornecedor recebido:", fornecedor);
+  console.log("📄 Nome do arquivo:", fileName);
+
+  // Upload para o OneDrive
+    urlNF = await uploadFileToOneDrive(accessToken, arquivo, fileName, dataCompra, fornecedor, "compras");
+
+  if (!urlNF) {
+    console.error("⚠️ URL não retornada pelo OneDrive.");
+    throw new Error("URL não retornada pelo OneDrive.");
   }
-  
-  const fileName = `nf_${new Date().toISOString()}`; // Nome do arquivo
-  let urlNF = ""; // Variável para armazenar a URL principal
-  
-  try {
-    // Upload do arquivo para o Supabase SEM PASTA
-    const { data, error } = await supabase
-      .storage
-      .from("notas-fiscais")
-      .upload(fileName, arquivo); // Apenas o nome do arquivo, sem pasta
-  
-    if (error) {
-      console.error("Erro no upload:", error.message);
-      alert("Erro ao enviar o arquivo para o Supabase.");
-      return;
-    }
-  
-    // Verifica se o bucket é público ou privado
-    const { data: publicUrlData } = supabase
-      .storage
-      .from("notas-fiscais")
-      .getPublicUrl(fileName); // Apenas o nome do arquivo
-  
-    if (publicUrlData.publicUrl) {
-      // Se o bucket for público, salva a URL pública
-      urlNF = publicUrlData.publicUrl;
-    } else {
-      // Se o bucket for privado, salva apenas o caminho e gera uma URL quando necessário
-      urlNF = fileName;
-    }
-  
-    console.log("Arquivo enviado para:", urlNF);
-    alert(`Arquivo enviado com sucesso! URL: ${urlNF}`);
-  
-  } catch (err) {
-    console.error("Erro ao enviar o arquivo:", err);
-    alert("Erro ao enviar o arquivo para o Supabase.");
-  }
-  
 
+  console.log("✅ Arquivo enviado para o OneDrive com sucesso. Link:", urlNF);
+
+  alert(`Arquivo enviado com sucesso! Link salvo: ${urlNF}`);
+
+} catch (err) {
+  console.error("❌ Erro geral:", err);
+  alert("Erro ao enviar ou salvar o arquivo.");
+}
+
+ 
 
 
 
@@ -1121,7 +1120,7 @@ formaPagamentoGeral.forEach((pagamento, index) => {
     const dadosAdicionais = {
    
     codigo: protocolo,
-    nf: fileName,
+    nf: urlNF,
     data_lancamento: new Date().toISOString(),
     lancadopor: nome,
     comprovante: comprovante,

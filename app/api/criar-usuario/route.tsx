@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     // Verifica se o usuário tem nível de acesso admin
     const userRole = userData.user.user_metadata?.nivelAcesso;
-    if (userRole !== 'Adminmaster') {
+    if (userRole !== 'admincompras') {
       return NextResponse.json({ error: 'Acesso negado. Apenas administradores podem criar usuários.' }, { status: 403 });
     }
 

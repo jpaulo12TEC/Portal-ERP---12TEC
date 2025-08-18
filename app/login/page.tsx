@@ -1,6 +1,7 @@
 'use client';
 
 import '../styles.css';
+import msalInstance from "@/lib/msalConfig"; // o arquivo que inicializa o MSAL
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,10 +16,30 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   
+
+
+const loginMSAL = async () => {
+  try {
+    await msalInstance.initialize();
+
+    const accounts = msalInstance.getAllAccounts();
+
+    if (accounts.length === 0) {
+      await msalInstance.loginPopup({
+        scopes: ["Files.ReadWrite", "User.Read"],
+      });
+    }
+  } catch (error) {
+    console.error("Erro no login Microsoft:", error);
+    // ⛔ Repassa o erro para a função que chamou
+    throw new Error("Falha no login Microsoft");
+  }
+};
+
 const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
 
-  if (loading) return; // ✅ impede clique duplo
+  if (loading) return;
 
   setLoading(true);
   const supabase = createClientComponentClient();
@@ -30,19 +51,32 @@ const handleLogin = async (e: React.FormEvent) => {
     });
 
     if (error) {
-      setError('Erro ao entrar! Verifique suas credenciais.');
-    } else {
-      setError('');
-      router.refresh(); // ✅ recarrega dados do servidor
-      router.push('/dashboard');
+      setError("Erro ao entrar! Verifique suas credenciais.");
+      return;
     }
+
+    // 🔐 LOGIN MICROSOFT AQUI
+    try {
+      await loginMSAL();
+    } catch (msalError) {
+      setError("Erro ao fazer login com Microsoft. Tente novamente.");
+      return; // ⛔ Não continua para o dashboard
+    }
+
+    setError("");
+    router.refresh();
+    router.push("/dashboard");
+
   } catch (err) {
-    setError('Erro desconhecido. Tente novamente.');
+    setError("Erro desconhecido. Tente novamente.");
     console.error(err);
   } finally {
-    setLoading(false); // ✅ libera o botão
+    setLoading(false);
   }
 };
+
+
+
   
   return (
     <div className="background-tela">
