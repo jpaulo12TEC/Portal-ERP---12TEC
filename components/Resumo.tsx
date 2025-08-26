@@ -33,6 +33,30 @@ type Pagamento = {
   formapagamento: string
 }
 
+type PedidoCompra = {
+  id: string
+  id_solicitante: string
+  created_at: string
+  centro_custo: string
+  ordem_servico: string
+  materiais: string
+  orcamento_url1?: string
+  fornecedor1?: string
+  orcamento_url2?: string
+  fornecedor2?: string
+  orcamento_url3?: string
+  fornecedor3?: string
+  orcamento_url4?: string
+  fornecedor4?: string
+  vencedor?: string
+  valor_previsto?: number
+  menor_valor?: number
+  fornecedor_menor_valor?: string
+  motivacao?: string
+  id_compra?: string
+  comprado_em?: string
+}
+
 
 
 const periodOptions = ['Semana', 'Quinzena', 'Mês', 'Bimestre'] as const
@@ -43,6 +67,8 @@ export default function Resumo() {
   const [selectedVencidos, setSelectedVencidos] = useState<number[]>([])
   const [selectedAVencer, setSelectedAVencer] = useState<number[]>([])
   const [period, setPeriod] = useState<Period>('Semana')
+    const [pedidos, setPedidos] = useState<PedidoCompra[]>([])
+  const [selectedPedidos, setSelectedPedidos] = useState<string[]>([])
 
 const [modalAberto, setModalAberto] = useState(true)
 const [pagamentoSelecionado, setPagamentoSelecionado] = useState<Pagamento | null>(null)
@@ -95,6 +121,24 @@ const fetchPagamentos = async () => {
   }
 }
 
+
+useEffect(() => {
+    fetchPedidos()
+  }, [])
+
+  const fetchPedidos = async () => {
+    const { data, error } = await supabase
+      .from('pedido_de_compra')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Erro ao buscar pedidos:', error)
+    } else {
+      setPedidos(data as PedidoCompra[])
+    }
+  }
+
 const hoje = startOfDay(new Date())
 
   const vencidos = pagamentos.filter(p => isBefore(new Date(p.venceem), hoje) && p.pagoem === null)
@@ -140,6 +184,11 @@ const [selectedReembolso, setSelectedReembolso] = useState<number[]>([])
       .filter(p => selected.includes(p.id))
       .reduce((acc, cur) => acc + (cur.valor || 0), 0)
 
+      const sumSelectedPedidos = (list: PedidoCompra[], selected: string[]) =>
+  list
+    .filter(p => selected.includes(p.id))
+    .reduce((acc, cur) => acc + (cur.valor_previsto || 0), 0)
+
 
         // 🔥 Resumos gerais
   const totalVencidos = vencidos.reduce((acc, cur) => acc + (cur.valor || 0), 0)
@@ -152,6 +201,133 @@ const totalSelecionado =
   sumSelected(vencidos, selectedVencidos) + 
   sumSelected(aVencer, selectedAVencer) +
   sumSelected(reembolsos, selectedReembolso)
+
+
+
+
+type Props = {
+  list: PedidoCompra[]
+  selected: string[]
+  setSelected: (ids: string[]) => void
+}
+
+
+
+
+const renderTabelaPedido = ({ list, selected, setSelected }: Props) => {
+  const [expandedCards, setExpandedCards] = useState<{ [key: string]: boolean }>({});
+
+  const toggleCard = (id: string) => {
+    setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  return (
+    <div className="space-y-4">
+      {[...list]
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .map(p => {
+          const isChecked = selected.includes(p.id);
+          const isExpanded = !!expandedCards[p.id];
+
+          const vencedorIndex = p.vencedor ? Number(p.vencedor) : undefined;
+
+          return (
+            <Card
+              key={p.id}
+              className={cn(
+                'transition-all border rounded-xl shadow hover:shadow-lg',
+                isChecked ? 'border-blue-500 shadow-lg' : 'border-gray-200'
+              )}
+            >
+              <CardContent className="flex flex-col gap-3 p-5">
+                {/* Mini resumo */}
+                <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={checked =>
+                        setSelected(checked ? [...selected, p.id] : selected.filter(id => id !== p.id))
+                      }
+                      aria-label={`Selecionar pedido de compra ${p.id}`}
+                    />
+                    <div className="flex flex-col sm:flex-row sm:gap-6 text-sm">
+                      <span><strong>Criado em:</strong> {new Date(p.created_at).toLocaleDateString('pt-BR')}</span>
+                      <span><strong>Centro de Custo:</strong> {p.centro_custo}</span>
+                      <span><strong>Ordem de Serviço:</strong> {p.ordem_servico}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <span className="font-semibold text-gray-700">
+                      Valor Previsto: {p.valor_previsto?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || '-'}
+                    </span>
+                    <button
+                      onClick={() => toggleCard(p.id)}
+                      className="text-blue-600 hover:text-blue-800 font-medium transition-all"
+                    >
+                      {isExpanded ? 'Ocultar detalhes' : 'Ver detalhes'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Materiais */}
+                <div className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg text-sm overflow-x-auto whitespace-nowrap">
+                  {p.materiais}
+                </div>
+
+                {/* Toggle detalhes */}
+                {isExpanded && (
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                    {[1, 2, 3, 4].map(i => {
+                      const url = p[`orcamento_url${i}` as keyof PedidoCompra];
+                      const fornecedor = p[`fornecedor${i}` as keyof PedidoCompra];
+                      if (!url && !fornecedor) return null;
+                      const isWinner = vencedorIndex === i;
+
+                      return (
+                        <div
+                          key={i}
+                          className={cn(
+                            'p-3 border rounded-lg shadow-sm',
+                            isWinner ? 'border-green-500 bg-green-50 shadow-md' : 'border-gray-200 bg-white'
+                          )}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold">{fornecedor || 'Sem fornecedor'}</span>
+                            {isWinner && (
+                              <span className="bg-green-600 text-white text-xs px-2 py-0.5 rounded-full">
+                                VENCEDOR
+                              </span>
+                            )}
+                          </div>
+                          {url && (
+                            <a
+                              href={url as string}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-2 block text-blue-600 hover:underline text-sm break-words"
+                            >
+                              Ver orçamento
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {p.motivacao && (
+                      <div className="col-span-2 mt-2">
+                        <span className="font-semibold text-gray-700">Motivação:</span>{' '}
+                        <span>{p.motivacao}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+    </div>
+  );
+};
 
 
 
@@ -403,7 +579,29 @@ const { error: updateError } = await supabase
   </div>
 )}
 
-
+<Accordion type="multiple" defaultValue={['pedidos']} className="border border-gray-200 rounded-lg">
+  <AccordionItem value="pedidos" className="border-b last:border-b-0">
+    <AccordionTrigger>
+      <div className="flex justify-between w-full items-center py-4 px-5 bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 rounded-t-lg cursor-pointer">
+        <h2 className="text-xl font-semibold text-blue-700">Pedidos de Compra</h2>
+        <span className="text-blue-600 font-medium text-lg select-none">
+          Total Selecionado:{' '}
+          {sumSelectedPedidos(pedidos, selectedPedidos).toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+          })}
+        </span>
+      </div>
+    </AccordionTrigger>
+    <AccordionContent className="px-5 pb-5">
+      {renderTabelaPedido({
+        list: pedidos,           // array de pedidos de compra
+        selected: selectedPedidos, // array de ids selecionados
+        setSelected: setSelectedPedidos // função de atualização
+      })}
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
 
 
 

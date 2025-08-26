@@ -20,7 +20,7 @@ export async function uploadFileToOneDrive(
 
 const caminhoPastas = 
   tipo === "compras" ? ["Financeiro", "Compras", "Notas Fiscais", ano, mes, fornecedorSanitizado] :
-  tipo === "contratos" ? ["Financeiro", "Contratos", ano, mes, fornecedorSanitizado] :
+  tipo === "contratos" ? ["Financeiro", "Contratos", fornecedorSanitizado, `${ano}_${mes}_${caminho}`] :
   tipo === "cadastro-fornecedor" ? ["Fornecedores", "Serviços", fornecedorSanitizado, "Dados Cadastrais"] :
   tipo === "cadastro-fornecedor-servico" ? ["Fornecedores", "Serviços", fornecedorSanitizado,"Orçamentos", caminho ?? ""] :
   tipo === "orçamentos-contratos" ? ["Financeiro", "Orçamentos", "Contratos", ano, mes, fornecedorSanitizado] :

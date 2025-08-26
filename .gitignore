@@ -1,4 +1,6 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Ignorar pasta de contratos
+app/dashboard/contratos-servicos/
 
 # dependencies
 /node_modules

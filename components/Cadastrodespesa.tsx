@@ -191,7 +191,7 @@ try {
   console.log("Fornecedor:", fornecedor);
 
   // Upload para o OneDrive
-  urlNF = await uploadFileToOneDrive(accessToken, formData.contrato, fileName, formData.primeiraParcela, fornecedor, "contratos");
+  urlNF = await uploadFileToOneDrive(accessToken, formData.contrato, fileName, formData.primeiraParcela, fornecedor, "contratos", "Serviço não especificado");
 
   if (!urlNF) {
     throw new Error("URL não retornada pelo OneDrive.");

@@ -24,6 +24,9 @@ interface SortConfig {
 }
 
 export default function FilterableTable() {
+  const [showPaid, setShowPaid] = useState(false);
+const [showUnpaid, setShowUnpaid] = useState(false);
+
   const [data, setData] = useState<DataItem[]>([]);
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -122,6 +125,8 @@ const formatCodigo = (codigo: any) => {
 
     const isPaid = isPaidFilter ? !!item.pagoem : true;
 
+ const matchPaid =
+    (showPaid && !!item.pagoem) || (showUnpaid && !item.pagoem) || (!showPaid && !showUnpaid);
 
     return (
       (!codigo || (item.codigo && item.codigo.toString().includes(codigo.toString()))) &&
@@ -134,7 +139,7 @@ const formatCodigo = (codigo: any) => {
       (!venceemFim || (item.venceem && new Date(item.venceem) <= new Date(venceemFim))) &&
       (!valorMin || item.valor >= parseFloat(valorMin)) &&
       (!valorMax || item.valor <= parseFloat(valorMax)) &&
-      isPaid
+      matchPaid
     );
   };
 const headers = [
@@ -231,18 +236,42 @@ const sortedData = () => {
         ))}
         
         {/* Checkbox de "Mostrar apenas pagos" */}
-        <div className="flex items-center mt-6">
-          <input
-            type="checkbox"
-            id="pagoFilter"
-            checked={isPaidFilter}
-            onChange={(e) => setIsPaidFilter(e.target.checked)}
-            className="mr-2"
-          />
-          <label htmlFor="pagoFilter" className="font-semibold text-sm text-black">
-            Mostrar apenas pagos
-          </label>
-        </div>
+{/* Filtros de Pagamento */}
+<div className="flex flex-col mt-4 gap-2 w-max">
+  <button
+    onClick={() => {
+      // Se já estava ativo, desmarca; caso contrário, marca e desmarca o outro
+      setShowPaid((prev) => {
+        const newState = !prev
+        if (newState) setShowUnpaid(false)
+        return newState
+      })
+    }}
+    className={`px-3 py-1 rounded text-xs font-medium transition
+      ${showPaid 
+        ? "bg-green-200 text-green-800" 
+        : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+  >
+    Pagos
+  </button>
+
+  <button
+    onClick={() => {
+      setShowUnpaid((prev) => {
+        const newState = !prev
+        if (newState) setShowPaid(false)
+        return newState
+      })
+    }}
+    className={`px-3 py-1 rounded text-xs font-medium transition
+      ${showUnpaid 
+        ? "bg-red-200 text-red-800" 
+        : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+  >
+    Não pagos
+  </button>
+</div>
+
       </div>
 
       {/* Tabela */}
