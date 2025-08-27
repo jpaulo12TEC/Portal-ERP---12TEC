@@ -141,6 +141,7 @@ if (
   formData.centrosDeCusto.length === 0
 ) {
   alert("Por favor, preencha todos os campos obrigatórios.");
+  setIsLoading(false);
   return;
 }
 
@@ -152,6 +153,7 @@ const totalPercentual = formData.centrosDeCusto.reduce(
 
 if (Math.abs(totalPercentual - 100) > 0.01) {
   alert(`A soma dos percentuais deve ser igual a 100%. Soma atual: ${totalPercentual.toFixed(2)}%`);
+  setIsLoading(false);
   return;
 }
 
@@ -170,12 +172,14 @@ if (Math.abs(totalPercentual - 100) > 0.01) {
 if (!accessToken) {
   console.error("Token de acesso não encontrado.");
   alert("Token de acesso não encontrado.");
+  setIsLoading(false);
   return;
 }
 
 if (!formData.contrato) {
   console.error("Nenhum arquivo selecionado.");
   alert("Por favor, selecione o comprovante para enviar.");
+  setIsLoading(false);
   return;
 }
 
@@ -203,6 +207,7 @@ try {
 } catch (err) {
   console.error("Erro geral:", err);
   alert("Erro ao enviar ou salvar o arquivo.");
+  setIsLoading(false);
 }
 
 
@@ -229,7 +234,10 @@ try {
     if (errorCentro) {
       console.error("Erro ao salvar centros de custo:", errorCentro);
       alert("Erro ao salvar centros de custo.");
+      setIsLoading(false);
       return;
+
+      
     } else {
       console.log("Centros de custo salvos com sucesso!");
     }

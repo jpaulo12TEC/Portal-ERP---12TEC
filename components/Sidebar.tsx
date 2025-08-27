@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { FaHome, FaUser, FaComment, FaChartBar, FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import { FaFileContract } from 'react-icons/fa';
+import msalInstance from "@/lib/msalConfig";
 import Link from 'next/link';
 import '../app/stylesidebar.css';
 import { useRouter } from 'next/navigation';
@@ -30,10 +31,27 @@ const Sidebar = ({ className = '', onNavClickAction, menuActive, setMenuActive, 
     setMenuActive(!menuActive);
   };
 
-  const handleLogout = async () => {
+const handleLogout = async () => {
+  try {
+    // 1️⃣ Logout Supabase
     await supabase.auth.signOut();
+
+    // 2️⃣ Logout MSAL (remove conta do cache)
+    const accounts = msalInstance.getAllAccounts();
+    if (accounts.length > 0) {
+      await msalInstance.logoutRedirect({
+        account: accounts[0], // pode iterar se tiver várias contas
+        postLogoutRedirectUri: window.location.origin,
+      });
+    } else {
+      // Se não houver conta MSAL, só redireciona
+      router.push('/');
+    }
+  } catch (err) {
+    console.error("Erro ao fazer logout:", err);
     router.push('/');
-  };
+  }
+};
 
   const activeLink = (e: React.MouseEvent, tab: string) => {
     onNavClickAction(tab);
