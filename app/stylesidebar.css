@@ -38,24 +38,24 @@
 
   
   /* Esconde a barra de rolagem, mas mantém a funcionalidade de rolagem */
-  .sidebar::-webkit-scrollbar {
-    width: 6px; /* Esconde a barra de rolagem */
-  }
-  
-  .sidebar::-webkit-scrollbar-track {
-    background: transparent; /* Torna o fundo da área de rolagem transparente */
-  }
-  
-  .sidebar::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.3);
-  border-radius: 3px; /* Torna o "polegar" (parte movível) da barra transparente */
-  }
-.sidebar.active 
-{
-    width: 300px;
-    overflow-y: auto; /* permite rolagem vertical */
-    scroll-behavior: smooth;
+/* Esconde a barra de rolagem, mas mantém a funcionalidade de rolagem */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
 }
+
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 3px; /* Torna o "polegar" (parte movível) da barra arredondado */
+}
+
+.sidebar.active {
+  width: 300px;
+  overflow-y: auto; /* permite rolagem vertical */
+  scroll-behavior: smooth; /* rolagem suave */
+  max-height: 100vh; /* limita altura à tela */
+}
+
+
 .sidebar ul
 {
     position: relative;

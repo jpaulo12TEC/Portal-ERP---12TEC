@@ -244,7 +244,7 @@ export default function Dashboard() {
     >
       
       <span className="text-sm font-medium"
-      onClick={() => setShowMurals((prev) => !prev)}>INTRANET 12 TEC</span>
+      onClick={() => setShowMurals((prev) => !prev)}>INTRANET 13 TEC</span>
     </button>
     <button onClick={sendMessageToCaio}>
   
