@@ -1,5 +1,4 @@
 'use client';
-
 import '../styles.css';
 import msalInstance from "@/lib/msalConfig";
 import { useState, useEffect } from "react";
@@ -12,49 +11,56 @@ export default function Login() {
   const [error, setError] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const router = useRouter();
   const supabase = createClientComponentClient();
 
-  // ✅ Processa redirect do MSAL
+  // ✅ Inicializa MSAL e processa redirect
   useEffect(() => {
-    const processRedirect = async () => {
+    const initMSAL = async () => {
       try {
-        const result = await msalInstance.handleRedirectPromise();
-        if (result && result.account) {
-          console.log("MSAL login concluído:", result.account);
+        if (typeof msalInstance.initialize === "function") {
+          await msalInstance.initialize();
+        }
 
-          // tenta pegar token silencioso
+        const result = await msalInstance.handleRedirectPromise();
+        if (result?.account) {
+          console.log("MSAL login concluído:", result.account);
           const tokenResponse = await msalInstance.acquireTokenSilent({
             account: result.account,
             scopes: ["Files.ReadWrite", "User.Read"],
           });
-
           console.log("Access token obtido:", tokenResponse.accessToken);
-
-          // redireciona apenas se token veio
           router.push("/dashboard");
         }
       } catch (err) {
         console.error("Erro ao processar redirect MSAL:", err);
       }
     };
-    processRedirect();
+
+    initMSAL();
   }, [router]);
 
-  // 🔐 Login MSAL com redirect
+  // 🔐 Função de login MSAL
   const loginMSAL = async () => {
-    const accounts = msalInstance.getAllAccounts();
-    if (accounts.length === 0) {
-      await msalInstance.loginRedirect({
-        scopes: ["Files.ReadWrite", "User.Read"],
-        redirectUri: window.location.origin, // volta pra mesma página
-      });
-      return;
+    try {
+      if (typeof msalInstance.initialize === "function") {
+        await msalInstance.initialize();
+      }
+
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length === 0) {
+        await msalInstance.loginRedirect({
+          scopes: ["Files.ReadWrite", "User.Read"],
+          redirectUri: window.location.origin + "/dashboard",
+        });
+      }
+    } catch (err) {
+      console.error("Erro no login MSAL:", err);
+      throw err;
     }
   };
 
-  // 🔑 Login Supabase + Microsoft
+  // 🔑 Login Supabase
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
@@ -62,8 +68,7 @@ export default function Login() {
     setError("");
 
     try {
-      // 1️⃣ Login Supabase
-      const { data, error: supabaseError } = await supabase.auth.signInWithPassword({
+      const { error: supabaseError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -73,21 +78,11 @@ export default function Login() {
         setLoading(false);
         return;
       }
-      console.log("Login Supabase bem-sucedido:", data);
 
-      // 2️⃣ Login MSAL (redirect se necessário)
-      try {
-        await loginMSAL(); 
-        // se redirect não acontecer, continua fluxo normal
-      } catch (msalError) {
-        console.error("Erro no login MSAL:", msalError);
-        setError("Erro ao fazer login com Microsoft. Tente novamente.");
-        setLoading(false);
-        return;
-      }
+      console.log("Login Supabase bem-sucedido");
 
-      // se passou dos dois logins, vai para o dashboard
-      router.push("/dashboard");
+      // ✅ Só tenta login MSAL se supabase der certo
+      await loginMSAL();
     } catch (err) {
       console.error("Erro desconhecido:", err);
       setError("Erro desconhecido. Tente novamente.");
@@ -102,15 +97,12 @@ export default function Login() {
         <div className="_12-tec">12 TEC</div>
         <div className="gerenciamento-de-compras">INTRANET</div>
       </div>
-
       <div className="Meiuca">
         <div className="lado-esquerdo"></div>
         <div className="lado-direito">
           <div className="InfosLadoDireito">
             <div className="log-in">Log in</div>
-
             <form className="inputs" onSubmit={handleLogin}>
-              {/* Email */}
               <div className="input-container">
                 <div className="input-wrapper">
                   <img src="../usuarioIcon.png" alt="Usuário" className="user-icon-left" />
@@ -125,7 +117,6 @@ export default function Login() {
                 <hr className="input-line-usuario" />
               </div>
 
-              {/* Senha */}
               <div className="input-container">
                 <div className="input-wrapper">
                   <img src="../cadeadoIcon.png" alt="Senha" className="senha-icon-left" />
@@ -146,7 +137,6 @@ export default function Login() {
                 <hr className="input-line" />
               </div>
 
-              {/* Erro */}
               {error && <p className="text-red-500">{error}</p>}
 
               <button className="botao-entrar" type="submit" disabled={loading}>
