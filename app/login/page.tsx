@@ -25,13 +25,14 @@ const loginMSAL = async () => {
     const accounts = msalInstance.getAllAccounts();
 
     if (accounts.length === 0) {
-      await msalInstance.loginPopup({
+      // Redirecionamento direto em vez de popup
+      await msalInstance.loginRedirect({
         scopes: ["Files.ReadWrite", "User.Read"],
+        redirectUri: "https://intranet12tec.vercel.app/dashboard"
       });
     }
   } catch (error) {
     console.error("Erro no login Microsoft:", error);
-    // ⛔ Repassa o erro para a função que chamou
     throw new Error("Falha no login Microsoft");
   }
 };

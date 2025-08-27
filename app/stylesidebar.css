@@ -52,6 +52,7 @@
 .sidebar.active 
 {
     width: 300px;
+    overflow-y: auto; /* permite rolagem vertical */
 }
 .sidebar ul
 {

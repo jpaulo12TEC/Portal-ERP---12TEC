@@ -90,7 +90,8 @@ useEffect(() => {
 
   return (
     <div>
-      <div className={`sidebarWrapper ${menuActive ? 'menu-active' : ''}`} onClick={toggleSidebar}>
+      <div className={`sidebarWrapper ${menuActive ? 'menu-active' : ''}`}   onMouseEnter={() => setMenuActive(true)}
+  onMouseLeave={() => setMenuActive(false)} onClick={toggleSidebar}>
         <div className={`sidebar ${menuActive ? 'active' : ''}`} onClick={toggleSidebar}>
           <ul>
             <div className="Menu">
