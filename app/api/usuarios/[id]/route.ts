@@ -1,4 +1,3 @@
-// app/api/usuarios/[id]/route.ts
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -7,8 +6,8 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 )
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const userId = params.id
+export async function GET(request: Request, context: any) {
+  const userId = context.params.id
 
   const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId)
 

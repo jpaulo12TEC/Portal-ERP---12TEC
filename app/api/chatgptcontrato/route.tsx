@@ -199,16 +199,19 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    // Converte o documento em um arquivo Word (.docx)
-    const buffer = await Packer.toBuffer(doc);
+// Converte o documento em um arquivo Word (.docx)
+const buffer = await Packer.toBuffer(doc);
 
-    // Envia o arquivo gerado como resposta para download
-    return new Response(buffer, {
-      headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${novoContrato.nomeContrato}.docx"`,
-      },
-    });
+// Converte Buffer em Uint8Array para Next.js Response
+const uint8Array = new Uint8Array(buffer);
+
+return new Response(uint8Array, {
+  headers: {
+    'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'Content-Disposition': `attachment; filename="${novoContrato.nomeContrato}.docx"`,
+  },
+});
+
   } catch (error) {
     console.error('Erro ao gerar o contrato:', error);
     return NextResponse.json({ error: 'Erro ao gerar o contrato.' }, { status: 500 });
