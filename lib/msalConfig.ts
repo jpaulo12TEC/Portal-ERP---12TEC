@@ -5,7 +5,7 @@ const msalConfig: Configuration = {
   auth: {
     clientId: "a7383e84-46a2-49eb-8f21-953a7b9e24dd",
     authority: "https://login.microsoftonline.com/73df9aea-8a0d-4f03-a71d-339f8816d836",
-    redirectUri: "http://localhost:3000/dashboard", // ou sua URL se for diferente
+    redirectUri: "https://intranet12tec.vercel.app/dashboard", // ou sua URL se for diferente
   },
   cache: {
     cacheLocation: "localStorage",
