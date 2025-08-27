@@ -39,7 +39,7 @@
   
   /* Esconde a barra de rolagem, mas mantém a funcionalidade de rolagem */
   .sidebar::-webkit-scrollbar {
-    width: 0px; /* Esconde a barra de rolagem */
+    width: 6px; /* Esconde a barra de rolagem */
   }
   
   .sidebar::-webkit-scrollbar-track {
@@ -47,12 +47,14 @@
   }
   
   .sidebar::-webkit-scrollbar-thumb {
-    background-color: #4a0303; /* Torna o "polegar" (parte movível) da barra transparente */
+    background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 3px; /* Torna o "polegar" (parte movível) da barra transparente */
   }
 .sidebar.active 
 {
     width: 300px;
     overflow-y: auto; /* permite rolagem vertical */
+    scroll-behavior: smooth;
 }
 .sidebar ul
 {
