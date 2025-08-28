@@ -112,7 +112,7 @@ const handleLogin = async (e: React.FormEvent) => {
 
 
  return (
-    <div className="flex h-screen">
+    <div className="flex h-[100%]">
       {/* Lado esquerdo com gradiente vermelho */}
       <div className="flex-1 flex justify-center items-center bg-gradient-to-b from-[#200101] via-[#5a0d0d] to-[#7a1a1a]">
         <img
