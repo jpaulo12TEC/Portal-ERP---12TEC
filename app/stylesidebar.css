@@ -13,7 +13,7 @@
     left: 0;
     top: 0;
     width: 80px; /* Largura padrão */
-    height: 100vh;
+    height: 100%;
     background: radial-gradient(circle, #5f0202, #410101, #200101);
     transition: 0.5s;
     padding-left: 10px;
