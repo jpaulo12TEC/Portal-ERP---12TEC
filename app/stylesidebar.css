@@ -37,26 +37,26 @@
 }
 
   
-
-.sidebar::-webkit-scrollbar {
-  width: 8px;
+  /* Esconde a barra de rolagem, mas mantém a funcionalidade de rolagem */
+  .sidebar::-webkit-scrollbar {
+    width: 6px; /* Esconde a barra de rolagem */
+  }
+  
+  sidebar.active::-webkit-scrollbar-track {
+   background-color: rgba(30, 27, 27, 0.738); /* leve tom cinza */
+  border-radius: 1px;
+  }
+  
+  .sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 3px; /* Torna o "polegar" (parte movível) da barra transparente */
+  }
+.sidebar.active 
+{
+    width: 300px;
+    overflow-y: auto; /* permite rolagem vertical */
+    scroll-behavior: smooth;
 }
-
-.sidebar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-  background-color: rgba(0,0,0,0.5);
-  border-radius: 4px;
-}
-
-/* Firefox */
-.sidebar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,0.5) transparent;
-}
-
 .sidebar ul
 {
     position: relative;
