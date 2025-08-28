@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { FaHome, FaUser, FaComment, FaChartBar, FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import { FaFileContract } from 'react-icons/fa';
 import msalInstance from "@/lib/msalConfig";
@@ -30,6 +30,37 @@ const Sidebar = ({ className = '', onNavClickAction, menuActive, setMenuActive, 
   const toggleSidebar = () => {
     setMenuActive(!menuActive);
   };
+
+    const sidebarRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startY = useRef(0);
+  const scrollTop = useRef(0);
+
+  // ===== Scroll por arraste =====
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDragging.current = true;
+    startY.current = e.clientY;
+    if (sidebarRef.current) scrollTop.current = sidebarRef.current.scrollTop;
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging.current || !sidebarRef.current) return;
+    const delta = e.clientY - startY.current;
+    sidebarRef.current.scrollTop = scrollTop.current - delta;
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
 
 const handleLogout = async () => {
   try {
@@ -110,7 +141,7 @@ useEffect(() => {
     <div>
       <div className={`sidebarWrapper ${menuActive ? 'menu-active' : ''}`}   onMouseEnter={() => setMenuActive(true)}
   onMouseLeave={() => setMenuActive(false)} onClick={toggleSidebar}>
-        <div className={`sidebar ${menuActive ? 'active' : ''}`} onClick={toggleSidebar}>
+        <div className={`sidebar ${menuActive ? 'active' : ''}`} onClick={toggleSidebar} onMouseDown={handleMouseDown}>
           <ul>
             <div className="Menu">
               <div className="Primeiro" >

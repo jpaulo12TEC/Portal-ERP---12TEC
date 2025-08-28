@@ -37,24 +37,33 @@
 }
 
   
-  /* Esconde a barra de rolagem, mas mantém a funcionalidade de rolagem */
-/* Esconde a barra de rolagem, mas mantém a funcionalidade de rolagem */
+.sidebar {
+  width: 300px;
+  max-height: 100vh;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
 .sidebar::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+background-color: rgba(0,0,0,0.05); /* leve tom cinza */
+  border-radius: 3px;
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.3);
-  border-radius: 3px; /* Torna o "polegar" (parte movível) da barra arredondado */
+  background-color: rgba(0,0,0,0.5);
+  border-radius: 4px;
 }
 
-.sidebar.active {
-  width: 300px;
-  overflow-y: auto; /* permite rolagem vertical */
-  scroll-behavior: smooth; /* rolagem suave */
-  max-height: 100vh; /* limita altura à tela */
+/* Firefox */
+.sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.5) transparent;
 }
-
 
 .sidebar ul
 {
