@@ -37,21 +37,13 @@
 }
 
   
-.sidebar {
-  width: 300px;
-  max-height: 100vh;
-  overflow-y: auto;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-}
 
 .sidebar::-webkit-scrollbar {
   width: 8px;
 }
 
 .sidebar::-webkit-scrollbar-track {
-background-color: rgba(0,0,0,0.05); /* leve tom cinza */
-  border-radius: 3px;
+  background: transparent;
 }
 
 .sidebar::-webkit-scrollbar-thumb {
