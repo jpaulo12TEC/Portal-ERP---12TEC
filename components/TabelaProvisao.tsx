@@ -1,6 +1,19 @@
 import { useState, useEffect } from "react";
 import { supabase } from '../lib/superbase';
 import RowDetailsModal from "./RowDetailsModal";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 
 
 
@@ -14,6 +27,7 @@ type DataItem = {
   pagoem: string;
   data: string;
   codigo: string;
+  formapagamento: string;
 };
 
 const parseDate = (date: string | null) => date ? new Date(date) : new Date(0);
@@ -24,8 +38,12 @@ interface SortConfig {
 }
 
 export default function FilterableTable() {
+  const [empresa, setEmpresa] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<'tabela' | 'graficos'>('tabela');
+  const [comprasData, setComprasData] = useState<any[]>([])
   const [showPaid, setShowPaid] = useState(false);
 const [showUnpaid, setShowUnpaid] = useState(false);
+
 
   const [data, setData] = useState<DataItem[]>([]);
   const [selectedRow, setSelectedRow] = useState<number | null>(null);
@@ -51,30 +69,57 @@ const [showUnpaid, setShowUnpaid] = useState(false);
 
 useEffect(() => {
   const fetchData = async () => {
-    const { data, error } = await supabase
-      .from('provisao_pagamentos')
-      .select('*')
-      .order('lancadoem', { ascending: false }) // Ordena pela data mais recente
-      
+    try {
+      // 1️⃣ Buscar provisão de pagamentos
+      const { data: pagamentosData, error: pagamentosError } = await supabase
+        .from('provisao_pagamentos')
+        .select('*')
+        .order('lancadoem', { ascending: false });
 
-    if (error) {
-      console.error('Erro ao buscar dados:', error);
-    } else {
-      if (Array.isArray(data)) {
-        const parsedData = data.map(item => ({
-          ...item,
-          codigo: String(item.codigo) // Garante que seja string
-        }));
-        setData(parsedData);
-      } else {
-        console.error('Dados não são array:', data);
-        setData([]);
+      if (pagamentosError) {
+        console.error('Erro ao buscar provisão de pagamentos:', pagamentosError);
+        return;
       }
+
+      if (!Array.isArray(pagamentosData)) {
+        console.error('Provisão de pagamentos não é array:', pagamentosData);
+        return;
+      }
+
+      // Garante que o código seja string
+      const parsedPagamentos = pagamentosData.map(item => ({
+        ...item,
+        codigo: String(item.codigo)
+      }));
+
+      setData(parsedPagamentos);
+
+      // 2️⃣ Buscar itens da tabela gerenciamentodecomprar usando os códigos
+      const codigos = parsedPagamentos.map(item => item.codigo);
+
+      // Se não houver códigos, não faz fetch
+      if (codigos.length === 0) return;
+
+      const { data: comprasData, error: comprasError } = await supabase
+        .from('gerenciamento_compras')
+        .select('*')
+        .in('codigo', codigos); // busca todos os itens que tenham código na lista
+
+      if (comprasError) {
+        console.error('Erro ao buscar itens de gerenciamentodecomprar:', comprasError);
+        return;
+      }
+
+      setComprasData(comprasData || []); // criar um state: const [comprasData, setComprasData] = useState<any[]>([]);
+
+    } catch (err) {
+      console.error('Erro no fetch combinado:', err);
     }
   };
 
   fetchData();
 }, []);
+
 
 
 
@@ -125,7 +170,7 @@ const formatCodigo = (codigo: any) => {
 
     const isPaid = isPaidFilter ? !!item.pagoem : true;
 
- const matchPaid =
+   const matchPaid =
     (showPaid && !!item.pagoem) || (showUnpaid && !item.pagoem) || (!showPaid && !showUnpaid);
 
     return (
@@ -142,6 +187,9 @@ const formatCodigo = (codigo: any) => {
       matchPaid
     );
   };
+
+
+
 const headers = [
   { label: "Código", key: "codigo" },
   { label: "Vencimento", key: "venceem" },
@@ -185,16 +233,59 @@ const sortedData = () => {
   return sorted;
 };
 
+const filteredData = sortedData().filter(applyFilters);
+
+
+
   const handleRowClick = (rowData: any) => {
     setSelectedRow(rowData);
     setIsModalOpen(true);
   };
 
 
+
+  // Agrupar por fornecedor e somar valores
+const fornecedoresAgrupados = Object.values(
+  filteredData.reduce((acc: any, item: DataItem) => {
+    const nomeFornecedor = item.empresa || "Sem fornecedor";
+    if (!acc[nomeFornecedor]) {
+      acc[nomeFornecedor] = { empresa: nomeFornecedor, valor: 0 };
+    }
+    acc[nomeFornecedor].valor += item.valor || 0;
+    return acc;
+  }, {})
+);
+
+// Ordenar do maior para o menor valor
+const fornecedoresOrdenados = fornecedoresAgrupados.sort((a: any, b: any) => b.valor - a.valor);
+
+
+
+
   
 
   return (
     <div className="p-4 h-screen">
+
+ <div className="flex gap-2 mb-4">
+      <button
+        onClick={() => setActiveTab('tabela')}
+        className={`px-3 py-1 rounded ${activeTab === 'tabela' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+      >
+        Tabela
+      </button>
+      <button
+        onClick={() => setActiveTab('graficos')}
+        className={`px-3 py-1 rounded ${activeTab === 'graficos' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}
+      >
+        Gráficos
+      </button>
+    </div>
+
+ {/* ABA TABELA */}
+    {activeTab === 'tabela' && (
+      <>
+
       {/* Filtros */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4" >
         {["Codigo","Origem", "Empresa", "CNPJ"].map((field) => (
@@ -360,8 +451,210 @@ const sortedData = () => {
          {/* Modal */}
       {isModalOpen && selectedRow && (
         <RowDetailsModal selectedRow={selectedRow} onClose={() => setIsModalOpen(false)} />
-      )}
+              )}
+        </div>
+      </>
+    )}
+
+ {/* ABA GRÁFICOS */}
+{/* ABA GRÁFICOS */}
+{/* ABA GRÁFICOS */}
+{/* ABA GRÁFICOS */}
+{activeTab === "graficos" && (
+  <div className="graficos-tab space-y-6">
+    <h2 className="text-2xl font-bold mb-4">Relatórios</h2>
+
+    {/* Cards de Resumo */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="p-4 bg-green-100 rounded-2xl shadow">
+        <p className="text-sm font-medium">Total de valores</p>
+        <p className="text-xl font-bold text-green-700">
+          R${" "}
+          {filteredData
+            .reduce((acc, item) => acc + (item.valor || 0), 0)
+            .toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+        </p>
+      </div>
+      <div className="p-4 bg-blue-100 rounded-2xl shadow">
+        <p className="text-sm font-medium">Itens pagos</p>
+        <p className="text-xl font-bold text-blue-700">
+          {filteredData.filter((i) => i.pagoem).length}
+        </p>
+      </div>
+      <div className="p-4 bg-red-100 rounded-2xl shadow">
+        <p className="text-sm font-medium">Itens não pagos</p>
+        <p className="text-xl font-bold text-red-700">
+          {filteredData.filter((i) => !i.pagoem).length}
+        </p>
       </div>
     </div>
-  );
+
+    {/* Gráfico de Pizza - Pagos vs Não pagos */}
+    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl shadow-md p-6">
+      <h3 className="text-xl font-semibold text-gray-800 mb-4">Pagos x Não pagos</h3>
+      <ResponsiveContainer width="100%" height={320}>
+        <PieChart>
+          <Pie
+            data={[
+              {
+                name: "Pagos",
+                value: filteredData.reduce(
+                  (acc, item) => acc + (item.pagoem ? item.valor || 0 : 0),
+                  0
+                ),
+              },
+              {
+                name: "Não pagos",
+                value: filteredData.reduce(
+                  (acc, item) => acc + (!item.pagoem ? item.valor || 0 : 0),
+                  0
+                ),
+              },
+            ]}
+            cx="50%"
+            cy="50%"
+            outerRadius={110}
+            innerRadius={60}
+            paddingAngle={4}
+            dataKey="value"
+            label={({ name, value }) =>
+              `${name}: R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+            }
+          >
+            <Cell fill="#34d399" />
+            <Cell fill="#fbbf24" />
+          </Pie>
+          <Tooltip
+            formatter={(value: number) =>
+              `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+            }
+          />
+          <Legend verticalAlign="bottom" height={36} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+
+    {/* Gráfico de Barras - Valores por fornecedor */}
+    <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl shadow-md p-6">
+      <h3 className="text-xl font-semibold text-gray-800 mb-4">
+        Valores por fornecedor
+      </h3>
+      {(() => {
+        const fornecedoresData = Object.values(
+          filteredData.reduce((acc: any, item: any) => {
+            const fornecedor = item.empresa || "Sem fornecedor";
+            if (!acc[fornecedor]) acc[fornecedor] = { empresa: fornecedor, valor: 0 };
+            acc[fornecedor].valor += item.valor || 0;
+            return acc;
+          }, {})
+        );
+
+        const fornecedoresOrdenados = fornecedoresData.sort((a: any, b: any) => b.valor - a.valor);
+
+        const chartHeight = Math.max(fornecedoresOrdenados.length * 50, 400);
+
+        return (
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart
+              layout="vertical"
+              data={fornecedoresOrdenados}
+              margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+              <XAxis
+                type="number"
+                tickFormatter={(value) =>
+                  `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                }
+              />
+              <YAxis dataKey="empresa" type="category" width={150} />
+              <Tooltip
+                formatter={(value: number) =>
+                  `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                }
+              />
+              <Bar dataKey="valor" fill="url(#fornecedorGradient)" radius={[8, 8, 8, 8]} barSize={30} />
+              <defs>
+                <linearGradient id="fornecedorGradient" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#8b5cf6" />
+                </linearGradient>
+              </defs>
+            </BarChart>
+          </ResponsiveContainer>
+        );
+      })()}
+    </div>
+
+{/* Gráfico de Barras - Forma de Pagamento */}
+<div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl shadow-md p-6">
+  <h3 className="text-xl font-semibold text-gray-800 mb-4">
+    Valores por forma de pagamento
+  </h3>
+  {(() => {
+    // 1️⃣ Agrupar os valores por forma de pagamento
+    const formasPagamentoData = Object.values(
+      filteredData.reduce((acc: any, item: DataItem) => {
+        const forma = item.formapagamento || "Sem forma";
+        if (!acc[forma]) acc[forma] = { forma, valor: 0 };
+
+        // Somar apenas valores válidos
+        acc[forma].valor += Number(item.valor) || 0;
+        return acc;
+      }, {})
+    );
+
+    // 2️⃣ Ordenar do maior para o menor
+    const formasPagamentoOrdenadas = formasPagamentoData.sort(
+      (a: any, b: any) => b.valor - a.valor
+    );
+
+    // 3️⃣ Altura dinâmica
+    const chartHeight = Math.max(formasPagamentoOrdenadas.length * 50, 300);
+
+    return (
+      <ResponsiveContainer width="100%" height={chartHeight}>
+        <BarChart
+          layout="vertical"
+          data={formasPagamentoOrdenadas}
+          margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+          <XAxis
+            type="number"
+            tickFormatter={(value) =>
+              `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+            }
+          />
+          <YAxis dataKey="forma" type="category" width={150} />
+          <Tooltip
+            formatter={(value: number) =>
+              `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+            }
+          />
+          <Bar
+            dataKey="valor"
+            fill="url(#paymentGradient)"
+            radius={[8, 8, 8, 8]}
+            barSize={30}
+          />
+          <defs>
+            <linearGradient id="paymentGradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#34d399" />
+              <stop offset="100%" stopColor="#3b82f6" />
+            </linearGradient>
+          </defs>
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  })()}
+</div>
+
+  </div>
+)}
+
+
+
+  </div>
+);
 }

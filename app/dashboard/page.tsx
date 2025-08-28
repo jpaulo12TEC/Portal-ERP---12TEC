@@ -344,7 +344,7 @@ export default function Dashboard() {
         )}
       </div>
   {/* Mostrar os botões de remoção apenas para o usuário autorizado */}
-  {nome === 'Jonas' && (
+  {nome === 'Luis Fillipe' && (
                 <div className="flex space-x-2">
                   <button
                     className="text-sm text-red-600 hover:underline"
