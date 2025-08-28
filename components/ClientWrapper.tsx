@@ -3,18 +3,18 @@
 import { useState, useEffect } from 'react';
 
 export default function ClientWrapper({ children }: { children: React.ReactNode }) {
-  const [zoom, setZoom] = useState(1);
+  const [scale, setScale] = useState(1);
 
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 1024 && window.innerWidth <= 1440) {
-        setZoom(0.85);
+        setScale(0.85);
       } else {
-        setZoom(1);
+        setScale(1);
       }
     };
 
-    handleResize(); // executa no load
+    handleResize();
     window.addEventListener('resize', handleResize);
 
     return () => window.removeEventListener('resize', handleResize);
@@ -24,10 +24,17 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     <div
       className="w-full min-h-screen flex justify-center"
       style={{
-        zoom,
+        overflow: 'auto', // garante que nada seja cortado
       }}
     >
-      <div className="w-full max-w-[1440px]">
+      <div
+        className="w-full max-w-[1440px]"
+        style={{
+          transform: `scale(${scale})`,
+          transformOrigin: 'top center', // escala igual ao zoom do navegador
+          width: '100%',
+        }}
+      >
         {children}
       </div>
     </div>
