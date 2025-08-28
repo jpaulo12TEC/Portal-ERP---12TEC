@@ -1,17 +1,27 @@
-'use client';
+'use client'
 
-import { useEffect } from 'react';
+import { useEffect } from 'react'
 
 export default function ClientZoomWrapper({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Aplica zoom global
-    document.body.style.zoom = '85%';
+    const applyZoom = () => {
+      if (window.innerWidth >= 1440) {
+        // Telas grandes
+        document.body.style.zoom = '100%'
+      } else {
+        // Notebooks ou telas menores
+        document.body.style.zoom = '85%'
+      }
+    }
 
-    // Opcional: remove zoom ao desmontar
+    applyZoom() // aplica no carregamento
+    window.addEventListener('resize', applyZoom) // reaplica no resize
+
     return () => {
-      document.body.style.zoom = '100%';
-    };
-  }, []);
+      window.removeEventListener('resize', applyZoom)
+      document.body.style.zoom = '100%' // restaura ao desmontar
+    }
+  }, [])
 
-  return <>{children}</>;
+  return <>{children}</>
 }
