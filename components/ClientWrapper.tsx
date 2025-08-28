@@ -10,7 +10,7 @@ export default function ClientZoomWrapper({ children }: { children: React.ReactN
         document.body.style.zoom = '100%'
       } else {
         // Notebooks ou telas menores
-        document.body.style.zoom = '85%'
+        document.body.style.zoom = '65%'
       }
     }
 
