@@ -11,10 +11,10 @@ export default function ClientZoomWrapper({ children }: { children: React.ReactN
 
       if (effectiveWidth >= 1920) {
         // Monitores ultrawide ou 2K+
-        document.body.style.zoom = '110%'
+        document.body.style.zoom = '100%'
       } else if (effectiveWidth >= 1366) {
         // Desktops médios e grandes
-        document.body.style.zoom = '100%'
+        document.body.style.zoom = '90%'
       } else {
         // Notebooks ou telas menores
         document.body.style.zoom = '85%'
