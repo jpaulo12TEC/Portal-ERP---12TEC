@@ -2271,32 +2271,57 @@ const limparTodosOsForms = () => {
               </select>
             </div>
 {/* Valor Unitário */}
-<input
-  type="text"
-  inputMode="decimal"
-  value={valorUnitario}
-  onChange={handleValorUnitarioChange}
-  className={`px-3 py-2 border-1 border-gray-300 h-11 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 ${valorUnitario ? "bg-green-100 border-green-700" : "bg-white"}`}
-  required={isSaving}
-/>
+  <div className="flex flex-col w-full sm:w-1/4">
+    <label className="block text-sm font-semibold" htmlFor="valorUnitario">
+      Valor Unitário (R$)
+    </label>
+    <input
+      id="valorUnitario"
+      type="text"
+      inputMode="decimal"
+      onChange={handleValorUnitarioChange}
+      className={`
+        px-3 py-2 border-1 border-gray-300 h-11 rounded-md 
+        focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 
+        ${valorUnitario ? "bg-green-100 border-green-700" : "bg-white"}
+      `}
+      required={isSaving}
+    />
+  </div>
 
-{/* Quantidade */}
-<input
-  type="text"
-  inputMode="decimal"
-  value={quantidade}
-  onChange={handleQuantidadeChange}
-  className={`px-3 py-2 border-1 border-gray-300 h-11 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 ${quantidade ? "bg-green-100 border-green-700" : "bg-white"}`}
-  required={isSaving}
-/>
+ {/* Quantidade */}
+  <div className="flex flex-col w-full sm:w-1/4">
+    <label className="block text-sm font-semibold" htmlFor="quantidade">
+      Quantidade
+    </label>
+    <input
+      id="quantidade"
+      type="text"
+      inputMode="decimal"
+      value={quantidade.toString()}
+      onChange={handleQuantidadeChange}
+      className={`
+        px-3 py-2 border-1 border-gray-300 h-11 rounded-md 
+        focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 
+        ${quantidade ? "bg-green-100 border-green-700" : "bg-white"}
+      `}
+      required={isSaving}
+    />
+  </div>
 
-{/* Valor Total */}
-<input
-  type="text"
-  value={produtoValorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-  disabled
-  className="px-3 py-2 border-1 border-gray-300 h-11 rounded-md bg-white"
-/>
+  {/* Valor Total */}
+  <div className="flex flex-col w-full sm:w-1/4">
+    <label className="block text-sm font-semibold" htmlFor="valorTotal">
+      Valor Total (R$)
+    </label>
+    <input
+      id="valorTotal"
+      type="text"
+      value={produtoValorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+      disabled
+      className="px-3 py-2 border-1 border-gray-300 h-11 rounded-md bg-white"
+    />
+  </div>
           </div>
 
           <button

@@ -225,6 +225,38 @@ try {
     // ENVIO A TABELA CENTROS DE CUSTO
 try {
   if (formData.centrosDeCusto.length > 0) {
+    // GERENCIAMENTO DE COMPRAS
+    const { error: errorGerenciamento  } = await supabase.from("gerenciamento_compras").insert([
+      {
+        codigo: protocolo,
+        nf: urlNF,
+        data_lancamento: new Date().toISOString(),
+        lancadopor: nome,
+        comprovante: "Contrato",
+        numero_comprovante: "",
+        data_compra: new Date(formData.primeiraParcela).toISOString(),
+        valor_total: Number(String(formData.valorParcela).replace(',', '.')) * Number(formData.parcela),
+        desconto: 0,
+        valor_liquido: Number(String(formData.valorParcela).replace(',', '.')) * Number(formData.parcela),
+        cnpj_cpf: formData.cnpjcpf,
+        fornecedor: fornecedor,
+        tem_icms: temIcms,
+        icms_valor: temIcms ? (Number(String(formData.valorParcela).replace(',', '.')) * Number(formData.parcela) * 0.18).toFixed(2) : null,
+        centros_de_custo: formData.centrosDeCusto
+        .map((item: any) => `${item.nome};${item.percentual}%`)
+       .join(";"),
+        ordens_de_servico: null,
+        quantidade_produtos: 1,
+        renovacao_automatica: formData.renovacaoAutomatica
+      },
+    ]);
+
+    if (errorGerenciamento) {
+    console.error("Erro ao salvar no gerenciamento:", errorGerenciamento);
+    alert("Erro ao salvar os dados no gerenciamento.");
+    return;
+  }
+  
     const centrosData = formData.centrosDeCusto.map((centro) => {
       const valorCalculado = Number(String(formData.valorParcela).replace(',', '.')) * Number(formData.parcela);
 
@@ -295,37 +327,7 @@ if (errorProdutos) {
 }
 
 
-// GERENCIAMENTO DE COMPRAS
-    const { error: errorGerenciamento  } = await supabase.from("gerenciamento_compras").insert([
-      {
-        codigo: protocolo,
-        nf: urlNF,
-        data_lancamento: new Date().toISOString(),
-        lancadopor: nome,
-        comprovante: "Contrato",
-        numero_comprovante: "",
-        data_compra: new Date(formData.primeiraParcela).toISOString(),
-        valor_total: Number(String(formData.valorParcela).replace(',', '.')) * Number(formData.parcela),
-        desconto: 0,
-        valor_liquido: Number(String(formData.valorParcela).replace(',', '.')) * Number(formData.parcela),
-        cnpj_cpf: formData.cnpjcpf,
-        fornecedor: fornecedor,
-        tem_icms: temIcms,
-        icms_valor: temIcms ? (Number(String(formData.valorParcela).replace(',', '.')) * Number(formData.parcela) * 0.18).toFixed(2) : null,
-        centros_de_custo: formData.centrosDeCusto
-        .map((item: any) => `${item.nome};${item.percentual}%`)
-       .join(";"),
-        ordens_de_servico: null,
-        quantidade_produtos: 1,
-        renovacao_automatica: formData.renovacaoAutomatica
-      },
-    ]);
 
-    if (errorGerenciamento) {
-    console.error("Erro ao salvar no gerenciamento:", errorGerenciamento);
-    alert("Erro ao salvar os dados no gerenciamento.");
-    return;
-  }
 
 
 
