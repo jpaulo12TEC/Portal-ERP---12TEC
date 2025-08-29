@@ -78,9 +78,9 @@ const [formaPagamentoGeral, setFormaPagamentoGeral] = useState<FormaPagamento[]>
   const [tipo, setTipo] = useState<string>(''); // Inicialize como string
 
   const [produto, setProduto] = useState("");
-  const [valorUnitario, setValorUnitario] = useState<number>(0);
-  const [quantidade, setQuantidade] = useState<number>(0);
-  const [produtoValorTotal, setProdutoValorTotal] = useState<number>(0);
+const [quantidade, setQuantidade] = useState<string>("");    
+const [valorUnitario, setValorUnitario] = useState<string>("");    
+const [produtoValorTotal, setProdutoValorTotal] = useState<number>(0);
   const [classificacaoTributaria, setClassificacaoTributaria] = useState<string>('');
   const [marca, setMarca] = useState("");
   const [unidade, setUnidade] = useState("");
@@ -570,73 +570,83 @@ useEffect(() => {
       const total = parseFloat(valor) * parseInt(qtd);
       return isNaN(total) ? "" : total.toFixed(2);
     };
-  
-    // Atualiza o valor total automaticamente quando os campos mudam
-    const handleValorUnitarioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      let valorDigitado = e.target.value;
-    
-      // Remove tudo que não for número
-      const valorNumerico = valorDigitado.replace(/\D/g, "");
-    
-      // Converte para número decimal (centavos)
-      const numero = Number(valorNumerico) / 100;
-    
-      if (isNaN(numero)) return;
-    
-      setValorUnitario(numero);
-      setValorTotalProdutos(numero * quantidade);
-    };
-    
-    const handleQuantidadeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const novaQuantidade = parseInt(e.target.value) || 0;
-      setQuantidade(novaQuantidade);
-      setProdutoValorTotal(valorUnitario * novaQuantidade);
-    };
-  
-    // Adiciona o produto à tabela
-    const adicionarProduto = () => {
-      if (!produto || !valorUnitario || !quantidade || !tipo ) {
-        alert("Preencha os campos obrigatórios!");
-        return;
-      }
-  
-      const novoProduto: Produto = {
-        tipo,
-        categoriaSelecionada,
-        subcategoriaSelecionada,
-        produto,
-        valorUnitario,
-        quantidade,
-        valorTotal: valorUnitario * quantidade, // Certifique-se de calcular corretamente
-        classificacaoTributaria,
-        unidade,
-        marca,
+const handleQuantidadeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  let val = e.target.value;
 
-      };
+  // Permite apenas números e vírgula
+  val = val.replace(/[^0-9,]/g, '');
+
+  // Limita a apenas uma vírgula
+  const partes = val.split(',');
+  if (partes.length > 2) val = partes[0] + ',' + partes[1];
+
+  setQuantidade(val);
+
+  const qtdNum = parseFloat(val.replace(',', '.')) || 0;
+  const valorNum = parseFloat(valorUnitario.replace(',', '.')) || 0;
+  setProdutoValorTotal(valorNum * qtdNum);
+};
+
+// Handle valor unitário com vírgula
+const handleValorUnitarioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  let val = e.target.value;
+
+  // Permite apenas números e vírgula
+  val = val.replace(/[^0-9,]/g, '');
+
+  // Limita a apenas uma vírgula
+  const partes = val.split(',');
+  if (partes.length > 2) val = partes[0] + ',' + partes[1];
+
+  setValorUnitario(val);
+
+  const qtdNum = parseFloat(quantidade.replace(',', '.')) || 0;
+  const valorNum = parseFloat(val.replace(',', '.')) || 0;
+  setProdutoValorTotal(valorNum * qtdNum);
+};
   
-      setProdutos((prevProdutos) => [...prevProdutos, novoProduto]); // Adiciona à lista
-      limparCampos(); // Limpa o formulário
-    };
+// Adiciona o produto à tabela
+const adicionarProduto = () => {
+  if (!produto || !valorUnitario || !quantidade || !tipo ) {
+    alert("Preencha os campos obrigatórios!");
+    return;
+  }
+
+  const novoProduto: Produto = {
+    tipo,
+    categoriaSelecionada,
+    subcategoriaSelecionada,
+    produto,
+    valorUnitario: parseFloat(valorUnitario.replace(',', '.')),
+    quantidade: parseFloat(quantidade.replace(',', '.')),
+    valorTotal: parseFloat(valorUnitario.replace(',', '.')) * parseFloat(quantidade.replace(',', '.')),
+    classificacaoTributaria,
+    unidade,
+    marca,
+  };
+
+  setProdutos((prevProdutos) => [...prevProdutos, novoProduto]);
+  limparCampos();
+};
   
     // Remove um produto da lista
     const removerProduto = (index: number) => {
       setProdutos(produtos.filter((_, i) => i !== index));
     };
   
-    // Limpa os campos do formulário
-    const limparCampos = () => {
-      setTipo("");
-      setCategoriaSelecionada("");
-      setSubcategoriaSelecionada("");
-      setProduto("");
-      setValorUnitario(0); // Valor inicial
-      setQuantidade(0); // Valor inicial
-      setProdutoValorTotal(0); // Valor inicial
-      setClassificacaoTributaria("");
-      setMarca("");
-      setUnidade("");
-     
-    };
+// Limpa os campos
+const limparCampos = () => {
+  setTipo("");
+  setCategoriaSelecionada("");
+  setSubcategoriaSelecionada("");
+  setProduto("");
+  setValorUnitario("");
+  setQuantidade("");
+  setProdutoValorTotal(0);
+  setClassificacaoTributaria("");
+  setMarca("");
+  setUnidade("");
+};
 
 
 
@@ -1233,12 +1243,16 @@ produtos.forEach((produto, index) => {
 
 
 try {
+
+    const { error: error2 } = await supabase.from("gerenciamento_compras").insert(dadosAdicionais);
+  if (error2) console.error("Erro ao salvar dados na tabela gerenciamento_compras:", error2);
+
+  
   // Inserir os dados no Supabase e capturar os erros individualmente
   const { error: error1 } = await supabase.from("provisao_pagamentos").insert(parcelasData);
   if (error1) console.error("Erro ao salvar dados na tabela provisao_pagamentos:", error1);
 
-  const { error: error2 } = await supabase.from("gerenciamento_compras").insert(dadosAdicionais);
-  if (error2) console.error("Erro ao salvar dados na tabela gerenciamento_compras:", error2);
+
 
   const { error: error3 } = await supabase.from("produtos").insert(produtosData);
   if (error3) console.error("Erro ao salvar dados na tabela produtos:", error3);
@@ -2214,62 +2228,33 @@ const limparTodosOsForms = () => {
                 <option value="Revenda">Revenda</option>
               </select>
             </div>
-            {/* Valor Unitário */}
-            <div className="flex flex-col w-full sm:w-1/4">
-  <label className="block text-sm font-semibold">Valor Unitário (R$)</label>
-  <input
-    type="text"
-    inputMode="numeric"
-    value={valorUnitario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-    onChange={(e) => handleValorUnitarioChange(e)}
-    className={`
-      px-3 py-2 
-      border-1 border-gray-300 h-11 rounded-md 
-      transition-all duration-100 
-      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
-      hover:border-gray-400 
-      ${valorUnitario ? "bg-green-100 border-green-700 border-1" : "bg-white"} 
-    `}
-    required={isSaving}
-  />
-</div>
+{/* Valor Unitário */}
+<input
+  type="text"
+  inputMode="decimal"
+  value={valorUnitario}
+  onChange={handleValorUnitarioChange}
+  className={`px-3 py-2 border-1 border-gray-300 h-11 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 ${valorUnitario ? "bg-green-100 border-green-700" : "bg-white"}`}
+  required={isSaving}
+/>
 
-            {/* Quantidade */}
-            <div className="flex flex-col w-full sm:w-1/4">
-                <label className="block text-sm font-semibold">Quantidade</label>
-                <input
-                  type="number"
-                  value={quantidade.toString()}
-                  onChange={handleQuantidadeChange}
-                  className={`
-                    px-3 py-2 
-                    border-1 border-gray-300 h-11 rounded-md 
-                    transition-all duration-100 
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
-                    hover:border-gray-400 
-                    ${quantidade? "bg-green-100 border-green-700 border-1" : "bg-white"} 
-                  `}
-                  required={isSaving}
-                />
-            </div>
+{/* Quantidade */}
+<input
+  type="text"
+  inputMode="decimal"
+  value={quantidade}
+  onChange={handleQuantidadeChange}
+  className={`px-3 py-2 border-1 border-gray-300 h-11 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400 ${quantidade ? "bg-green-100 border-green-700" : "bg-white"}`}
+  required={isSaving}
+/>
 
-            {/* Valor Total */}
-            <div className="flex flex-col w-full sm:w-1/4">
-  <label className="block text-sm font-semibold">Valor Total (R$)</label>
-  <input
-    type="text"
-    className={`
-      px-3 py-2 
-      border-1 border-gray-300 h-11 rounded-md 
-      transition-all duration-100 
-      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
-      hover:border-gray-400 
-      ${produtoValorTotal ? "bg-green-100 border-green-700 border-1" : "bg-white"} 
-    `}
-    value={produtoValorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-    disabled
-  />
-</div>
+{/* Valor Total */}
+<input
+  type="text"
+  value={produtoValorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+  disabled
+  className="px-3 py-2 border-1 border-gray-300 h-11 rounded-md bg-white"
+/>
           </div>
 
           <button

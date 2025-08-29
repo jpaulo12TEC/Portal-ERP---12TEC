@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { FaHome, FaUser, FaComment, FaChartBar, FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import { FaFileContract } from 'react-icons/fa';
 import msalInstance from "@/lib/msalConfig";
+import { FaShieldAlt } from 'react-icons/fa'; // ícone para SSMA
 import Link from 'next/link';
 import '../app/stylesidebar.css';
 import { useRouter } from 'next/navigation';
@@ -178,6 +179,17 @@ useEffect(() => {
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Compra</div>
                   </Link>
                 </li>
+                  <li
+                  className={activeTab === 'SSMA' ? 'active' : ''}
+                  onClick={(e) => activeLink(e, 'SSMA')}
+                >
+                  <Link href="/ssma">
+                    <div className="icon">
+                      <FaShieldAlt />
+                    </div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>SSMA</div>
+                  </Link>
+                </li>
                 <li className={activeTab === 'Configurações' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
                   <Link href="/">
                     <div className="icon">
@@ -186,6 +198,8 @@ useEffect(() => {
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Configurações</div>
                   </Link>
                 </li>
+
+
               </div>
 
               <div className="bottom">

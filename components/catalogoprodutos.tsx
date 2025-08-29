@@ -252,7 +252,6 @@ const abrirNF = async (nfFileName: string | null) => {
 </>
 
 
-          {/* Tabela */}
 {/* Tabela */}
 <div className="overflow-x-auto h-[70vh] border rounded-lg shadow">
   <table className="min-w-full table-auto border-collapse">
@@ -291,7 +290,7 @@ const abrirNF = async (nfFileName: string | null) => {
   className="px-4 py-2 text-blue-600 underline cursor-pointer"
   onClick={() => abrirNF(item.nfFileName)}
 >
-  {item.nfFileName ? "Abrir NF" : "-"}
+  {item.nfFileName ? "NF" : "-"}
 </td>
         </tr>
       ))}
