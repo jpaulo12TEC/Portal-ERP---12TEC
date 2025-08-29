@@ -172,107 +172,83 @@ const abrirNF = async (nfFileName: string | null) => {
         <>
 <>
  {/* Painel de Filtros */}
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-    {/* Filtros de Texto */}
-    {["codigo", "fornecedor", "produto", "tipo", "marca"].map((field) => (
-      <div key={field} className="relative">
-        <input
-          type="text"
-          id={field}
-          placeholder=" "
-          className="peer w-full p-3 border rounded-xl shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          value={filters[field] || ""}
-          onChange={(e) => setFilters({ ...filters, [field]: e.target.value })}
-        />
-        <label
-          htmlFor={field}
-          className="absolute left-3 top-3 text-gray-400 text-sm transition-all 
-                     peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm
-                     peer-focus:-top-2 peer-focus:text-blue-500 peer-focus:text-xs bg-white px-1"
-        >
-          {field.charAt(0).toUpperCase() + field.slice(1)}
-        </label>
-      </div>
-    ))}
+{/* Linha 1: Código, Produto, Fornecedor, Marca */}
+<div className="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-6">
+  {["codigo", "produto", "fornecedor", "marca"].map((field) => (
+    <div key={field} className="relative">
+      <input
+        type="text"
+        id={field}
+        placeholder=" "
+        className="peer w-full p-3 border rounded-xl shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        value={filters[field] || ""}
+        onChange={(e) => setFilters({ ...filters, [field]: e.target.value })}
+      />
+      <label
+        htmlFor={field}
+        className="absolute left-3 top-3 text-gray-400 text-sm transition-all 
+                   peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm
+                   peer-focus:-top-2 peer-focus:text-blue-500 peer-focus:text-xs bg-white px-1"
+      >
+        {field.charAt(0).toUpperCase() + field.slice(1)}
+      </label>
+    </div>
+  ))}
+</div>
 
-    {/* Filtros de Data */}
-    <div className="relative">
+{/* Linha 2: Tipo, Valor Mínimo, Valor Máximo */}
+<div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+  {["tipo", "valorMin", "valorMax"].map((field) => (
+    <div key={field} className="relative">
+      <input
+        type={field.includes("valor") ? "number" : "text"}
+        id={field}
+        placeholder=" "
+        className="peer w-full p-3 border rounded-xl shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        value={filters[field] || ""}
+        onChange={(e) => setFilters({ ...filters, [field]: e.target.value })}
+      />
+      <label
+        htmlFor={field}
+        className="absolute left-3 top-3 text-gray-400 text-sm transition-all 
+                   peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm
+                   peer-focus:-top-2 peer-focus:text-blue-500 peer-focus:text-xs bg-white px-1"
+      >
+        {field === "valorMin"
+          ? "Valor Mínimo"
+          : field === "valorMax"
+          ? "Valor Máximo"
+          : "Tipo"}
+      </label>
+    </div>
+  ))}
+</div>
+
+{/* Linha 3: Data Início e Data Fim */}
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+  {["dataInicio", "dataFim"].map((field) => (
+    <div key={field} className="relative">
       <input
         type="date"
-        id="dataInicio"
+        id={field}
         placeholder=" "
         className="peer w-full p-3 border rounded-xl shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        value={filters.dataInicio}
-        onChange={(e) => setFilters({ ...filters, dataInicio: e.target.value })}
+        value={filters[field]}
+        onChange={(e) => setFilters({ ...filters, [field]: e.target.value })}
       />
       <label
-        htmlFor="dataInicio"
+        htmlFor={field}
         className="absolute left-3 top-3 text-gray-400 text-sm transition-all 
                    peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm
                    peer-focus:-top-2 peer-focus:text-blue-500 peer-focus:text-xs bg-white px-1"
       >
-        Data Início
+        {field === "dataInicio" ? "Data Início" : "Data Fim"}
       </label>
     </div>
+  ))}
+</div>
 
-    <div className="relative">
-      <input
-        type="date"
-        id="dataFim"
-        placeholder=" "
-        className="peer w-full p-3 border rounded-xl shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        value={filters.dataFim}
-        onChange={(e) => setFilters({ ...filters, dataFim: e.target.value })}
-      />
-      <label
-        htmlFor="dataFim"
-        className="absolute left-3 top-3 text-gray-400 text-sm transition-all 
-                   peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm
-                   peer-focus:-top-2 peer-focus:text-blue-500 peer-focus:text-xs bg-white px-1"
-      >
-        Data Fim
-      </label>
-    </div>
 
-    {/* Filtros de Valor */}
-    <div className="relative">
-      <input
-        type="number"
-        id="valorMin"
-        placeholder=" "
-        className="peer w-full p-3 border rounded-xl shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        value={filters.valorMin}
-        onChange={(e) => setFilters({ ...filters, valorMin: e.target.value })}
-      />
-      <label
-        htmlFor="valorMin"
-        className="absolute left-3 top-3 text-gray-400 text-sm transition-all 
-                   peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm
-                   peer-focus:-top-2 peer-focus:text-blue-500 peer-focus:text-xs bg-white px-1"
-      >
-        Valor Mínimo
-      </label>
-    </div>
-
-    <div className="relative">
-      <input
-        type="number"
-        id="valorMax"
-        placeholder=" "
-        className="peer w-full p-3 border rounded-xl shadow-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        value={filters.valorMax}
-        onChange={(e) => setFilters({ ...filters, valorMax: e.target.value })}
-      />
-      <label
-        htmlFor="valorMax"
-        className="absolute left-3 top-3 text-gray-400 text-sm transition-all 
-                   peer-placeholder-shown:top-3 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-sm
-                   peer-focus:-top-2 peer-focus:text-blue-500 peer-focus:text-xs bg-white px-1"
-      >
-        Valor Máximo
-      </label>
-    </div>
-  </div>
 </>
 
 
