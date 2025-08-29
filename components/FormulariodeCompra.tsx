@@ -1243,48 +1243,90 @@ produtos.forEach((produto, index) => {
 
 
 try {
+  console.log("=== Início do envio de dados ===");
 
-    const { error: error2 } = await supabase.from("gerenciamento_compras").insert(dadosAdicionais);
-  if (error2) console.error("Erro ao salvar dados na tabela gerenciamento_compras:", error2);
+  console.log("Protocolo:", protocolo);
+  console.log("Dados para gerenciamento_compras:", dadosAdicionais);
 
-  
-  // Inserir os dados no Supabase e capturar os erros individualmente
-  const { error: error1 } = await supabase.from("provisao_pagamentos").insert(parcelasData);
-  if (error1) console.error("Erro ao salvar dados na tabela provisao_pagamentos:", error1);
+  // 1️⃣ Inserir na tabela gerenciamento_compras (pai)
+  const { error: errorGerenciamento } = await supabase
+    .from("gerenciamento_compras")
+    .insert(dadosAdicionais);
 
-
-
-  const { error: error3 } = await supabase.from("produtos").insert(produtosData);
-  if (error3) console.error("Erro ao salvar dados na tabela produtos:", error3);
-
-  const { error: error4 } = await supabase.from("centros_de_custo").insert(centrosData);
-  if (error4) console.error("Erro ao salvar dados na tabela centros_de_custo:", error4);
-
-  const { error: error5 } = await supabase.from("ordens_de_servico").insert(ordensDeServicoData);
-  if (error5) console.error("Erro ao salvar dados na tabela ordens_de_servico:", error5);
-
-  // Verifica se houve erro em alguma inserção
-  if (error1 || error2 || error3 || error4 || error5) {
-      alert("Erro ao salvar. Verifique os logs para mais detalhes.");
+  if (errorGerenciamento) {
+    console.error("❌ Erro ao salvar dados na tabela gerenciamento_compras:", errorGerenciamento);
+    alert("Erro ao salvar dados do gerenciamento de compras. Abortando envio de pagamentos.");
+    return; // Para aqui, não tenta enviar os pagamentos
   } else {
-      console.log("Dados salvos com sucesso!");
-      alert("Dados enviados com sucesso!");
-      limparTodosOsForms(); // Limpar os campos
-      setIsSaving(false); // Define como falso após o envio
-
-
-
-      await enviarMensagemWhatsApp();
-      localStorage.removeItem('pedidoSelecionado');
-
-
-
+    console.log("✅ Dados do gerenciamento_compras salvos com sucesso!");
   }
+
+  // 2️⃣ Inserir na tabela provisao_pagamentos (filho)
+  console.log("Dados para provisao_pagamentos:", parcelasData);
+
+  if (parcelasData.length > 0) {
+    const { error: errorPagamentos } = await supabase
+      .from("provisao_pagamentos")
+      .insert(parcelasData);
+
+    if (errorPagamentos) {
+      console.error("❌ Erro ao salvar dados na tabela provisao_pagamentos:", errorPagamentos);
+      alert("Erro ao salvar provisões de pagamento. Verifique os logs.");
+      return;
+    } else {
+      console.log("✅ Provisões de pagamento salvas com sucesso!");
+    }
+  } else {
+    console.log("ℹ️ Nenhuma provisão de pagamento para enviar.");
+  }
+
+  // 3️⃣ Inserir produtos
+  console.log("Dados para produtos:", produtosData);
+
+  if (produtosData.length > 0) {
+    const { error: errorProdutos } = await supabase
+      .from("produtos")
+      .insert(produtosData);
+
+    if (errorProdutos) console.error("❌ Erro ao salvar produtos:", errorProdutos);
+    else console.log("✅ Produtos salvos com sucesso!");
+  }
+
+  // 4️⃣ Inserir centros de custo
+  console.log("Dados para centros_de_custo:", centrosData);
+  if (centrosData.length > 0) {
+    const { error: errorCentros } = await supabase
+      .from("centros_de_custo")
+      .insert(centrosData);
+
+    if (errorCentros) console.error("❌ Erro ao salvar centros de custo:", errorCentros);
+    else console.log("✅ Centros de custo salvos com sucesso!");
+  }
+
+  // 5️⃣ Inserir ordens de serviço
+  console.log("Dados para ordens_de_servico:", ordensDeServicoData);
+  if (ordensDeServicoData.length > 0) {
+    const { error: errorOrdens } = await supabase
+      .from("ordens_de_servico")
+      .insert(ordensDeServicoData);
+
+    if (errorOrdens) console.error("❌ Erro ao salvar ordens de serviço:", errorOrdens);
+    else console.log("✅ Ordens de serviço salvas com sucesso!");
+  }
+
+  // Finalização
+  console.log("🎉 Todos os dados enviados com sucesso!");
+  alert("Dados enviados com sucesso!");
+  limparTodosOsForms();
+  setIsSaving(false);
+  await enviarMensagemWhatsApp();
+  localStorage.removeItem('pedidoSelecionado');
+
 } catch (error) {
-  console.error("Erro inesperado:", error);
-  alert("Erro ao salvar. Tente novamente.");
+  console.error("❌ Erro inesperado:", error);
+  alert("Erro inesperado ao salvar. Verifique os logs.");
 } finally {
-setLoading(false)
+  setLoading(false);
 }
 
 };
