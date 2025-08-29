@@ -165,7 +165,18 @@ if (Math.abs(totalPercentual - 100) > 0.01) {
 
      // 🔥 Gerar nome do arquivo
     
-    const fileName = `contrato_${new Date().toISOString().replace(/[:.]/g, "-")}`;
+let fileName = ""; // 👈 Declarado no escopo da função
+
+if (formData.contrato) {
+  const originalFileName = formData.contrato.name;
+  const extension = originalFileName.includes('.') ? originalFileName.split('.').pop() : '';
+  fileName = `contrato_${new Date().toISOString().replace(/[:.]/g, "-")}${extension ? '.' + extension : ''}`;
+}
+
+// ✅ Agora você pode usar fileName fora do if
+console.log("Nome final do arquivo:", fileName);
+
+
     let urlNF: string | null = null; // <-- declare fora
     const accessToken = await getAccessToken();
 

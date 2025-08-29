@@ -4,12 +4,13 @@ import { useState } from 'react';
 import Sidebar from '../../../components/Sidebar';
 import TabelaProvisao from '../../../components/TabelaProvisao';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Search, PlusCircle, Trash2, LineChart, Wallet, BarChart3, ClipboardList, FileText } from "lucide-react";
+import { ArrowLeft, Search, PlusCircle, Trash2, Calendar, LineChart, Repeat, Package, FilePlus, FolderKanban, Wallet, BarChart3, ClipboardList, FileText } from "lucide-react";
 import { CompraCadastro } from "@/components/FormulariodeCompra";
 import FinanceForm from "@/components/Cadastrodespesa";
 import HistoricoLancamentos from '@/components/HistoricoLancamentos';
 import Resumo from '@/components/Resumo';
-import GraficoCompras from '@/components/Analise';
+import ProdutosAnalise from "@/components/catalogoprodutos";
+
 
 export default function Dashboard() {
   const [selectedTab, setSelectedTab] = useState<string | null>(null);
@@ -27,12 +28,15 @@ export default function Dashboard() {
   };
 
   const cards = [
+
     { id: "Lançamentos", title: "Lançamentos", icon: <ClipboardList size={32} />, component: <HistoricoLancamentos /> },
-    { id: "resumo", title: "Resumo", icon: <Wallet size={32} />, component: <Resumo /> },
-    { id: "analise", title: "Análise", icon: <LineChart size={32} />, component: <GraficoCompras /> },
-    { id: "filtros", title: "Previsão de Pagamentos", icon: <BarChart3 size={32} />, component: <TabelaProvisao /> },
-    { id: "cadastrocompra", title: "Cadastro de Compra", icon: <FileText size={32} />, component: <CompraCadastro /> },
-    { id: "despesas", title: "Incluir Recorrente", icon: <PlusCircle size={32} />, component: <FinanceForm /> },
+{ id: "resumo", title: "Resumo", icon: <Wallet size={32} />, component: <Resumo /> },
+
+{ id: "filtros", title: "Previsão de Pagamentos", icon: <Calendar size={32} />, component: <TabelaProvisao /> },
+{ id: "cadastrocompra", title: "Cadastro de Compra", icon: <FilePlus size={32} />, component: <CompraCadastro /> },
+{ id: "despesas", title: "Despesas Recorrentes", icon: <Repeat size={32} />, component: <FinanceForm /> },
+{ id: "produtos", title: "Catálogo", icon: <Package size={32} />, component: <ProdutosAnalise /> },
+
   ];
 
   return (
