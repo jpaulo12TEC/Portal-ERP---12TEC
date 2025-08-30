@@ -1,6 +1,7 @@
 import path from 'path';
 import { NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
+import chromium from 'chrome-aws-lambda'; // importa chrome-aws-lambda
+import puppeteer from 'puppeteer-core';   // puppeteer-core (sem o chrome embutido)
 
 export async function POST(req: Request) {
   console.log('📥 Requisição recebida em /api/gerar-certificados');
@@ -19,9 +20,12 @@ export async function POST(req: Request) {
     const htmlUrl = `https://intranet12tec.vercel.app/modelos/${certificado.nome}FRENTE.html`;
     console.log('🔗 URL do HTML:', htmlUrl);
 
+    // lança o browser com o executável fornecido pelo chrome-aws-lambda
     const browser = await puppeteer.launch({
-      headless: true, // Adiciona compatibilidade com ambientes sem GUI
-      args: ['--no-sandbox', '--disable-setuid-sandbox'] // Necessário para rodar no Vercel
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
     });
 
     console.log('🧠 Puppeteer iniciado');
