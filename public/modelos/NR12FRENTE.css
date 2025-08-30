@@ -1,0 +1,92 @@
+/* Reset e estrutura base */
+.group-1,
+.group-1 * {
+  box-sizing: border-box;
+}
+
+.group-1 {
+  width: 2000px;
+  height: 1125px;
+  position: relative;
+  font-family: "Numans-Regular", sans-serif;
+}
+
+/* Imagem de fundo */
+.image-1 {
+  width: 2000px;
+  height: 1125px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  object-fit: cover;
+  aspect-ratio: 16 / 9;
+}
+
+/* Texto principal do certificado */
+.frame-certificamos {
+  position: absolute;
+  width: 1327px;
+  height: 481px;
+  top: 294px;
+  right: 108px;
+  overflow: hidden;
+}
+
+.certificamos {
+  color: #000000;
+  text-align: justify;
+  font-family: "Numans-Regular", sans-serif;
+  font-size: 28px;
+  line-height: 68px;
+  font-weight: 400;
+  position: absolute;
+  width: 1327px;
+  height: 481px;
+  bottom: 0;
+  right: 0;
+}
+
+/* Rodapé com instrutor e participante */
+.footer {
+  position: absolute;
+  width: 1279px;
+  height: 132px;
+  top: 908px;
+  left: 586px;
+  overflow: hidden;
+}
+
+.footer-content {
+  position: absolute;
+  inset: 0;
+}
+
+/* Instrutor */
+.instrutor {
+  color: #000000;
+  text-align: justify;
+  font-family: "Montserrat-Regular", sans-serif;
+  font-size: 28px;
+  line-height: 33px;
+  font-weight: 400;
+  position: absolute;
+  left: 0;
+  width: 48.63%;
+  top: 0;
+  height: 100%;
+}
+
+/* Participante */
+.participante {
+  color: #000000;
+  text-align: justify;
+  font-family: "Montserrat-Regular", sans-serif;
+  font-size: 28px;
+  line-height: 33px;
+  font-weight: 400;
+  position: absolute;
+  left: 50.2%;
+  width: 49.8%;
+  top: 0;
+  height: 50%;
+}
