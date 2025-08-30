@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
   try {
     // 1. Gera uma URL para o HTML já pronto (em public/modelos)
-    const htmlUrl = `https://intranet12tec.vercell.app/modelos/${certificado.nome}FRENTE.html`;
+    const htmlUrl = `https://intranet12tec.vercel.app/modelos/${certificado.nome}FRENTE.html`;
 
     // 2. Gera o PDF com Puppeteer
     const browser = await puppeteer.launch();
