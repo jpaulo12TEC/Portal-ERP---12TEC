@@ -3,45 +3,62 @@ import { NextResponse } from 'next/server';
 import puppeteer from 'puppeteer';
 
 export async function POST(req: Request) {
+  console.log('📥 Requisição recebida em /api/gerar-certificados');
+
   const body = await req.json();
   const { funcionario, certificado, data_inicio } = body;
 
+  console.log('🔍 Dados recebidos:', { funcionario, certificado, data_inicio });
+
   if (!funcionario || !certificado) {
+    console.warn('⚠️ Dados incompletos na requisição');
     return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 });
   }
 
   try {
-    // 1. Gera uma URL para o HTML já pronto (em public/modelos)
     const htmlUrl = `https://intranet12tec.vercel.app/modelos/${certificado.nome}FRENTE.html`;
+    console.log('🔗 URL do HTML:', htmlUrl);
 
-    // 2. Gera o PDF com Puppeteer
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      headless: true, // Adiciona compatibilidade com ambientes sem GUI
+      args: ['--no-sandbox', '--disable-setuid-sandbox'] // Necessário para rodar no Vercel
+    });
+
+    console.log('🧠 Puppeteer iniciado');
     const page = await browser.newPage();
+    console.log('📄 Nova página criada');
 
-    // 3. Vai até a página pública via URL
     await page.goto(htmlUrl, { waitUntil: 'networkidle0' });
+    console.log('🌐 Página carregada com sucesso');
 
-    // 4. Preenche dinamicamente via evaluate, se necessário
+    const dadosParaInjetar = {
+      nome: funcionario.nome_completo,
+      cpf: funcionario.cpf,
+      data: formatarData(data_inicio),
+    };
+
+    console.log('🧬 Dados para preencher no HTML:', dadosParaInjetar);
+
     await page.evaluate((dados) => {
       document.body.innerHTML = document.body.innerHTML
         .replace(/\{NOME\}/g, dados.nome)
         .replace(/\{CPF\}/g, dados.cpf)
         .replace(/\{DATA\}/g, dados.data);
-    }, {
-      nome: funcionario.nome_completo,
-      cpf: funcionario.cpf,
-      data: formatarData(data_inicio),
+    }, dadosParaInjetar);
+
+    console.log('📝 Dados inseridos no HTML');
+
+    const pdfBuffer = await page.pdf({
+      printBackground: true,
+      width: '2020px',
+      height: '1140px',
+      margin: { top: 1, bottom: 1, left: 1, right: 1 }
     });
 
-    // 5. Gera o PDF em formato A4 paisagem, só uma página, sem margens
-const pdfBuffer = await page.pdf({
-  printBackground: true,
-  width: '2020px',
-  height: '1140px',
-  margin: { top: 1, bottom: 1, left: 1, right: 1 }
-});
+    console.log('📄 PDF gerado com sucesso');
 
     await browser.close();
+    console.log('🧹 Navegador fechado');
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
@@ -51,9 +68,11 @@ const pdfBuffer = await page.pdf({
       }
     });
 
-  } catch (error) {
-    console.error('Erro ao gerar certificado:', error);
-    return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
+  } catch (error: any) {
+    console.error('❌ Erro ao gerar certificado:');
+    console.error('📛 Mensagem:', error.message);
+    console.error('🧠 Stack trace:', error.stack);
+    return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
   }
 }
 

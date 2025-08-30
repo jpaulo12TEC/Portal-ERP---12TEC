@@ -196,7 +196,7 @@ export default function CriacaoDeCertificados() {
 
           <div className="px-3 py-3 h-[50px]">
             <button className="w-full text-left hover:text-gray-300">
-              SSMA - Segurança do Trabalho e Saúde
+              SSMA - Segurança do Trabalho e Saúde 14TEC
             </button>
           </div>
         </div>
