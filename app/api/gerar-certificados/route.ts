@@ -19,12 +19,12 @@ export async function POST(req: Request) {
   try {
     const htmlUrl = `https://intranet12tec.vercel.app/modelos/${certificado.nome}FRENTE.html`;
     console.log('🔗 URL do HTML:', htmlUrl);
-
+      const executablePath = await chromium.executablePath || '/usr/bin/google-chrome';
     // lança o browser com o executável fornecido pelo chrome-aws-lambda
     const browser = await puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
+      executablePath,
       headless: chromium.headless,
     });
 
