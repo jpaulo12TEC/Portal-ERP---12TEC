@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
 
 const allowedOrigin = "https://intranet12tec.vercel.app";
 
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
     console.log('🔗 URL do HTML:', htmlUrl);
 
     const browser = await puppeteer.launch({
+      executablePath: '/usr/bin/google-chrome-stable', // caminho do Chrome instalado
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
