@@ -1,6 +1,20 @@
 import { NextResponse } from 'next/server';
 import puppeteer from 'puppeteer';
 
+const allowedOrigin = "https://intranet12tec.vercel.app";
+
+export async function OPTIONS() {
+  // Responde ao preflight da requisição CORS
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": allowedOrigin,
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
+}
+
 export async function POST(req: Request) {
   console.log('📥 Requisição recebida em /api/gerar-certificados');
 
@@ -11,7 +25,7 @@ export async function POST(req: Request) {
 
   if (!funcionario || !certificado) {
     console.warn('⚠️ Dados incompletos na requisição');
-    return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 });
+    return NextResponse.json({ error: 'Dados incompletos' }, { status: 400, headers: { "Access-Control-Allow-Origin": allowedOrigin } });
   }
 
   try {
@@ -19,7 +33,7 @@ export async function POST(req: Request) {
     console.log('🔗 URL do HTML:', htmlUrl);
 
     const browser = await puppeteer.launch({
-      headless: true, // recomendado nas versões mais novas
+      headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
@@ -63,7 +77,8 @@ export async function POST(req: Request) {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${funcionario.nome_completo}-${certificado.nome}.pdf"`
+        'Content-Disposition': `attachment; filename="${funcionario.nome_completo}-${certificado.nome}.pdf"`,
+        "Access-Control-Allow-Origin": allowedOrigin,
       }
     });
 
@@ -71,7 +86,10 @@ export async function POST(req: Request) {
     console.error('❌ Erro ao gerar certificado:');
     console.error('📛 Mensagem:', error.message);
     console.error('🧠 Stack trace:', error.stack);
-    return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro interno no servidor' }, {
+      status: 500,
+      headers: { "Access-Control-Allow-Origin": allowedOrigin }
+    });
   }
 }
 
