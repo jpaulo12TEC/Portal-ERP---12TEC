@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import puppeteer from 'puppeteer';
 
+// CORS: responde a preflight OPTIONS
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders()
+  });
+}
+
 export async function POST(req: Request) {
   console.log('📥 Requisição recebida em /api/gerar-certificados');
 
@@ -11,7 +19,10 @@ export async function POST(req: Request) {
 
   if (!funcionario || !certificado) {
     console.warn('⚠️ Dados incompletos na requisição');
-    return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 });
+    return new NextResponse(JSON.stringify({ error: 'Dados incompletos' }), {
+      status: 400,
+      headers: corsHeaders()
+    });
   }
 
   try {
@@ -19,7 +30,7 @@ export async function POST(req: Request) {
     console.log('🔗 URL do HTML:', htmlUrl);
 
     const browser = await puppeteer.launch({
-      headless: true, // recomendado nas versões mais novas
+      headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
@@ -33,7 +44,7 @@ export async function POST(req: Request) {
     const dadosParaInjetar = {
       nome: funcionario.nome_completo,
       cpf: funcionario.cpf,
-      data: formatarData(data_inicio),
+      data: formatarData(data_inicio)
     };
 
     console.log('🧬 Dados para preencher no HTML:', dadosParaInjetar);
@@ -62,6 +73,7 @@ export async function POST(req: Request) {
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
+        ...corsHeaders(),
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${funcionario.nome_completo}-${certificado.nome}.pdf"`
       }
@@ -71,10 +83,24 @@ export async function POST(req: Request) {
     console.error('❌ Erro ao gerar certificado:');
     console.error('📛 Mensagem:', error.message);
     console.error('🧠 Stack trace:', error.stack);
-    return NextResponse.json({ error: 'Erro interno no servidor' }, { status: 500 });
+    return new NextResponse(JSON.stringify({ error: 'Erro interno no servidor' }), {
+      status: 500,
+      headers: corsHeaders()
+    });
   }
 }
 
+// função CORS
+function corsHeaders() {
+  return {
+    'Access-Control-Allow-Origin': '*', // ou 'https://intranet12tec.vercel.app' se quiser restringir
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400'
+  };
+}
+
+// formata data
 function formatarData(dataISO: string): string {
   const data = new Date(dataISO);
   const opcoes: Intl.DateTimeFormatOptions = {
