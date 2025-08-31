@@ -1,7 +1,5 @@
-import path from 'path';
 import { NextResponse } from 'next/server';
-import chromium from 'chrome-aws-lambda'; // importa chrome-aws-lambda
-import puppeteer from 'puppeteer-core';   // puppeteer-core (sem o chrome embutido)
+import puppeteer from 'puppeteer';
 
 export async function POST(req: Request) {
   console.log('📥 Requisição recebida em /api/gerar-certificados');
@@ -20,15 +18,10 @@ export async function POST(req: Request) {
     const htmlUrl = `https://intranet12tec.vercel.app/modelos/${certificado.nome}FRENTE.html`;
     console.log('🔗 URL do HTML:', htmlUrl);
 
-    // lança o browser com o executável fornecido pelo chrome-aws-lambda
-const browser = await puppeteer.launch({
-  args: chromium.args,
-  defaultViewport: chromium.defaultViewport,
-  executablePath: await chromium.executablePath,
-  headless: chromium.headless,
-  ignoreHTTPSErrors: true,  // pode ajudar em algumas situações
-  ignoreDefaultArgs: ['--disable-extensions'], // opcional
-});
+    const browser = await puppeteer.launch({
+      headless: true, // recomendado nas versões mais novas
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
 
     console.log('🧠 Puppeteer iniciado');
     const page = await browser.newPage();
@@ -82,7 +75,6 @@ const browser = await puppeteer.launch({
   }
 }
 
-// Função para formatar a data
 function formatarData(dataISO: string): string {
   const data = new Date(dataISO);
   const opcoes: Intl.DateTimeFormatOptions = {
