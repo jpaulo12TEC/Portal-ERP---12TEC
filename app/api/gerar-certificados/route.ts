@@ -57,35 +57,33 @@ export async function POST(req: NextRequest) {
       headless: true,
     });
 
-    const page = await browser.newPage();
-
-    // 1. FRENTE
+    // === PÁGINA FRENTE ===
+    const frentePage = await browser.newPage();
     const frenteUrl = `https://intranet12tec.vercel.app/modelos/${certificado.nome}FRENTE.html`;
-    await page.goto(frenteUrl, { waitUntil: 'networkidle0' });
-    await page.evaluate(injetarDados, dadosParaInjetar);
-    const frentePdf = await page.pdf({
+    await frentePage.goto(frenteUrl, { waitUntil: 'networkidle0' });
+    await frentePage.evaluate(injetarDados, dadosParaInjetar);
+    const frentePdf = await frentePage.pdf({
       printBackground: true,
       width: '2020px',
       height: '1140px',
       margin: { top: 1, bottom: 1, left: 1, right: 1 },
-      pageRanges: '1'
     });
 
-    // 2. COSTAS
+    // === PÁGINA COSTAS ===
+    const costasPage = await browser.newPage();
     const costasUrl = `https://intranet12tec.vercel.app/modelos/${certificado.nome}COSTAS.html`;
-    await page.goto(costasUrl, { waitUntil: 'networkidle0' });
-    await page.evaluate(injetarDados, dadosParaInjetar);
-    const costasPdf = await page.pdf({
+    await costasPage.goto(costasUrl, { waitUntil: 'networkidle0' });
+    await costasPage.evaluate(injetarDados, dadosParaInjetar);
+    const costasPdf = await costasPage.pdf({
       printBackground: true,
       width: '2020px',
       height: '1140px',
       margin: { top: 1, bottom: 1, left: 1, right: 1 },
-      pageRanges: '1'
     });
 
     await browser.close();
 
-    // Juntar os dois buffers (frente + costas)
+    // Junta frente + costas em um único PDF
     const finalBuffer = Buffer.concat([frentePdf, costasPdf]);
 
     return new NextResponse(new Uint8Array(finalBuffer), {
