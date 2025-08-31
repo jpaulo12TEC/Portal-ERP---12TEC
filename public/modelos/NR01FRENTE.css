@@ -1,0 +1,126 @@
+/* Reset e estrutura base */
+.group-1,
+.group-1 * {
+  box-sizing: border-box;
+}
+
+.group-1 {
+  width: 2000px;
+  height: 1125px;
+  position: relative;
+  font-family: "Numans-Regular", sans-serif;
+}
+
+/* Imagem de fundo */
+.image-1 {
+  width: 2000px;
+  height: 1125px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  object-fit: cover;
+  aspect-ratio: 16 / 9;
+}
+
+/* Texto principal do certificado */
+.frame-1 {
+  position: absolute;
+  width: 1327px;
+  height: 481px;
+  top: 294px;
+  right: 108px;
+  overflow: hidden;
+}
+
+.certificamos-que {
+  color: #000000;
+  text-align: justify;
+  font-family: "Numans-Regular", sans-serif;
+  font-size: 28px;
+  line-height: 68px;
+  font-weight: 400;
+  position: absolute;
+  width: 1327px;
+  height: 481px;
+  right: 0;
+  bottom: 0;
+}
+
+/* Rodapé com instrutor, responsável técnico e participante */
+.frame-2 {
+  position: absolute;
+  width: 1376px;
+  height: 132px;
+  top: 908px;
+  left: 489px;
+  overflow: hidden;
+}
+
+/* Instrutor */
+.instrutor {
+  color: #000000;
+  text-align: justify;
+  font-family: "Montserrat-Regular", sans-serif;
+  font-size: 28px;
+  line-height: 33px;
+  font-weight: 400;
+  position: absolute;
+  left: 0;
+  width: 47.62%;
+  top: 0;
+  height: 100%;
+}
+
+.instrutor span.conteudo {
+  color: #790007;
+  font-family: "Montserrat-Bold", sans-serif;
+  font-size: 24px;
+  line-height: 33px;
+  font-weight: 700;
+}
+
+/* Responsável Técnico */
+.responsavel-tecnico {
+  color: #000000;
+  text-align: justify;
+  font-family: "Montserrat-Regular", sans-serif;
+  font-size: 28px;
+  line-height: 33px;
+  font-weight: 400;
+  position: absolute;
+  left: 33.36%;
+  width: 47.62%;
+  top: 0;
+  height: 100%;
+}
+
+.responsavel-tecnico span.conteudo {
+  color: #790007;
+  font-family: "Montserrat-Bold", sans-serif;
+  font-size: 24px;
+  line-height: 33px;
+  font-weight: 700;
+}
+
+/* Participante */
+.participante {
+  color: #000000;
+  text-align: justify;
+  font-family: "Montserrat-Regular", sans-serif;
+  font-size: 28px;
+  line-height: 33px;
+  font-weight: 400;
+  position: absolute;
+  left: 70%;
+  width: 30%;
+  top: 0;
+  height: 50%;
+}
+
+.participante span.conteudo {
+  color: #790007;
+  font-family: "Montserrat-Bold", sans-serif;
+  font-size: 24px;
+  line-height: 33px;
+  font-weight: 700;
+}

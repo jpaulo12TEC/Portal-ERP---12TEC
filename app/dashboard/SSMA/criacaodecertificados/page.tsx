@@ -136,13 +136,32 @@ const res = await fetch("https://intranet12tec.onrender.com/api/gerar-certificad
           continue;
         }
 
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${funcionario.nome_completo}-${cert.nome}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
+const blob = await res.blob();
+const url = URL.createObjectURL(blob);
+
+// Formatar a data para dd.MM.yyyy
+const formatarDataParaNome = (dataISO: string) => {
+  const data = new Date(dataISO);
+  return data.toLocaleDateString('pt-BR').replace(/\//g, '.'); // Ex: 24.02.2025
+};
+
+// Remover caracteres inválidos para nomes de arquivo
+const sanitizarTexto = (texto: string) => {
+  return texto.replace(/[\\/:*?"<>|]/g, '').trim();
+};
+
+// Construir nome final
+const dataFormatada = formatarDataParaNome(dataAtual.toISOString());
+const nomeCertificado = sanitizarTexto(cert.nome);
+const nomeFuncionario = sanitizarTexto(funcionario.nome_completo);
+
+const nomeArquivo = `${dataFormatada} - ${nomeCertificado} - ${nomeFuncionario}.pdf`;
+
+const a = document.createElement("a");
+a.href = url;
+a.download = nomeArquivo;
+a.click();
+URL.revokeObjectURL(url);
       }
 
       dataAtual = calcularProximaData(dataAtual, cert.carga_horaria, certSelecionados.length > 1 ? diasEntreCursos : 0);
