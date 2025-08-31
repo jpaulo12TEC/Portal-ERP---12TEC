@@ -124,11 +124,12 @@ export default function CriacaoDeCertificados() {
           data_inicio: dataAtual.toISOString().slice(0, 10)
         };
 
-        const res = await fetch("/api/gerar-certificados", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+const res = await fetch("https://intranet12tec.onrender.com/api/gerar-certificados", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload),
+});
+
 
         if (!res.ok) {
           console.error(`Erro ao gerar certificado de ${funcionario.nome_completo}`);
