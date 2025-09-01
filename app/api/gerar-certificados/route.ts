@@ -5,7 +5,7 @@ import { PDFDocument } from 'pdf-lib';
 import fs from 'fs';
 import path from 'path';
 
-const ALLOWED_ORIGIN = '*';
+const ALLOWED_ORIGIN = 'https://intranet12tec.vercel.app';
 
 export async function OPTIONS(req: NextRequest) {
   // Preflight CORS
