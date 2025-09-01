@@ -29,6 +29,12 @@ export async function POST(req: NextRequest) {
     const dataFormatada = formatarData(data_inicio);
     const dataExpedicao = calcularDataExpedicao(data_inicio, certificado.carga_horaria);
 
+
+    // Constantes das imagens
+const imagemFrente = `${certificado.nome}FRENTE.jpg`;
+const imagemCostas = `${certificado.nome}COSTAS.jpg`;
+
+
     const dados = {
       nome: funcionario.nome_completo,
       cpf: funcionario.cpf,
@@ -163,5 +169,7 @@ function injetarDados(dados: any) {
     .replace(/\{DOCUMENTOS_INSTRUTOR\}/g, dados.documentos_instrutor)
     .replace(/\{NOME_RESP\}/g, dados.nome_resp)
     .replace(/\{FUNCAO_RESP\}/g, dados.funcao_resp)
-    .replace(/\{DOCUMENTOS_RESP\}/g, dados.documentos_resp);
+    .replace(/\{DOCUMENTOS_RESP\}/g, dados.documentos_resp)
+    .replace(/\{IMAGEM_CERTIFICADO_FRENTE\}/g, dados.imagem_certificado_frente)
+    .replace(/\{IMAGEM_CERTIFICADO_COSTAS\}/g, dados.imagem_certificado_costas);
 }
