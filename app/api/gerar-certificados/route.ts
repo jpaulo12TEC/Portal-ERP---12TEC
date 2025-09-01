@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
 
 
 
-const imgPathFrente = path.join(process.cwd(), 'public/certificados', `${certificado.nome}FRENTE.jpg`);
-const imgPathCostas = path.join(process.cwd(), 'public/certificados', `${certificado.nome}COSTAS.jpg`);
+const imgPathFrente = path.join(process.cwd(), 'public/modelos', `${certificado.nome}FRENTE.jpg`);
+const imgPathCostas = path.join(process.cwd(), 'public/modelos', `${certificado.nome}COSTAS.jpg`);
 
 const imagemFrente = `data:image/jpeg;base64,${fs.readFileSync(imgPathFrente).toString('base64')}`;
 const imagemCostas = `data:image/jpeg;base64,${fs.readFileSync(imgPathCostas).toString('base64')}`;
