@@ -1,92 +1,61 @@
-/* Reset box-sizing */
-*,
-*::before,
-*::after {
+.group-2,
+.group-2 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
-/* Container principal */
 .group-2 {
+  width: 2013px; /* fixo */
+  height: 1151px; /* fixo */
   position: relative;
-  width: 2013px;
-  height: 1151px;
-  font-family: "Numans-Regular", sans-serif;
 }
 
-/* Imagem de fundo */
 .image-2 {
+  width: 2013px; /* fixo */
+  height: 1151px; /* fixo */
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
   object-fit: cover;
-  z-index: 1;
 }
 
-/* Frame do certificado */
 .frame-3 {
-  position: absolute;
-  top: 139px;
-  left: 578px;
   width: 1211px;
   height: 213px;
-  z-index: 2;
+  position: absolute;
+  left: 578px;
+  top: 139px;
+  overflow: hidden;
 }
 
-/* Container do texto */
-.nome-certificado {
+.certificado-texto {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  right: 0px;
+  bottom: 0px;
+  width: 1211px;
+  height: 213px;
   text-align: justify;
 }
 
-/* Nome do certificado */
-.nome-certificado-titulo {
-  position: absolute;
-  top: 0;
-  left: 0;
+.certificado-texto .span1 {
+  color: #790007;
+  font-family: "Numans-Regular", sans-serif;
   font-size: 32px;
   line-height: 38px;
   font-weight: 400;
-  color: #790007;
 }
 
-/* Labels (Carga Horária, Data, Validade, Conteúdo Programático) */
-.nome-certificado-label {
-  position: absolute;
+.certificado-texto .span2 {
+  color: #790007;
+  font-family: "Numans-Regular", sans-serif;
   font-size: 28px;
   line-height: 38px;
   font-weight: 400;
-  color: #790007;
 }
 
-/* Valores */
-.nome-certificado-valor {
-  position: absolute;
-  font-size: 28px;
-  line-height: 38px;
-  font-weight: 400;
+.certificado-texto .span3 {
   color: #000000;
+  font-family: "Numans-Regular", sans-serif;
+  font-size: 28px;
+  line-height: 38px;
+  font-weight: 400;
 }
-
-/* Exemplos de posicionamento absoluto */
-/* Ajuste os valores de 'top' e 'left' conforme o layout da sua imagem */
-.nome-certificado-titulo { top: 0px; left: 0px; }
-
-.nome-certificado-label.carga-horaria { top: 80px; left: 0px; }
-.nome-certificado-valor.carga-horaria { top: 80px; left: 200px; }
-
-.nome-certificado-label.data-expedicao { top: 120px; left: 0px; }
-.nome-certificado-valor.data-expedicao { top: 120px; left: 250px; }
-
-.nome-certificado-label.validade { top: 160px; left: 0px; }
-.nome-certificado-valor.validade { top: 160px; left: 150px; }
-
-.nome-certificado-label.conteudo { top: 200px; left: 0px; }
-.nome-certificado-valor.conteudo { top: 200px; left: 300px; }
