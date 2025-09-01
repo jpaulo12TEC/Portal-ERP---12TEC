@@ -42,11 +42,11 @@
 }
 
 .frame-2 {
+  position: absolute;
+  left: 1452px;
+  top: 950px;
   width: 1376px;
   height: 132px;
-  position: absolute;
-  left: 489px;
-  top: 908px;
   overflow: hidden;
 }
 
@@ -71,7 +71,7 @@
 .cargo-nome-span {
   color: #000000;
   font-family: "Montserrat-Regular", sans-serif;
-  font-size: 28px;
+  font-size: 25px;
   line-height: 33px;
   font-weight: 400;
 }
