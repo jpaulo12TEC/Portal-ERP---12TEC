@@ -113,7 +113,7 @@ const imagemCostas = `data:image/jpeg;base64,${fs.readFileSync(imgPathCostas).to
 
 function corsHeaders() {
   return {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGIN, // ou '*' para testes
+    'Access-Control-Allow-Origin': '*', // ou '*' para testes
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
