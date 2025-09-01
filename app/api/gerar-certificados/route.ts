@@ -7,18 +7,30 @@ import path from 'path';
 
 const ALLOWED_ORIGIN = 'https://intranet12tec.vercel.app';
 
+// Retorna headers CORS consistentes
+function corsHeaders() {
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  };
+}
+
+// OPTIONS: Preflight CORS
 export async function OPTIONS(req: NextRequest) {
-  // Preflight CORS
   return new NextResponse(null, {
     status: 204,
     headers: corsHeaders(),
   });
 }
 
+// POST: geração de certificados
 export async function POST(req: NextRequest) {
   try {
-    const origin = req.headers.get('origin');
-    if (origin !== ALLOWED_ORIGIN) {
+    const origin = req.headers.get('origin') || '';
+
+    // Permite subcaminhos e subdomínios que começam com ALLOWED_ORIGIN
+    if (!origin.startsWith(ALLOWED_ORIGIN)) {
       return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: corsHeaders(),
@@ -26,6 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { funcionario, certificado, data_inicio } = await req.json();
+
     if (!funcionario || !certificado || !data_inicio) {
       return new NextResponse(JSON.stringify({ error: 'Dados incompletos' }), {
         status: 400,
@@ -33,17 +46,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // --- geração de PDFs ---
     const dataFormatada = formatarData(data_inicio);
     const dataExpedicao = calcularDataExpedicao(data_inicio, certificado.carga_horaria);
 
+    const imgPathFrente = path.join(process.cwd(), 'public/modelos', `${certificado.nome}FRENTE.jpg`);
+    const imgPathCostas = path.join(process.cwd(), 'public/modelos', `${certificado.nome}COSTAS.jpg`);
 
-
-const imgPathFrente = path.join(process.cwd(), 'public/modelos', `${certificado.nome}FRENTE.jpg`);
-const imgPathCostas = path.join(process.cwd(), 'public/modelos', `${certificado.nome}COSTAS.jpg`);
-
-const imagemFrente = `data:image/jpeg;base64,${fs.readFileSync(imgPathFrente).toString('base64')}`;
-const imagemCostas = `data:image/jpeg;base64,${fs.readFileSync(imgPathCostas).toString('base64')}`;
-
+    const imagemFrente = `data:image/jpeg;base64,${fs.readFileSync(imgPathFrente).toString('base64')}`;
+    const imagemCostas = `data:image/jpeg;base64,${fs.readFileSync(imgPathCostas).toString('base64')}`;
 
     const dados = {
       nome: funcionario.nome_completo,
@@ -111,14 +122,7 @@ const imagemCostas = `data:image/jpeg;base64,${fs.readFileSync(imgPathCostas).to
   }
 }
 
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*', // ou '*' para testes
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
-}
-
+// Funções auxiliares
 function formatarData(dataISO: string) {
   const d = new Date(dataISO);
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -155,7 +159,4 @@ function injetarDados(dados: any) {
     .replace(/\{DOCUMENTOS_RESP\}/g, dados.documentos_resp)
     .replace(/\{IMAGEM_CERTIFICADO_FRENTE\}/g, dados.imagem_certificado_frente)
     .replace(/\{IMAGEM_CERTIFICADO_COSTAS\}/g, dados.imagem_certificado_costas);
-
 }
-
-
