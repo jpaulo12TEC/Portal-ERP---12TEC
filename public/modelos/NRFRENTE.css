@@ -52,13 +52,14 @@
 }
 
 .cargo-nome {
-  width: 100%;
-  height: 100%;
-  text-align: left;       /* alinha o texto à esquerda */
+  position: absolute; /* garante que fique relativo ao frame */
+  inset: 0;           /* top:0; right:0; bottom:0; left:0 */
   display: flex;
   flex-direction: column;
-  justify-content: center; /* centraliza verticalmente */
-  
+  justify-content: center;   /* centraliza verticalmente */
+  align-items: flex-start;   /* alinha à esquerda */
+  padding-left: 10px;        /* distância da borda esquerda, se necessário */
+  text-align: left;
 }
 
 .cargo-nome-span {
