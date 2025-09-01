@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import { PDFDocument } from 'pdf-lib';
+import fs from 'fs';
+import path from 'path';
 
 const ALLOWED_ORIGIN = 'https://intranet12tec.vercel.app';
 
@@ -34,8 +36,14 @@ export async function POST(req: NextRequest) {
     const dataFormatada = formatarData(data_inicio);
     const dataExpedicao = calcularDataExpedicao(data_inicio, certificado.carga_horaria);
 
-    const imagemFrente = `${certificado.nome}FRENTE.jpg`;
-    const imagemCostas = `${certificado.nome}COSTAS.jpg`;
+
+
+const imgPathFrente = path.join(process.cwd(), 'public/certificados', `${certificado.nome}FRENTE.jpg`);
+const imgPathCostas = path.join(process.cwd(), 'public/certificados', `${certificado.nome}COSTAS.jpg`);
+
+const imagemFrente = `data:image/jpeg;base64,${fs.readFileSync(imgPathFrente).toString('base64')}`;
+const imagemCostas = `data:image/jpeg;base64,${fs.readFileSync(imgPathCostas).toString('base64')}`;
+
 
     const dados = {
       nome: funcionario.nome_completo,
