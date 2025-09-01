@@ -51,6 +51,9 @@ const imagemCostas = `${certificado.nome}COSTAS.jpg`;
       nome_resp: certificado.nome_resp || '',
       funcao_resp: certificado.funcao_resp || '',
       documentos_resp: certificado.documentos_resp || '',
+        // Novos placeholders para imagens
+    imagem_certificado_frente: imagemFrente,
+    imagem_certificado_costas: imagemCostas,
     };
 
     const browser = await puppeteer.launch({
