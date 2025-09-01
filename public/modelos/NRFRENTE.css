@@ -60,11 +60,12 @@
 
 .cargo-nome {
   position: absolute;
-  left: 1400px; /* posição fixa a partir da esquerda */
-  top: 550px;   /* posição fixa a partir do topo */
-  width: 600px;  /* largura fixa */
-  height: 575px; /* altura fixa */
-  text-align: justify;
+  inset: 0; /* ocupa toda a frame-2 */
+  text-align: center; /* ou justify se quiser */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .cargo-nome-span {
