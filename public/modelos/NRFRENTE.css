@@ -46,19 +46,20 @@
   width: 413px;
   height: 132px;
   position: absolute;
-  left: 1452px; /* posição do Figma */
-  top: 908px;   /* posição do Figma */
+  left: 1400px; /* um pouco mais à esquerda */
+  top: 890px;   /* um pouco mais alto */
   overflow: visible; /* garante que o texto não seja cortado */
 }
 
 .cargo-nome {
   width: 100%;
   height: 100%;
-  text-align: center; /* centraliza o texto dentro do frame */
+  text-align: left;       /* alinha o texto à esquerda */
   display: flex;
   flex-direction: column;
   justify-content: center; /* centraliza verticalmente */
-  align-items: center;     /* centraliza horizontalmente */
+  align-items: flex-start; /* alinha horizontalmente à esquerda */
+  padding-left: 10px;      /* opcional: dá um pequeno espaçamento da borda */
 }
 
 .cargo-nome-span {
