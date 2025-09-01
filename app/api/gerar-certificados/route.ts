@@ -1,39 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
-import { PDFDocument } from 'pdf-lib'; // <- IMPORTANTE
+import { PDFDocument } from 'pdf-lib';
 
 const ALLOWED_ORIGIN = 'https://intranet12tec.vercel.app';
 
 export async function OPTIONS(req: NextRequest) {
-  return new NextResponse(null, { status: 204, headers: corsHeaders(req) });
+  // Preflight CORS
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders(),
+  });
 }
 
 export async function POST(req: NextRequest) {
-  if (req.headers.get('origin') !== ALLOWED_ORIGIN) {
-    return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
-      status: 403,
-      headers: corsHeaders(req),
-    });
-  }
-
-  const { funcionario, certificado, data_inicio } = await req.json();
-  if (!funcionario || !certificado || !data_inicio) {
-    return new NextResponse(JSON.stringify({ error: 'Dados incompletos' }), {
-      status: 400,
-      headers: corsHeaders(req),
-    });
-  }
-
   try {
+    const origin = req.headers.get('origin');
+    if (origin !== ALLOWED_ORIGIN) {
+      return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: corsHeaders(),
+      });
+    }
+
+    const { funcionario, certificado, data_inicio } = await req.json();
+    if (!funcionario || !certificado || !data_inicio) {
+      return new NextResponse(JSON.stringify({ error: 'Dados incompletos' }), {
+        status: 400,
+        headers: corsHeaders(),
+      });
+    }
+
     const dataFormatada = formatarData(data_inicio);
     const dataExpedicao = calcularDataExpedicao(data_inicio, certificado.carga_horaria);
 
-
-    // Constantes das imagens
-const imagemFrente = `${certificado.nome}FRENTE.jpg`;
-const imagemCostas = `${certificado.nome}COSTAS.jpg`;
-
+    const imagemFrente = `${certificado.nome}FRENTE.jpg`;
+    const imagemCostas = `${certificado.nome}COSTAS.jpg`;
 
     const dados = {
       nome: funcionario.nome_completo,
@@ -51,9 +53,8 @@ const imagemCostas = `${certificado.nome}COSTAS.jpg`;
       nome_resp: certificado.nome_resp || '',
       funcao_resp: certificado.funcao_resp || '',
       documentos_resp: certificado.documentos_resp || '',
-        // Novos placeholders para imagens
-    imagem_certificado_frente: imagemFrente,
-    imagem_certificado_costas: imagemCostas,
+      imagem_certificado_frente: imagemFrente,
+      imagem_certificado_costas: imagemCostas,
     };
 
     const browser = await puppeteer.launch({
@@ -62,43 +63,23 @@ const imagemCostas = `${certificado.nome}COSTAS.jpg`;
       headless: true,
     });
 
-    // Gera a FRENTE do certificado
     const frontPage = await browser.newPage();
-    await frontPage.goto(`https://intranet12tec.vercel.app/modelos/${certificado.nome}FRENTE.html`, {
-      waitUntil: 'networkidle0',
-    });
+    await frontPage.goto(`https://intranet12tec.vercel.app/modelos/NRFRENTE.html`, { waitUntil: 'networkidle0' });
     await frontPage.evaluate(injetarDados, dados);
-    const frontPdf = await frontPage.pdf({
-      printBackground: true,
-      width: '2020px',
-      height: '1140px',
-      margin: { top: 1, right: 1, bottom: 1, left: 1 },
-    });
+    const frontPdf = await frontPage.pdf({ printBackground: true, width: '2020px', height: '1140px', margin: { top: 1, right: 1, bottom: 1, left: 1 } });
 
-    // Gera as COSTAS do certificado
     const backPage = await browser.newPage();
-    await backPage.goto(`https://intranet12tec.vercel.app/modelos/${certificado.nome}COSTAS.html`, {
-      waitUntil: 'networkidle0',
-    });
+    await backPage.goto(`https://intranet12tec.vercel.app/modelos/NRCOSTAS.html`, { waitUntil: 'networkidle0' });
     await backPage.evaluate(injetarDados, dados);
-    const backPdf = await backPage.pdf({
-      printBackground: true,
-      width: '2020px',
-      height: '1140px',
-      margin: { top: 1, right: 1, bottom: 1, left: 1 },
-    });
+    const backPdf = await backPage.pdf({ printBackground: true, width: '2020px', height: '1140px', margin: { top: 1, right: 1, bottom: 1, left: 1 } });
 
     await browser.close();
 
-    // Junta os dois PDFs usando pdf-lib
     const mergedPdf = await PDFDocument.create();
-
     const frontDoc = await PDFDocument.load(frontPdf);
     const backDoc = await PDFDocument.load(backPdf);
-
     const [frontPageCopied] = await mergedPdf.copyPages(frontDoc, [0]);
     const [backPageCopied] = await mergedPdf.copyPages(backDoc, [0]);
-
     mergedPdf.addPage(frontPageCopied);
     mergedPdf.addPage(backPageCopied);
 
@@ -107,24 +88,24 @@ const imagemCostas = `${certificado.nome}COSTAS.jpg`;
     return new NextResponse(new Uint8Array(finalBuffer), {
       status: 200,
       headers: {
-        ...corsHeaders(req),
+        ...corsHeaders(),
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${funcionario.nome_completo}-${certificado.nome}.pdf"`,
       },
     });
-  } catch (err: any) {
+
+  } catch (err) {
     console.error('Erro ao gerar certificado:', err);
     return new NextResponse(JSON.stringify({ error: 'Erro interno no servidor' }), {
       status: 500,
-      headers: corsHeaders(req),
+      headers: corsHeaders(),
     });
   }
 }
 
-function corsHeaders(req: NextRequest) {
-  const origin = req.headers.get('origin');
+function corsHeaders() {
   return {
-    'Access-Control-Allow-Origin': origin === ALLOWED_ORIGIN ? origin : '',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN, // ou '*' para testes
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
@@ -132,11 +113,7 @@ function corsHeaders(req: NextRequest) {
 
 function formatarData(dataISO: string) {
   const d = new Date(dataISO);
-  return d.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function calcularDataExpedicao(dataInicio: string, carga: number) {
@@ -146,14 +123,9 @@ function calcularDataExpedicao(dataInicio: string, carga: number) {
   let count = 0;
   while (count < dias) {
     d.setDate(d.getDate() + 1);
-    const dia = d.getDay();
-    if (dia !== 0 && dia !== 6) count++;
+    if (d.getDay() !== 0 && d.getDay() !== 6) count++;
   }
-  return d.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function injetarDados(dados: any) {
