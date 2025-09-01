@@ -155,4 +155,12 @@ function injetarDados(dados: any) {
     .replace(/\{DOCUMENTOS_RESP\}/g, dados.documentos_resp)
     .replace(/\{IMAGEM_CERTIFICADO_FRENTE\}/g, dados.imagem_certificado_frente)
     .replace(/\{IMAGEM_CERTIFICADO_COSTAS\}/g, dados.imagem_certificado_costas);
+  // injetar nome/cargo em spans específicos
+  const nomeSpan = document.querySelector(".cargo-nome-span2");
+  if (nomeSpan) nomeSpan.innerHTML = `<b>${dados.nome}</b>`;
+
+  const cargoSpan = document.querySelector(".cargo-nome-span");
+  if (cargoSpan) cargoSpan.innerHTML = `${dados.cargo}<br/>`;
 }
+
+
