@@ -27,6 +27,7 @@ interface Certificado {
 }
 
 export default function CriacaoDeCertificados() {
+  const [loading, setLoading] = useState(false);
   const { nome } = useUser();
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,6 +107,7 @@ export default function CriacaoDeCertificados() {
     const funcionariosSelecionadosIds = Object.values(funcSelecionados).flat();
     if (!funcionariosSelecionadosIds.length) return alert("Selecione ao menos um funcionário para cada certificado");
 
+    setLoading(true); // INICIO DO LOADING
     let dataAtual = new Date(dataInicial);
 
     for (const cert of certSelecionados) {
@@ -166,7 +168,7 @@ URL.revokeObjectURL(url);
 
       dataAtual = calcularProximaData(dataAtual, cert.carga_horaria, certSelecionados.length > 1 ? diasEntreCursos : 0);
     }
-
+     setLoading(false); // FIM DO LOADING
     alert("Todos os certificados foram gerados!");
   }
 
@@ -383,13 +385,24 @@ URL.revokeObjectURL(url);
           <div className="mt-20 flex justify-center">
 {/* Botão para gerar certificados */}
 <div className="mt-12 flex justify-center">
-  <button
-    onClick={gerarTodosCertificados}
-    className="bg-green-400 hover:bg-green-500 active:bg-green-600 transition rounded-lg px-10 py-3 text-white text-lg font-semibold shadow-md shadow-green-400/40 select-none"
-    title="Clique para gerar todos os certificados"
-  >
-    🚀 Gerar Todos os Certificados
-  </button>
+<button
+  onClick={gerarTodosCertificados}
+  className={`bg-green-400 hover:bg-green-500 active:bg-green-600 transition rounded-lg px-10 py-3 text-white text-lg font-semibold shadow-md shadow-green-400/40 select-none flex items-center justify-center gap-3`}
+  disabled={loading}
+  title="Clique para gerar todos os certificados"
+>
+  {loading ? (
+    <>
+      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+      Gerando...
+    </>
+  ) : (
+    '🚀 Gerar Todos os Certificados'
+  )}
+</button>
 </div>
 
           </div>
