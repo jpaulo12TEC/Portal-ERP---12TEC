@@ -23,7 +23,7 @@
   height: 213px;
   position: absolute;
   left: 578px;
-  top: 139px;
+  top: 129px;
   overflow: hidden;
 }
 
@@ -39,7 +39,7 @@
 .certificado-texto .span1 {
   color: #790007;
   font-family: "Numans-Regular", sans-serif;
-  font-size: 32px;
+  font-size: 28px;
   line-height: 38px;
   font-weight: 400;
 }
@@ -47,7 +47,7 @@
 .certificado-texto .span2 {
   color: #790007;
   font-family: "Numans-Regular", sans-serif;
-  font-size: 28px;
+  font-size: 25px;
   line-height: 38px;
   font-weight: 400;
 }
@@ -55,7 +55,7 @@
 .certificado-texto .span3 {
   color: #000000;
   font-family: "Numans-Regular", sans-serif;
-  font-size: 28px;
+  font-size: 25px;
   line-height: 38px;
   font-weight: 400;
 }
