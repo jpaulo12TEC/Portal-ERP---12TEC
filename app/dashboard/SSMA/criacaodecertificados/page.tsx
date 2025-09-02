@@ -45,17 +45,29 @@ export default function CriacaoDeCertificados() {
   // Estado para imagem ampliada no hover/click
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchData() {
-      const { data: func, error } = await supabase.from('funcionarios').select('*');
-      if (error) console.error(error);
-      else setFuncionarios(func as Funcionario[]);
+useEffect(() => {
+  async function fetchData() {
+    // Funcionários ordenados por nome_completo
+    const { data: func, error: funcError } = await supabase
+      .from("funcionarios")
+      .select("*")
+      .order("nome_completo", { ascending: true });
 
-      const { data: cert } = await supabase.from('certificacoes').select('*');
-      if (cert) setCertificados(cert as Certificado[]);
-    }
-    fetchData();
-  }, []);
+    if (funcError) console.error(funcError);
+    else setFuncionarios(func as Funcionario[]);
+
+    // Certificados ordenados por nome
+    const { data: cert, error: certError } = await supabase
+      .from("certificacoes")
+      .select("*")
+      .order("nome", { ascending: true });
+
+    if (certError) console.error(certError);
+    else setCertificados(cert as Certificado[]);
+  }
+
+  fetchData();
+}, []);
 
   const handleNavClick = (tab: string) => {
     setActiveTab(tab);
