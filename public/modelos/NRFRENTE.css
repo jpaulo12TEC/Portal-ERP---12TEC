@@ -24,7 +24,7 @@
   height: 481px;
   position: absolute;
   right: 108px;
-  top: 294px;
+  top: 244px; /* diminui para subir */
   overflow: hidden;
 }
 
