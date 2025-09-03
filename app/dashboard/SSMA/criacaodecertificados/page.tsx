@@ -121,50 +121,41 @@ function criarDataLocal(dataStr: string): Date {
 
 
 
-// Soma carga horária ocupando até 8h/dia e respeitando fim de semana.
-// Retorna a nova data (onde o curso terminou) e quanto do "dia atual" ficou usado.
+// --- Calcula próxima data considerando 8h/dia e fim de semana ---
 function calcularProximaData(
   dataAtual: Date,
   cargaHorariaHoras: number,
   horasUsadasNoDia: number,
   diasEntreCursos: number = 0
 ): { novaData: Date; horasUsadasNoDia: number } {
-  const horasPorDia = 8;
-  let horasRestantes = Math.max(0, cargaHorariaHoras);
-  let novaData = avancarParaProximoDiaUtil(dataAtual); // garante início em dia útil
-  let horasNoDia = Math.min(Math.max(0, horasUsadasNoDia), horasPorDia);
+  const HORAS_POR_DIA = 8;
+  let horasRestantes = cargaHorariaHoras;
+  let novaData = new Date(dataAtual); // copia
+  let horasNoDia = horasUsadasNoDia;
+
+  // Garante que começamos em dia útil
+  novaData = avancarParaProximoDiaUtil(novaData);
 
   while (horasRestantes > 0) {
-    let disponivel = horasPorDia - horasNoDia;
-
-    if (disponivel <= 0) {
-      // sem espaço hoje -> próximo dia útil
-      novaData = avancarParaProximoDiaUtil(new Date(novaData.getTime() + 24 * 60 * 60 * 1000));
-      horasNoDia = 0;
-      disponivel = horasPorDia;
-    }
+    const disponivel = HORAS_POR_DIA - horasNoDia;
 
     if (horasRestantes <= disponivel) {
-      // cabe hoje
       horasNoDia += horasRestantes;
       horasRestantes = 0;
     } else {
-      // consome o resto do dia e pula para próximo dia útil
+      // Consome o resto do dia
       horasRestantes -= disponivel;
-      novaData = avancarParaProximoDiaUtil(new Date(novaData.getTime() + 24 * 60 * 60 * 1000));
+      // Pula para próximo dia útil
+      novaData.setDate(novaData.getDate() + 1);
+      novaData = avancarParaProximoDiaUtil(novaData);
       horasNoDia = 0;
     }
   }
 
-  // Aplica a pausa entre cursos em dias úteis, se houver
-  if (diasEntreCursos > 0) {
-    let pausados = 0;
-    while (pausados < diasEntreCursos) {
-      novaData = new Date(novaData.getTime() + 24 * 60 * 60 * 1000);
-      if (!ehFimDeSemana(novaData)) pausados++;
-    }
-    // após pausa, próximo curso começa "de manhã"
-    horasNoDia = 0;
+  // Aplica pausa entre cursos (dias úteis)
+  for (let i = 0; i < diasEntreCursos; ) {
+    novaData.setDate(novaData.getDate() + 1);
+    if (!ehFimDeSemana(novaData)) i++;
   }
 
   return { novaData, horasUsadasNoDia: horasNoDia };
