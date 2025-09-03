@@ -21,7 +21,7 @@
 
 .frame-1 {
   width: 1327px;
-  height: 481px;
+  height: 700px;
   position: absolute;
   right: 108px;
   top: 204px; /* diminui para subir */
@@ -37,7 +37,7 @@
   font-weight: 400;
   position: absolute;
   right: 0;
-  bottom: 0;
+  top: 0;
   width: 100%;
   height: 100%;
 }
