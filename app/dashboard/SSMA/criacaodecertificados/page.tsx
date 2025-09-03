@@ -125,7 +125,7 @@ function criarDataLocal(dataStr: string): Date {
 function calcularProximaData(
   dataAtual: Date,
   cargaHorariaHoras: number,
-  horasNoDia: number = 0, // passa as horas já usadas nesse dia
+  horasNoDia: number = 0, // horas já usadas do dia atual
   diasEntreCursos: number = 0
 ): { novaData: Date; horasNoDia: number } {
   const HORAS_POR_DIA = 8;
@@ -139,24 +139,21 @@ function calcularProximaData(
   }
 
   while (horasRestantes > 0) {
-    // se o dia estiver cheio, pula para o próximo dia útil
+    const disponivel = HORAS_POR_DIA - horasNoDia;
+    const consumo = Math.min(horasRestantes, disponivel);
+    horasNoDia += consumo;
+    horasRestantes -= consumo;
+
+    // se o dia estiver cheio, pula para próximo dia útil
     if (horasNoDia >= HORAS_POR_DIA) {
       do {
         novaData.setDate(novaData.getDate() + 1);
       } while (ehFimDeSemana(novaData));
       horasNoDia = 0;
     }
-
-    // consome o que cabe no dia
-    const disponivel = HORAS_POR_DIA - horasNoDia;
-    const consumo = Math.min(horasRestantes, disponivel);
-    horasNoDia += consumo;
-    horasRestantes -= consumo;
-
-    // se ainda restarem horas, o loop vai automaticamente para o próximo dia
   }
 
-  // aplica pausa entre cursos (dias úteis)
+  // aplica pausa entre cursos somente após consumir todas as horas
   for (let i = 0; i < diasEntreCursos; ) {
     novaData.setDate(novaData.getDate() + 1);
     if (!ehFimDeSemana(novaData)) i++;
@@ -164,6 +161,7 @@ function calcularProximaData(
 
   return { novaData, horasNoDia };
 }
+
 
 
 
@@ -237,10 +235,9 @@ const formatarDataParaNome = (dataISO: string) => {
     }
 
     // Aplica consumo de horas + pausa entre cursos (apenas se não for o último curso)
-    const pausa = idx < certSelecionados.length - 1 ? diasEntreCursos : 0;
-  const prox = calcularProximaData(dataAtual, cert.carga_horaria, horasUsadasNoDia, pausa);
+ const prox = calcularProximaData(dataAtual, cert.carga_horaria, horasUsadasNoDia, diasEntreCursos);
   dataAtual = prox.novaData;
-  horasUsadasNoDia = prox.horasNoDia; // importante: mantém as horas usadas do dia
+  horasUsadasNoDia = prox.horasNoDia; // importante: manter horas residuais
   }
 
   setLoading(false); // FIM DO LOADING
