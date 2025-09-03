@@ -132,10 +132,14 @@ function calcularProximaData(
   let horasRestantes = cargaHorariaHoras;
   let novaData = new Date(dataAtual);
 
+  console.log(`\n=== Novo curso ===`);
+  console.log(`Data inicial: ${novaData.toDateString()}, Carga: ${cargaHorariaHoras}h, Horas já usadas no dia: ${horasNoDia}`);
+
   // garante início em dia útil
   if (ehFimDeSemana(novaData)) {
     novaData = avancarParaProximoDiaUtil(novaData);
     horasNoDia = 0;
+    console.log(`Dia inicial era fim de semana. Ajustado para ${novaData.toDateString()}`);
   }
 
   while (horasRestantes > 0) {
@@ -144,11 +148,14 @@ function calcularProximaData(
     horasNoDia += consumo;
     horasRestantes -= consumo;
 
+    console.log(`Consumindo ${consumo}h no dia ${novaData.toDateString()}. Horas restantes do curso: ${horasRestantes}. Total do dia agora: ${horasNoDia}h`);
+
     // se o dia estiver cheio, pula para próximo dia útil
     if (horasNoDia >= HORAS_POR_DIA) {
       do {
         novaData.setDate(novaData.getDate() + 1);
       } while (ehFimDeSemana(novaData));
+      console.log(`Dia cheio! Avançando para o próximo dia útil: ${novaData.toDateString()}`);
       horasNoDia = 0;
     }
   }
@@ -158,9 +165,12 @@ function calcularProximaData(
     novaData.setDate(novaData.getDate() + 1);
     if (!ehFimDeSemana(novaData)) i++;
   }
+  if (diasEntreCursos > 0) console.log(`Aplicando pausa de ${diasEntreCursos} dias. Nova data: ${novaData.toDateString()}`);
 
+  console.log(`Curso finalizado. Próxima data: ${novaData.toDateString()}, Horas usadas no dia: ${horasNoDia}\n`);
   return { novaData, horasNoDia };
 }
+
 
 
 
@@ -184,7 +194,8 @@ let dataAtual = avancarParaProximoDiaUtil(
   for (let idx = 0; idx < certSelecionados.length; idx++) {
     const cert = certSelecionados[idx];
     const funcionariosDoCert = funcSelecionados[cert.id] || [];
-
+  console.log(`\n=== Agendando curso: ${cert.nome} (${cert.carga_horaria}h) ===`);
+  console.log(`Data atual antes do curso: ${dataAtual.toDateString()}, Horas já usadas no dia: ${horasUsadasNoDia}`);
     // data_inicio é a data do início do curso (pode ser o mesmo dia de outros cursos se couber nas 8h)
     const dataInicioISO = formatarDataISOLocal(dataAtual);
 
@@ -238,6 +249,8 @@ const formatarDataParaNome = (dataISO: string) => {
  const prox = calcularProximaData(dataAtual, cert.carga_horaria, horasUsadasNoDia, diasEntreCursos);
   dataAtual = prox.novaData;
   horasUsadasNoDia = prox.horasNoDia; // importante: manter horas residuais
+
+   console.log(`Próxima data disponível após ${cert.nome}: ${dataAtual.toDateString()}, Horas usadas no dia: ${horasUsadasNoDia}`);
   }
 
   setLoading(false); // FIM DO LOADING
