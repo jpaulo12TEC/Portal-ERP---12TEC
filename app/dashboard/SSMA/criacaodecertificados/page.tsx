@@ -84,7 +84,14 @@ useEffect(() => {
   }
 
 
-
+// Cria string YYYY-MM-DD no fuso local
+function formatarDataISOLocal(data: Date) {
+  const d = data;
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
 
 
 // Helpers de dias úteis
@@ -99,6 +106,20 @@ function avancarParaProximoDiaUtil(d: Date): Date {
   }
   return nd;
 }
+
+function normalizarData(data: Date): Date {
+  const nova = new Date(data);
+  nova.setHours(0, 0, 0, 0); // zera as horas
+  return nova;
+}
+
+// dataInicial está em formato YYYY-MM-DD
+function criarDataLocal(dataStr: string): Date {
+  const [ano, mes, dia] = dataStr.split("-").map(Number);
+  return new Date(ano, mes - 1, dia); // cria já no fuso local
+}
+
+
 
 // Soma carga horária ocupando até 8h/dia e respeitando fim de semana.
 // Retorna a nova data (onde o curso terminou) e quanto do "dia atual" ficou usado.
@@ -161,7 +182,9 @@ async function gerarTodosCertificados() {
   setLoading(true); // INICIO DO LOADING
 
   // Permite pretérita, mas garante início em dia útil
-  let dataAtual = avancarParaProximoDiaUtil(new Date(dataInicial));
+let dataAtual = avancarParaProximoDiaUtil(
+  normalizarData(criarDataLocal(dataInicial))
+);
   let horasUsadasNoDia = 0; // controla horas já ocupadas no dia corrente (max 8)
 
   for (let idx = 0; idx < certSelecionados.length; idx++) {
@@ -169,7 +192,7 @@ async function gerarTodosCertificados() {
     const funcionariosDoCert = funcSelecionados[cert.id] || [];
 
     // data_inicio é a data do início do curso (pode ser o mesmo dia de outros cursos se couber nas 8h)
-    const dataInicioISO = dataAtual.toISOString().slice(0, 10);
+    const dataInicioISO = formatarDataISOLocal(dataAtual);
 
     for (const funcId of funcionariosDoCert) {
       const funcionario = funcionarios.find((f) => f.id === funcId);
@@ -327,8 +350,7 @@ async function gerarTodosCertificados() {
         value={dataInicial}
         onChange={e => setDataInicial(ajustarDataInicial(e.target.value))}
         className="bg-gray-700 border-2 border-green-500 rounded-xl px-4 py-2 text-white font-semibold hover:border-green-400 focus:outline-none focus:ring-4 focus:ring-green-300 transition"
-        min={new Date().toISOString().slice(0, 10)}
-      />
+              />
     </div>
 
     {/* Dias entre cursos */}
