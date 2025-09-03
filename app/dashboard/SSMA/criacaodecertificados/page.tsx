@@ -221,10 +221,11 @@ let dataAtual = avancarParaProximoDiaUtil(
       const url = URL.createObjectURL(blob);
 
       // Helpers
-      const formatarDataParaNome = (dataISO: string) => {
-        const data = new Date(dataISO);
-        return data.toLocaleDateString("pt-BR").replace(/\//g, "."); // Ex: 24.02.2025
-      };
+const formatarDataParaNome = (dataISO: string) => {
+  const [ano, mes, dia] = dataISO.split("-").map(Number);
+  const data = new Date(ano, mes - 1, dia); // cria no fuso local
+  return data.toLocaleDateString("pt-BR").replace(/\//g, "."); // Ex: 27.08.2025
+};
       const sanitizarTexto = (texto: string) => texto.replace(/[\\/:*?"<>|]/g, "").trim();
 
       const dataFormatada = formatarDataParaNome(dataInicioISO);
