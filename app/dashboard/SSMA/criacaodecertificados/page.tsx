@@ -130,26 +130,28 @@ function calcularProximaData(
 ): { novaData: Date; horasUsadasNoDia: number } {
   const HORAS_POR_DIA = 8;
   let horasRestantes = cargaHorariaHoras;
-  let novaData = new Date(dataAtual); // copia
+  let novaData = new Date(dataAtual);
   let horasNoDia = horasUsadasNoDia;
 
-  // Garante que começamos em dia útil
-  novaData = avancarParaProximoDiaUtil(novaData);
+  // garante que começamos em dia útil
+  if (ehFimDeSemana(novaData)) {
+    novaData = avancarParaProximoDiaUtil(novaData);
+    horasNoDia = 0;
+  }
 
   while (horasRestantes > 0) {
-    const disponivel = HORAS_POR_DIA - horasNoDia;
-
-    if (horasRestantes <= disponivel) {
-      horasNoDia += horasRestantes;
-      horasRestantes = 0;
-    } else {
-      // Consome o resto do dia
-      horasRestantes -= disponivel;
-      // Pula para próximo dia útil
-      novaData.setDate(novaData.getDate() + 1);
-      novaData = avancarParaProximoDiaUtil(novaData);
+    if (horasNoDia >= HORAS_POR_DIA) {
+      // dia cheio -> pula para próximo dia útil
+      do {
+        novaData.setDate(novaData.getDate() + 1);
+      } while (ehFimDeSemana(novaData));
       horasNoDia = 0;
     }
+
+    const disponivel = HORAS_POR_DIA - horasNoDia;
+    const consumo = Math.min(horasRestantes, disponivel);
+    horasNoDia += consumo;
+    horasRestantes -= consumo;
   }
 
   // Aplica pausa entre cursos (dias úteis)
@@ -160,6 +162,7 @@ function calcularProximaData(
 
   return { novaData, horasUsadasNoDia: horasNoDia };
 }
+
 
 
 async function gerarTodosCertificados() {
