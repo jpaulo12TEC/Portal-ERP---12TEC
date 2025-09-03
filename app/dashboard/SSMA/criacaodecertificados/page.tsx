@@ -125,43 +125,46 @@ function criarDataLocal(dataStr: string): Date {
 function calcularProximaData(
   dataAtual: Date,
   cargaHorariaHoras: number,
-  horasUsadasNoDia: number,
+  horasNoDia: number = 0, // passa as horas já usadas nesse dia
   diasEntreCursos: number = 0
-): { novaData: Date; horasUsadasNoDia: number } {
+): { novaData: Date; horasNoDia: number } {
   const HORAS_POR_DIA = 8;
   let horasRestantes = cargaHorariaHoras;
   let novaData = new Date(dataAtual);
-  let horasNoDia = horasUsadasNoDia;
 
-  // garante que começamos em dia útil
+  // garante início em dia útil
   if (ehFimDeSemana(novaData)) {
     novaData = avancarParaProximoDiaUtil(novaData);
     horasNoDia = 0;
   }
 
   while (horasRestantes > 0) {
+    // se o dia estiver cheio, pula para o próximo dia útil
     if (horasNoDia >= HORAS_POR_DIA) {
-      // dia cheio -> pula para próximo dia útil
       do {
         novaData.setDate(novaData.getDate() + 1);
       } while (ehFimDeSemana(novaData));
       horasNoDia = 0;
     }
 
+    // consome o que cabe no dia
     const disponivel = HORAS_POR_DIA - horasNoDia;
     const consumo = Math.min(horasRestantes, disponivel);
     horasNoDia += consumo;
     horasRestantes -= consumo;
+
+    // se ainda restarem horas, o loop vai automaticamente para o próximo dia
   }
 
-  // Aplica pausa entre cursos (dias úteis)
+  // aplica pausa entre cursos (dias úteis)
   for (let i = 0; i < diasEntreCursos; ) {
     novaData.setDate(novaData.getDate() + 1);
     if (!ehFimDeSemana(novaData)) i++;
   }
 
-  return { novaData, horasUsadasNoDia: horasNoDia };
+  return { novaData, horasNoDia };
 }
+
 
 
 
@@ -235,9 +238,9 @@ const formatarDataParaNome = (dataISO: string) => {
 
     // Aplica consumo de horas + pausa entre cursos (apenas se não for o último curso)
     const pausa = idx < certSelecionados.length - 1 ? diasEntreCursos : 0;
-    const prox = calcularProximaData(dataAtual, cert.carga_horaria, horasUsadasNoDia, pausa);
-    dataAtual = prox.novaData;
-    horasUsadasNoDia = prox.horasUsadasNoDia;
+  const prox = calcularProximaData(dataAtual, cert.carga_horaria, horasUsadasNoDia, pausa);
+  dataAtual = prox.novaData;
+  horasUsadasNoDia = prox.horasNoDia; // importante: mantém as horas usadas do dia
   }
 
   setLoading(false); // FIM DO LOADING
