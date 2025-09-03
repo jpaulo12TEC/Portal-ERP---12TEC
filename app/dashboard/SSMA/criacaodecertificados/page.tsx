@@ -83,106 +83,151 @@ useEffect(() => {
     return dataStr;
   }
 
-  function calcularProximaData(
-    dataAtual: Date,
-    cargaHorariaHoras: number,
-    diasEntreCursos: number = 0
-  ): Date {
-    const proximaData = new Date(dataAtual);
-    const horasPorDia = 8;
 
-    let diasNecessarios = Math.ceil(cargaHorariaHoras / horasPorDia);
 
-    while (diasNecessarios > 0) {
-      proximaData.setDate(proximaData.getDate() + 1);
-      const diaSemana = proximaData.getDay();
-      if (diaSemana !== 0 && diaSemana !== 6) {
-        diasNecessarios--;
-      }
+
+
+// Helpers de dias úteis
+function ehFimDeSemana(d: Date) {
+  const g = d.getDay();
+  return g === 0 || g === 6; // 0=Domingo, 6=Sábado
+}
+function avancarParaProximoDiaUtil(d: Date): Date {
+  const nd = new Date(d);
+  while (ehFimDeSemana(nd)) {
+    nd.setDate(nd.getDate() + 1);
+  }
+  return nd;
+}
+
+// Soma carga horária ocupando até 8h/dia e respeitando fim de semana.
+// Retorna a nova data (onde o curso terminou) e quanto do "dia atual" ficou usado.
+function calcularProximaData(
+  dataAtual: Date,
+  cargaHorariaHoras: number,
+  horasUsadasNoDia: number,
+  diasEntreCursos: number = 0
+): { novaData: Date; horasUsadasNoDia: number } {
+  const horasPorDia = 8;
+  let horasRestantes = Math.max(0, cargaHorariaHoras);
+  let novaData = avancarParaProximoDiaUtil(dataAtual); // garante início em dia útil
+  let horasNoDia = Math.min(Math.max(0, horasUsadasNoDia), horasPorDia);
+
+  while (horasRestantes > 0) {
+    let disponivel = horasPorDia - horasNoDia;
+    if (disponivel <= 0) {
+      // sem espaço hoje -> próximo dia útil
+      do {
+        novaData.setDate(novaData.getDate() + 1);
+      } while (ehFimDeSemana(novaData));
+      horasNoDia = 0;
+      disponivel = horasPorDia;
     }
 
-    let diasDePausa = 0;
-    while (diasDePausa < diasEntreCursos) {
-      proximaData.setDate(proximaData.getDate() + 1);
-      const diaSemana = proximaData.getDay();
-      if (diaSemana !== 0 && diaSemana !== 6) {
-        diasDePausa++;
-      }
+    if (horasRestantes <= disponivel) {
+      horasNoDia += horasRestantes; // cabe hoje
+      horasRestantes = 0;
+    } else {
+      horasRestantes -= disponivel; // consome o resto do dia
+      // avança para próximo dia útil
+      do {
+        novaData.setDate(novaData.getDate() + 1);
+      } while (ehFimDeSemana(novaData));
+      horasNoDia = 0;
     }
-
-    return proximaData;
   }
 
-  async function gerarTodosCertificados() {
-    if (!dataInicial) return alert("Selecione a data inicial");
+  // Aplica a pausa entre cursos em dias úteis, se houver
+  if (diasEntreCursos > 0) {
+    let pausados = 0;
+    do {
+      novaData.setDate(novaData.getDate() + 1);
+      if (!ehFimDeSemana(novaData)) pausados++;
+    } while (pausados < diasEntreCursos);
+    // após pausa, o próximo curso começará "de manhã" (0h usadas)
+    return { novaData, horasUsadasNoDia: 0 };
+  }
 
-    const funcionariosSelecionadosIds = Object.values(funcSelecionados).flat();
-    if (!funcionariosSelecionadosIds.length) return alert("Selecione ao menos um funcionário para cada certificado");
+  return { novaData, horasUsadasNoDia: horasNoDia };
+}
 
-    setLoading(true); // INICIO DO LOADING
-    let dataAtual = new Date(dataInicial);
+async function gerarTodosCertificados() {
+  if (!dataInicial) return alert("Selecione a data inicial");
 
-    for (const cert of certSelecionados) {
-      const funcionariosDoCert = funcSelecionados[cert.id] || [];
+  const funcionariosSelecionadosIds = Object.values(funcSelecionados).flat();
+  if (!funcionariosSelecionadosIds.length)
+    return alert("Selecione ao menos um funcionário para cada certificado");
 
-      for (const funcId of funcionariosDoCert) {
-        const funcionario = funcionarios.find(f => f.id === funcId);
-        if (!funcionario) continue;
+  setLoading(true); // INICIO DO LOADING
 
-        const payload = {
-          funcionario,
-          certificado: {
-            ...cert,
-            link_modelo: `/certificados-modelos/${encodeURIComponent(cert.nome)}.svg`
-          },
-          data_inicio: dataAtual.toISOString().slice(0, 10)
-        };
+  // Permite pretérita, mas garante início em dia útil
+  let dataAtual = avancarParaProximoDiaUtil(new Date(dataInicial));
+  let horasUsadasNoDia = 0; // controla horas já ocupadas no dia corrente (max 8)
 
-const res = await fetch("https://intranet12tec.onrender.com/api/gerar-certificados", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(payload),
-});
+  for (let idx = 0; idx < certSelecionados.length; idx++) {
+    const cert = certSelecionados[idx];
+    const funcionariosDoCert = funcSelecionados[cert.id] || [];
 
+    // data_inicio é a data do início do curso (pode ser o mesmo dia de outros cursos se couber nas 8h)
+    const dataInicioISO = dataAtual.toISOString().slice(0, 10);
 
-        if (!res.ok) {
-          console.error(`Erro ao gerar certificado de ${funcionario.nome_completo}`);
-          continue;
-        }
+    for (const funcId of funcionariosDoCert) {
+      const funcionario = funcionarios.find((f) => f.id === funcId);
+      if (!funcionario) continue;
 
-const blob = await res.blob();
-const url = URL.createObjectURL(blob);
+      const payload = {
+        funcionario,
+        certificado: {
+          ...cert,
+          link_modelo: `/certificados-modelos/${encodeURIComponent(cert.nome)}.svg`,
+        },
+        data_inicio: dataInicioISO,
+      };
 
-// Formatar a data para dd.MM.yyyy
-const formatarDataParaNome = (dataISO: string) => {
-  const data = new Date(dataISO);
-  return data.toLocaleDateString('pt-BR').replace(/\//g, '.'); // Ex: 24.02.2025
-};
+      const res = await fetch("https://intranet12tec.onrender.com/api/gerar-certificados", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-// Remover caracteres inválidos para nomes de arquivo
-const sanitizarTexto = (texto: string) => {
-  return texto.replace(/[\\/:*?"<>|]/g, '').trim();
-};
-
-// Construir nome final
-const dataFormatada = formatarDataParaNome(dataAtual.toISOString());
-const nomeCertificado = sanitizarTexto(cert.nome);
-const nomeFuncionario = sanitizarTexto(funcionario.nome_completo);
-
-const nomeArquivo = `${dataFormatada} - ${nomeCertificado} - ${nomeFuncionario}.pdf`;
-
-const a = document.createElement("a");
-a.href = url;
-a.download = nomeArquivo;
-a.click();
-URL.revokeObjectURL(url);
+      if (!res.ok) {
+        console.error(`Erro ao gerar certificado de ${funcionario.nome_completo}`);
+        continue;
       }
 
-      dataAtual = calcularProximaData(dataAtual, cert.carga_horaria, certSelecionados.length > 1 ? diasEntreCursos : 0);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      // Helpers
+      const formatarDataParaNome = (dataISO: string) => {
+        const data = new Date(dataISO);
+        return data.toLocaleDateString("pt-BR").replace(/\//g, "."); // Ex: 24.02.2025
+      };
+      const sanitizarTexto = (texto: string) => texto.replace(/[\\/:*?"<>|]/g, "").trim();
+
+      const dataFormatada = formatarDataParaNome(dataInicioISO);
+      const nomeCertificado = sanitizarTexto(cert.nome);
+      const nomeFuncionario = sanitizarTexto(funcionario.nome_completo);
+      const nomeArquivo = `${dataFormatada} - ${nomeCertificado} - ${nomeFuncionario}.pdf`;
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomeArquivo;
+      a.click();
+      URL.revokeObjectURL(url);
     }
-     setLoading(false); // FIM DO LOADING
-    alert("Todos os certificados foram gerados!");
+
+    // Aplica consumo de horas + pausa entre cursos (apenas se não for o último curso)
+    const pausa = idx < certSelecionados.length - 1 ? diasEntreCursos : 0;
+    const prox = calcularProximaData(dataAtual, cert.carga_horaria, horasUsadasNoDia, pausa);
+    dataAtual = prox.novaData;
+    horasUsadasNoDia = prox.horasUsadasNoDia;
   }
+
+  setLoading(false); // FIM DO LOADING
+  alert("Todos os certificados foram gerados!");
+}
+
 
   // Custom Styles para react-select com gamificação leve
   const customSelectStyles = {
