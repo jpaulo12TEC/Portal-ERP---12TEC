@@ -136,24 +136,22 @@ function calcularProximaData(
 
   while (horasRestantes > 0) {
     let disponivel = horasPorDia - horasNoDia;
+
     if (disponivel <= 0) {
       // sem espaço hoje -> próximo dia útil
-      do {
-        novaData.setDate(novaData.getDate() + 1);
-      } while (ehFimDeSemana(novaData));
+      novaData = avancarParaProximoDiaUtil(new Date(novaData.getTime() + 24 * 60 * 60 * 1000));
       horasNoDia = 0;
       disponivel = horasPorDia;
     }
 
     if (horasRestantes <= disponivel) {
-      horasNoDia += horasRestantes; // cabe hoje
+      // cabe hoje
+      horasNoDia += horasRestantes;
       horasRestantes = 0;
     } else {
-      horasRestantes -= disponivel; // consome o resto do dia
-      // avança para próximo dia útil
-      do {
-        novaData.setDate(novaData.getDate() + 1);
-      } while (ehFimDeSemana(novaData));
+      // consome o resto do dia e pula para próximo dia útil
+      horasRestantes -= disponivel;
+      novaData = avancarParaProximoDiaUtil(new Date(novaData.getTime() + 24 * 60 * 60 * 1000));
       horasNoDia = 0;
     }
   }
@@ -161,16 +159,17 @@ function calcularProximaData(
   // Aplica a pausa entre cursos em dias úteis, se houver
   if (diasEntreCursos > 0) {
     let pausados = 0;
-    do {
-      novaData.setDate(novaData.getDate() + 1);
+    while (pausados < diasEntreCursos) {
+      novaData = new Date(novaData.getTime() + 24 * 60 * 60 * 1000);
       if (!ehFimDeSemana(novaData)) pausados++;
-    } while (pausados < diasEntreCursos);
-    // após pausa, o próximo curso começará "de manhã" (0h usadas)
-    return { novaData, horasUsadasNoDia: 0 };
+    }
+    // após pausa, próximo curso começa "de manhã"
+    horasNoDia = 0;
   }
 
   return { novaData, horasUsadasNoDia: horasNoDia };
 }
+
 
 async function gerarTodosCertificados() {
   if (!dataInicial) return alert("Selecione a data inicial");

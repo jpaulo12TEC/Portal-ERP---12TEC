@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
 
     // --- geração de PDFs ---
     const dataFormatada = formatarData(data_inicio);
+    const dataFormatada2 = formatarDataPorExtenso(data_inicio);
     const dataExpedicao = calcularDataExpedicao(data_inicio, certificado.carga_horaria);
 
     const imgPathFrente = path.join(process.cwd(), 'public/modelos', `${certificado.nome}FRENTE.jpg`);
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
     const imagemCostas = `data:image/jpeg;base64,${fs.readFileSync(imgPathCostas).toString('base64')}`;
 
     const dados = {
+      data2: dataFormatada2,
       nome: funcionario.nome_completo,
       cpf: funcionario.cpf,
       cargo: funcionario.cargo,
@@ -124,7 +126,8 @@ export async function POST(req: NextRequest) {
 
 // Funções auxiliares
 function formatarData(dataISO: string) {
-  const d = new Date(dataISO);
+  const [ano, mes, dia] = dataISO.split('-').map(Number);
+const d = new Date(ano, mes - 1, dia);
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
@@ -146,7 +149,7 @@ function injetarDados(dados: any) {
     .replace(/\{CPF\}/g, dados.cpf)
     .replace(/\{CARGO\}/g, dados.cargo)
     .replace(/\{TEXTO\}/g, dados.texto)
-    .replace(/\{DATA\}/g, dados.data)
+    .replace(/\{DATA\}/g, dados.data2)
     .replace(/\{NOME_CERTIFICADO\}/g, dados.nome_certificado)
     .replace(/\{CARGA_HORARIA\}/g, dados.carga_horaria)
     .replace(/\{DATA_EXPEDICAO\}/g, dados.data_expedicao)
@@ -159,4 +162,10 @@ function injetarDados(dados: any) {
     .replace(/\{DOCUMENTOS_RESP\}/g, dados.documentos_resp)
     .replace(/\{IMAGEM_CERTIFICADO_FRENTE\}/g, dados.imagem_certificado_frente)
     .replace(/\{IMAGEM_CERTIFICADO_COSTAS\}/g, dados.imagem_certificado_costas);
+}
+
+function formatarDataPorExtenso(dataISO: string): string {
+  const [ano, mes, dia] = dataISO.split("-").map(Number);
+  const d = new Date(ano, mes - 1, dia);
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 }
