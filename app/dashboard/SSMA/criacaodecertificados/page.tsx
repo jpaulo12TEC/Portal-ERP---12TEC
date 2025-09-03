@@ -148,8 +148,10 @@ function calcularProximaData(
     horasNoDia += consumo;
     horasRestantes -= consumo;
 
+
     console.log(`Consumindo ${consumo}h no dia ${novaData.toDateString()}. Horas restantes do curso: ${horasRestantes}. Total do dia agora: ${horasNoDia}h`);
 
+    
     // se o dia estiver cheio, pula para próximo dia útil
     if (horasNoDia >= HORAS_POR_DIA) {
       do {
@@ -428,6 +430,9 @@ const formatarDataParaNome = (dataISO: string) => {
                     </div>
                   ))}
                 </div>
+
+
+
 
                 {/* Descrição e seleção de funcionários */}
                 <div className="flex-1 text-green-300 flex flex-col justify-between min-w-[280px]">
