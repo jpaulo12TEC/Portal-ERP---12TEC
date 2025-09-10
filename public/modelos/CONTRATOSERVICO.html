@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contrato de Prestação de Serviços - {{contrato_id}}</title>
+  <style>
+    :root { --max-width:800px; --accent:#111827 }
+
+    body {
+      font-family: 'Georgia', serif;
+      color:#222;
+      line-height:1.6;
+      padding:24px;
+      background:#f9f9f9;
+      position: relative;
+    }
+
+    /* Marca d’água */
+    body::before {
+      content: "";
+      position: fixed; /* fixa em todas as páginas */
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url("marca-dagua.png") no-repeat center center;
+      background-size: 60%; /* ajuste o tamanho da marca d'água */
+      opacity: 0.08; /* transparência da marca d'água */
+      z-index: -1; /* fica atrás do conteúdo */
+    }
+
+    .page {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      background: #fff;
+      padding: 48px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      border-radius: 6px;
+    }
+
+    header { text-align:center; margin-bottom:24px; }
+    h1 { font-size:20px; margin:0; font-weight:600; letter-spacing:0.5px; }
+    .meta { font-size:13px; color:#666; margin-top:4px; }
+    .section { margin-top:28px; }
+    .section h2, .section h3 {
+      font-size:16px;
+      margin:0 0 8px 0;
+      font-weight:600;
+      border-bottom:1px solid #ddd;
+      padding-bottom:4px;
+    }
+    .clausula { margin:12px 0; text-align:justify; }
+    ul { margin:6px 0 6px 18px; }
+    footer { margin-top:48px; font-size:13px; text-align:center; }
+    .signatures { display:flex; justify-content:space-around; margin-top:48px; gap:40px; }
+    .sig-block { flex:1; text-align:center; }
+    .sig-line { margin-top:60px; border-top:1px solid #000; padding-top:6px; font-weight:500; }
+    .small { font-size:12px; color:#666; }
+
+    /* Impressão */
+    @media print {
+      body {
+        padding:0;
+        background:#fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      body::before {
+        position: fixed;
+      }
+      .page {
+        box-shadow: none;
+        border: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS</h1>
+      <div class="meta">Contrato nº: {{contrato_id}} • Data: {{data_assinatura}} • Local: {{cidade}} — {{estado}}</div>
+    </header>
+
+    <section class="section">
+      <p>
+        Pelo presente instrumento particular, de um lado <strong>{{contratante.nome}}</strong>, portador(a) do documento <strong>{{contratante.cpf}}</strong>, residente e domiciliado(a) à {{contratante.endereco}}, doravante denominado(a) <em>CONTRATANTE</em>, e de outro lado <strong>{{contratado.nome}}</strong>, inscrito(a) sob o nº <strong>{{contratado.cnpj}}</strong>, com sede à {{contratado.endereco}}, doravante denominado(a) <em>CONTRATADO</em>, têm entre si, justo e contratado, o que segue.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2>CLÁUSULA 1 — DO OBJETO</h2>
+      <p class="clausula">{{objeto}}</p>
+    </section>
+
+    <section class="section">
+      <h2>CLÁUSULA 2 — DO PRAZO</h2>
+      <p class="clausula">
+        O presente contrato terá início em <strong>{{data_inicio}}</strong> e prazo de vigência de <strong>{{prazo_meses}}</strong> meses, salvo rescisão antecipada nas condições previstas neste instrumento.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2>CLÁUSULA 3 — DO VALOR E FORMA DE PAGAMENTO</h2>
+      <p class="clausula">
+        Pelo objeto deste contrato o CONTRATANTE pagará ao CONTRATADO o valor de <strong>{{valor_num}}</strong> ({{valor_extenso}}), na forma e prazos seguintes: {{condicoes_pagamento}}.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2>CLÁUSULA 4 — DAS OBRIGAÇÕES</h2>
+      <div class="clausula">
+        <strong>4.1 — Obrigações do CONTRATADO:</strong>
+        <ul>
+          <li>{{obrigacoes_contratado_lista}}</li>
+        </ul>
+      </div>
+      <div class="clausula">
+        <strong>4.2 — Obrigações do CONTRATANTE:</strong>
+        <ul>
+          <li>{{obrigacoes_contratante_lista}}</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>CLÁUSULA 5 — DA RESCISÃO</h2>
+      <p class="clausula">O contrato poderá ser rescindido por qualquer das partes nas hipóteses de: {{condicoes_rescisao}}.</p>
+    </section>
+
+    <section class="section">
+      <h2>CLÁUSULA 6 — CONFIDENCIALIDADE</h2>
+      <p class="clausula">As partes obrigam-se a manter sigilo sobre quaisquer informações trocadas em razão deste contrato, pelo prazo de {{prazo_confidencialidade}} anos.</p>
+    </section>
+
+    <section class="section">
+      <h2>CLÁUSULA 7 — DO FORO</h2>
+      <p class="clausula">Para dirimir quaisquer controvérsias decorrentes deste contrato, as partes elegem o foro da comarca de {{foro_cidade}}/{{foro_estado}}, renunciando a qualquer outro, por mais privilegiado que seja.</p>
+    </section>
+
+    {{#if clausulas}}
+      <section class="section">
+        <h2>CLÁUSULAS ADICIONAIS</h2>
+        {{#each clausulas}}
+          <p class="clausula"><strong>Cláusula {{@index}}.</strong> {{this}}</p>
+        {{/each}}
+      </section>
+    {{/if}}
+
+    <footer>
+      <div class="small">E por estarem justos e contratados, firmam o presente instrumento em duas vias de igual teor e forma.</div>
+
+      <div class="signatures">
+        <div class="sig-block">
+          <div class="sig-line">{{contratante.nome}}</div>
+          <div class="small">Contratante • {{contratante.cpf}}</div>
+        </div>
+
+        <div class="sig-block">
+          <div class="sig-line">{{contratado.nome}}</div>
+          <div class="small">Contratado • {{contratado.cnpj}}</div>
+        </div>
+      </div>
+
+      <p class="small" style="margin-top:18px">Gerado por: {{gerado_por}} • Data de geração: {{data_assinatura}}</p>
+    </footer>
+  </div>
+</body>
+</html>

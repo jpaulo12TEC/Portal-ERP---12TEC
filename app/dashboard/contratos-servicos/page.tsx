@@ -11,33 +11,39 @@ export default function PaginaInicialContratos() {
   const [activeTab, setActiveTab] = useState<string>('contratos');
   const [menuActive, setMenuActive] = useState(false);
 
-  const botoesPrincipais = [
-    {
-      label: 'Solicitar nova contratação',
-      icon: FilePlus,
-      path: '/dashboard/contratos-servicos/solicitacao'
-    },
-    {
-      label: 'Contratos ativos',
-      icon: FileText,
-      path: '/dashboard/contratos/ativos'
-    },
-    {
-      label: 'Verificar solicitação',
-      icon: ClipboardList,
-      path: '/dashboard/contratos-servicos/acompanhar-solicitacao'
-    },
-    {
-      label: 'Gestão de contratos',
-      icon: FolderKanban,
-      path: '/dashboard/contratos-servicos/contratos' // página do código que você colou
-    },
-        {
-      label: 'Serviços Cadastrados',
-      icon: ListChecks,
-      path: '/dashboard/contratos-servicos/servicos-cadastrados'
-    },
-  ];
+const botoesPrincipais = [
+  {
+    label: 'Gerar Contrato',
+    icon: FileText,
+    path: '/dashboard/contratos-servicos/gerar-contrato',
+    destaque: true // adicionamos uma flag para destaque
+  },
+  {
+    label: 'Solicitar nova contratação',
+    icon: FilePlus,
+    path: '/dashboard/contratos-servicos/solicitacao'
+  },
+  {
+    label: 'Contratos ativos',
+    icon: FileText,
+    path: '/dashboard/contratos/ativos'
+  },
+  {
+    label: 'Verificar solicitação',
+    icon: ClipboardList,
+    path: '/dashboard/contratos-servicos/acompanhar-solicitacao'
+  },
+  {
+    label: 'Gestão de contratos',
+    icon: FolderKanban,
+    path: '/dashboard/contratos-servicos/contratos'
+  },
+  {
+    label: 'Serviços Cadastrados',
+    icon: ListChecks,
+    path: '/dashboard/contratos-servicos/servicos-cadastrados'
+  },
+];
 
   const handleNavClick = (tab: string) => {
     setActiveTab(tab);
@@ -81,18 +87,25 @@ export default function PaginaInicialContratos() {
           <h3 className="text-lg font-semibold mb-4">Selecione uma opção</h3>
           <Separator className="mb-6" />
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {botoesPrincipais.map(({ label, icon: Icon, path }) => (
-              <button
-                key={label}
-                onClick={() => router.push(path)}
-                className="h-[120px] flex flex-col items-center justify-center text-center border rounded-xl shadow bg-white text-[#5a0d0d] border-[#5a0d0d] hover:bg-[#5a0d0d] hover:text-white transition-all"
-              >
-                <Icon className="w-8 h-8 mb-3" />
-                <span className="text-sm font-medium">{label}</span>
-              </button>
-            ))}
-          </div>
+<div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+  {botoesPrincipais.map(({ label, icon: Icon, path, destaque }) => (
+    <button
+      key={label}
+      onClick={() => router.push(path)}
+      className={`
+        h-[120px] flex flex-col items-center justify-center text-center border rounded-xl shadow-md transition-all
+        ${destaque 
+          ? 'bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 text-white border-gray-600 hover:shadow-xl hover:scale-105'
+          : 'bg-white text-[#5a0d0d] border-[#5a0d0d] hover:bg-[#5a0d0d] hover:text-white'
+        }
+      `}
+    >
+      <Icon className="w-8 h-8 mb-3" />
+      <span className="text-sm font-medium">{label}</span>
+    </button>
+  ))}
+</div>
+
         </div>
       </div>
     </div>
