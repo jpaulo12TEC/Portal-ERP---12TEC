@@ -42,16 +42,29 @@ export default function CriacaoDeContratos() {
   const [prazoMeses, setPrazoMeses] = useState('');
   const [valorNum, setValorNum] = useState('');
   const [valorExtenso, setValorExtenso] = useState('');
-  const [condicoesPagamento, setCondicoesPagamento] = useState('');
-  const [condicoesRescisao, setCondicoesRescisao] = useState('');
-  const [prazoConfidencialidade, setPrazoConfidencialidade] = useState('');
-  const [cidade, setCidade] = useState('');
-  const [estado, setEstado] = useState('');
-  const [foroCidade, setForoCidade] = useState('');
-  const [foroEstado, setForoEstado] = useState('');
+  const [condicoesPagamento, setCondicoesPagamento] = useState('O pagamento será realizado após 30 (trinta) dias da emissão da nota fiscal pelo CONTRATANTE');
+  const [condicoesRescisao, setCondicoesRescisao] = useState('Encerramento do prazo do contrato ou por convenção entre as partes a qualquer momento');
+  const [prazoConfidencialidade, setPrazoConfidencialidade] = useState('duração do contrato');
+  const [cidade, setCidade] = useState('Aracaju');
+  const [estado, setEstado] = useState('Sergipe');
+  const [foroCidade, setForoCidade] = useState('Aracaju');
+  const [foroEstado, setForoEstado] = useState('Sergipe');
   const [geradoPor, setGeradoPor] = useState('');
-  const [obrigacoesContratado, setObrigacoesContratado] = useState(['']);
-  const [obrigacoesContratante, setObrigacoesContratante] = useState(['']);
+// Obrigações padrão para o Contratado
+const [obrigacoesContratado, setObrigacoesContratado] = useState([
+  "1. Executar os serviços de acordo com as especificações acordadas;",
+  "2. Cumprir os prazos estabelecidos para a entrega dos serviços;",
+  "3. Manter sigilo sobre todas as informações e documentos recebidos;",
+  "4. Responsabilizar-se por quaisquer danos causados por má execução."
+]);
+
+// Obrigações padrão para o Contratante
+const [obrigacoesContratante, setObrigacoesContratante] = useState([
+  "1. Fornecer todas as informações e documentos necessários para a execução dos serviços;",
+  "2. Efetuar o pagamento nas condições e prazos estipulados;",
+  "3. Garantir acesso às dependências ou recursos necessários para a execução dos serviços;",
+  "4. Comunicar eventuais problemas ou necessidades de ajuste no prazo adequado."
+]);
 
   // Função para enviar para API
   async function gerarContrato() {
