@@ -3,8 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
-import { Search } from "lucide-react";
-import { ArrowLeft } from "lucide-react";
+import { Search, ArrowLeft } from "lucide-react";
 
 interface Contrato {
   id: number;
@@ -18,6 +17,88 @@ interface Parte {
   cpfCnpj: string;
   endereco: string;
 }
+
+// Templates de contratos
+const modelosDeContrato: Record<string, Partial<Contrato> & {
+  obrigacoesContratado?: string[];
+  obrigacoesContratante?: string[];
+  condicoesPagamento?: string;
+  condicoesRescisao?: string;
+  prazoConfidencialidade?: string;
+}> = {
+  servico: {
+    nome: "Contrato de Prestação de Serviço",
+    objeto: "Prestação de serviços especializados conforme descrito entre as partes.",
+    clausulas: ["O CONTRATADO prestará serviços conforme escopo definido."],
+    obrigacoesContratado: [
+      "Executar os serviços conforme especificações.",
+      "Cumprir prazos estabelecidos.",
+      "Manter sigilo sobre informações do CONTRATANTE."
+    ],
+    obrigacoesContratante: [
+      "Fornecer informações e documentos necessários.",
+      "Efetuar pagamento conforme acordado.",
+      "Garantir acesso a recursos necessários."
+    ],
+    condicoesPagamento: "O pagamento será realizado em até 30 dias após a entrega da nota fiscal.",
+    condicoesRescisao: "Encerramento por comum acordo ou por descumprimento das obrigações.",
+    prazoConfidencialidade: "Enquanto durar o contrato"
+  },
+  aluguel: {
+    nome: "Contrato de Aluguel",
+    objeto: "Cessão do uso de bem imóvel ou móvel conforme acordado.",
+    clausulas: ["O LOCATÁRIO se compromete a conservar o bem."],
+    condicoesPagamento: "Pagamento mensal até o 5º dia útil.",
+    condicoesRescisao: "Rescisão em caso de atraso superior a 30 dias."
+  },
+  comodato: {
+    nome: "Contrato de Comodato",
+    objeto: "Empréstimo gratuito de bem por prazo determinado.",
+    clausulas: ["O COMODATÁRIO deve devolver o bem ao final do prazo estabelecido."]
+  },
+  parceria: {
+    nome: "Contrato de Parceria Comercial",
+    objeto: "União de esforços entre as partes para execução de projeto conjunto.",
+    clausulas: ["As partes dividirão custos e lucros proporcionalmente."],
+    condicoesRescisao: "Rescisão por descumprimento contratual ou comum acordo."
+  },
+  confidencialidade: {
+    nome: "Acordo de Confidencialidade (NDA)",
+    objeto: "Proteção de informações sigilosas trocadas entre as partes.",
+    clausulas: ["As informações confidenciais não poderão ser divulgadas."],
+    prazoConfidencialidade: "5 anos após a assinatura"
+  },
+  compra_venda: {
+    nome: "Contrato de Compra e Venda",
+    objeto: "Transferência de propriedade de um bem mediante pagamento.",
+    clausulas: ["O vendedor declara ser legítimo proprietário do bem."],
+    condicoesPagamento: "Pagamento à vista na assinatura do contrato."
+  },
+  estagio: {
+    nome: "Contrato de Estágio",
+    objeto: "Atividades educacionais e de aprendizado supervisionadas.",
+    clausulas: ["O estágio terá acompanhamento pedagógico e duração definida pela lei."],
+    condicoesRescisao: "Rescisão por interesse de qualquer das partes com aviso prévio de 5 dias."
+  },
+  freelancer: {
+    nome: "Contrato de Freelancer",
+    objeto: "Execução de trabalho autônomo conforme escopo acordado.",
+    clausulas: ["O FREELANCER prestará o serviço com independência técnica."],
+    condicoesPagamento: "Pagamento integral após a entrega do trabalho."
+  },
+  representacao: {
+    nome: "Contrato de Representação Comercial",
+    objeto: "Representação de produtos ou serviços em nome da empresa.",
+    clausulas: ["O REPRESENTANTE deverá atuar conforme as diretrizes da empresa."],
+    condicoesPagamento: "Remuneração por comissão sobre vendas."
+  },
+  licenciamento: {
+    nome: "Contrato de Licenciamento de Uso",
+    objeto: "Autorização de uso de software, marca ou patente.",
+    clausulas: ["O LICENCIADO poderá utilizar o bem licenciado dentro dos limites estabelecidos."],
+    condicoesPagamento: "Pagamento mensal de royalties conforme contrato."
+  }
+};
 
 export default function CriacaoDeContratos() {
   const router = useRouter();
@@ -50,36 +131,53 @@ export default function CriacaoDeContratos() {
   const [foroCidade, setForoCidade] = useState('Aracaju');
   const [foroEstado, setForoEstado] = useState('Sergipe');
   const [geradoPor, setGeradoPor] = useState('');
-// Obrigações padrão para o Contratado
-const [obrigacoesContratado, setObrigacoesContratado] = useState([
-  "1. Executar os serviços de acordo com as especificações acordadas;",
-  "2. Cumprir os prazos estabelecidos para a entrega dos serviços;",
-  "3. Manter sigilo sobre todas as informações e documentos recebidos;",
-  "4. Responsabilizar-se por quaisquer danos causados por má execução."
-]);
 
-// Obrigações padrão para o Contratante
-const [obrigacoesContratante, setObrigacoesContratante] = useState([
-  "1. Fornecer todas as informações e documentos necessários para a execução dos serviços;",
-  "2. Efetuar o pagamento nas condições e prazos estipulados;",
-  "3. Garantir acesso às dependências ou recursos necessários para a execução dos serviços;",
-  "4. Comunicar eventuais problemas ou necessidades de ajuste no prazo adequado."
-]);
+  // Obrigações padrão
+  const [obrigacoesContratado, setObrigacoesContratado] = useState([
+    "1. Executar os serviços de acordo com as especificações acordadas",
+    "2. Cumprir os prazos estabelecidos para a entrega dos serviços",
+    "3. Manter sigilo sobre todas as informações e documentos recebidos",
+    "4. Responsabilizar-se por quaisquer danos causados por má execução"
+  ]);
 
-  // Função para enviar para API
+  const [obrigacoesContratante, setObrigacoesContratante] = useState([
+    "1. Fornecer todas as informações e documentos necessários para a execução dos serviços",
+    "2. Efetuar o pagamento nas condições e prazos estipulados",
+    "3. Garantir acesso às dependências ou recursos necessários para a execução dos serviços",
+    "4. Comunicar eventuais problemas ou necessidades de ajuste no prazo adequado"
+  ]);
+
+  // Aplicar template
+  function aplicarTemplate(tipo: string) {
+    const modelo = modelosDeContrato[tipo];
+    if (!modelo) return;
+
+    setContrato({
+      ...contrato,
+      nome: modelo.nome || contrato.nome,
+      objeto: modelo.objeto || contrato.objeto,
+      clausulas: modelo.clausulas || contrato.clausulas,
+    });
+    if (modelo.obrigacoesContratado) setObrigacoesContratado(modelo.obrigacoesContratado);
+    if (modelo.obrigacoesContratante) setObrigacoesContratante(modelo.obrigacoesContratante);
+    if (modelo.condicoesPagamento) setCondicoesPagamento(modelo.condicoesPagamento);
+    if (modelo.condicoesRescisao) setCondicoesRescisao(modelo.condicoesRescisao);
+    if (modelo.prazoConfidencialidade) setPrazoConfidencialidade(modelo.prazoConfidencialidade);
+  }
+
+  // Função para enviar para API (mesma que você já tinha)
   async function gerarContrato() {
     if (!contrato.objeto) return alert("Informe o objeto do contrato");
     if (!dataAssinatura) return alert("Informe a data de assinatura");
 
     setLoading(true);
-
-const resHtml = await fetch('/modelos/CONTRATOSERVICO.html');
-const htmlTemplate = await resHtml.text();
+    const resHtml = await fetch('/modelos/CONTRATOSERVICO.html');
+    const htmlTemplate = await resHtml.text();
 
     const payload = {
       contrato: {
         ...contrato,
-         html: htmlTemplate, // <- envia o modelo completo
+        html: htmlTemplate,
         contratante,
         contratado,
         data_assinatura: dataAssinatura,
@@ -158,6 +256,27 @@ const htmlTemplate = await resHtml.text();
         <main ref={containerRef} className={`content flex-1 p-8 min-h-screen overflow-y-auto ${menuActive ? 'ml-[300px]' : 'ml-[80px]'}`}>
           <section className="max-w-5xl mx-auto bg-gray-700 p-8 rounded-2xl shadow-lg space-y-6">
             <h2 className="text-green-400 font-extrabold text-3xl mb-4">📄 Dados do Contrato</h2>
+
+            {/* Escolher template */}
+            <div>
+              <label className="block text-green-300 font-semibold mb-2">Tipo de Contrato</label>
+              <select
+                className="w-full rounded-xl px-4 py-2 text-white bg-gray-600"
+                onChange={(e) => aplicarTemplate(e.target.value)}
+              >
+                <option value="">Selecione um modelo...</option>
+                <option value="servico">Prestação de Serviço</option>
+                <option value="aluguel">Aluguel / Locação</option>
+                <option value="comodato">Comodato</option>
+                <option value="parceria">Parceria Comercial</option>
+                <option value="confidencialidade">Confidencialidade / NDA</option>
+                <option value="compra_venda">Compra e Venda</option>
+                <option value="estagio">Estágio</option>
+                <option value="freelancer">Freelancer / Trabalho Autônomo</option>
+                <option value="representacao">Representação Comercial</option>
+                <option value="licenciamento">Licenciamento de Uso</option>
+              </select>
+            </div>
 
             {/* Nome do contrato */}
             <div>
