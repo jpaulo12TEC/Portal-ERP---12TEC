@@ -32,7 +32,7 @@ body::before {
     .page {
       max-width: var(--max-width);
       background: transparent; /* deixa a imagem do body::before aparecer por trás */
-      margin: 0 auto;
+      margin: 0 auto 50px auto; /* margin-bottom: 50px */
       padding: 30px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       border-radius: 6px;
@@ -114,13 +114,13 @@ body::before {
       <div class="clausula">
         <strong>4.1 — Obrigações do CONTRATADO:</strong>
         <ul>
-          <li>{{obrigacoes_contratado_lista}}</li>
+          {{obrigacoes_contratado_lista}}
         </ul>
       </div>
       <div class="clausula">
         <strong>4.2 — Obrigações do CONTRATANTE:</strong>
         <ul>
-          <li>{{obrigacoes_contratante_lista}}</li>
+          {{obrigacoes_contratante_lista}}
         </ul>
       </div>
     </section>
