@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { Search, ArrowLeft } from "lucide-react";
-import { escreverExtenso } from "numero-por-extenso";
+import writtenNumber from "written-number";
 import { useUser } from '@/components/UserContext';
 
 interface Contrato {
@@ -452,19 +452,38 @@ export default function CriacaoDeContratos() {
     return numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   };
 
-  // Atualiza valor numérico e por extenso
-  const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "");
-    const formatted = formatarValor(raw);
-    setValorNum(formatted);
 
-    // Converte para extenso usando inteiro (sem centavos, ou arredonda)
-    const inteiro = Math.floor(parseFloat(raw) / 100);
-    const centavos = parseInt(raw.slice(-2)) || 0;
-    let ext = escreverExtenso(inteiro, { moeda: true });
-    if (centavos > 0) ext += ` e ${escreverExtenso(centavos)} centavos`;
-    setValorExtenso(ext);
-  };
+writtenNumber.defaults.lang = 'pt';
+
+// Atualiza valor numérico e por extenso
+// Atualiza valor numérico e por extenso
+const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Pega o valor digitado
+  let raw = e.target.value;
+
+  // Remove "R$", espaços e formatação
+  raw = raw.replace(/[R$\s]/g, "").replace(/\./g, "").replace(",", ".");
+
+  const numero = parseFloat(raw) || 0;
+
+  // Atualiza o input formatado em reais
+  setValorNum(numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+
+  // Inteiro e centavos
+  const inteiro = Math.floor(numero);
+  const centavos = Math.round((numero - inteiro) * 100);
+
+  // Valor por extenso
+let ext = writtenNumber(inteiro, { lang: 'pt' });
+ext += inteiro === 1 ? ' real' : ' reais'; // adiciona 'real' ou 'reais'
+if (centavos > 0) {
+  ext += ` e ${writtenNumber(centavos, { lang: 'pt' })}`;
+  ext += centavos === 1 ? ' centavo' : ' centavos';
+}
+
+  setValorExtenso(ext);
+};
+
 
   // Formata CPF ou CNPJ automaticamente
   const handleCpfCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -481,7 +500,7 @@ export default function CriacaoDeContratos() {
                .replace(/\.(\d{3})(\d)/, ".$1/$2")
                .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
     }
-    setContratado({ ...contratante, cpfCnpj: val })};
+    setContratado({ ...contratado, cpfCnpj: val })};
   
 
 

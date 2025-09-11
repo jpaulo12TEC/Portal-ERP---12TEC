@@ -64,15 +64,23 @@ export async function POST(req: Request) {
       .replace(/\{\{obrigacoes_contratado_lista\}\}/g, contrato.obrigacoes_contratado_lista || '')
       .replace(/\{\{obrigacoes_contratante_lista\}\}/g, contrato.obrigacoes_contratante_lista || '');
 
-    // --- Cláusulas adicionais ---
-    if (Array.isArray(contrato.clausulas) && contrato.clausulas.length > 0) {
-      const clausulasHtml = contrato.clausulas
-        .map((c: string, idx: number) => `<p class="clausula"><strong>Cláusula ${idx + 1}.</strong> ${c}</p>`)
-        .join('');
-      html = html.replace(/\{\{#if clausulas\}\}([\s\S]*?)\{\{\/if\}\}/, clausulasHtml);
-    } else {
-      html = html.replace(/\{\{#if clausulas\}\}([\s\S]*?)\{\{\/if\}\}/, '');
-    }
+      // ultimaClausula = número da última cláusula fixa antes das adicionais (ex: 7)
+const ultimaClausula = 7;
+
+if (Array.isArray(contrato.clausulas) && contrato.clausulas.length > 0) {
+  const clausulasHtml = contrato.clausulas
+    .map((c: string, idx: number) => `
+      <section class="section">
+        <h2>CLÁUSULA ${ultimaClausula + idx + 1} — </h2>
+        <p class="clausula">${c}</p>
+      </section>
+    `)
+    .join('');
+
+  html = html.replace(/\{\{#if clausulas\}\}([\s\S]*?)\{\{\/if\}\}/, clausulasHtml);
+} else {
+  html = html.replace(/\{\{#if clausulas\}\}([\s\S]*?)\{\{\/if\}\}/, '');
+}
 
     // --- 1️⃣ Gerar PDF do HTML com Puppeteer ---
     const browser = await puppeteer.launch({

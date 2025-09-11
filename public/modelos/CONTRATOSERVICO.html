@@ -36,7 +36,7 @@ body {
       border-bottom:1px solid #ddd;
       padding-bottom:4px;
     }
-    .clausula { margin:12px 0; text-align:justify; }
+    .clausula { margin:12px 0; text-align:justify; font-size:14px}
     ul { margin:6px 0 6px 18px; }
     footer { margin-top:48px; font-size:13px; text-align:center; }
     .signatures { display:flex; justify-content:space-around; margin-top:48px; gap:40px; }
@@ -48,7 +48,7 @@ body {
     @media print {
       body {
         padding:0;
-        background:#fff;
+        background: url("/modelos/FolhadeRostoContrato.jpg") no-repeat center center;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
@@ -120,7 +120,7 @@ body {
 
     <section class="section">
       <h2>CLÁUSULA 6 — CONFIDENCIALIDADE</h2>
-      <p class="clausula">As partes obrigam-se a manter sigilo sobre quaisquer informações trocadas em razão deste contrato, pelo prazo de {{prazo_confidencialidade}} anos.</p>
+      <p class="clausula">As partes obrigam-se a manter sigilo sobre quaisquer informações trocadas em razão deste contrato, pelo prazo de: {{prazo_confidencialidade}}.</p>
     </section>
 
     <section class="section">
@@ -128,14 +128,8 @@ body {
       <p class="clausula">Para dirimir quaisquer controvérsias decorrentes deste contrato, as partes elegem o foro da comarca de {{foro_cidade}}/{{foro_estado}}, renunciando a qualquer outro, por mais privilegiado que seja.</p>
     </section>
 
-    {{#if clausulas}}
-      <section class="section">
-        <h2>CLÁUSULAS ADICIONAIS</h2>
-        {{#each clausulas}}
-          <p class="clausula"><strong>Cláusula {{@index}}.</strong> {{this}}</p>
-        {{/each}}
-      </section>
-    {{/if}}
+{{clausulas}}
+
 
     <footer>
       <div class="small">E por estarem justos e contratados, firmam o presente instrumento em duas vias de igual teor e forma.</div>

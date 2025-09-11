@@ -61,7 +61,8 @@
     "tailwind-merge": "^3.0.2",
     "tailwind-variants": "^1.0.0",
     "tw-animate-css": "^1.2.4",
-    "whatsapp-web.js": "^1.27.0"
+    "whatsapp-web.js": "^1.27.0",
+    "written-number": "^0.11.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.9",
