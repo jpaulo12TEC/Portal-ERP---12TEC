@@ -7,28 +7,42 @@
   <style>
     :root { --max-width:800px; --accent:#111827 }
 
-body {
-  font-family: 'Georgia', serif;
-  color:#222;
-  line-height:1.6;
-  padding:24px;
-  margin:0;
-  background: none; /* removido para evitar sobreposição */
-  background-size: cover; /* cobre toda a tela/página */
+    body {
+      font-family: 'Georgia', serif;
+      color:#222;
+      line-height:1.6;
+      padding:24px;
+      background:#f9f9f9;
+      position: relative;
+    }
+
+    /* Marca d’água */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 210mm;   /* largura A4 */
+  height: 297mm;  /* altura A4 */
+  background: url("public/modelos/FolhadeRostoContrato.jpg") no-repeat center center;
+  background-size: cover; /* cobre toda a área da página */
+  opacity: 0.08;
+  z-index: -1;
 }
 
-.page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 48px;
-   background: none; /* removido para evitar sobreposição */
-  background-size: cover;
-}
+    .page {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      background: #fff;
+      padding: 48px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      border-radius: 6px;
+    }
 
     header { text-align:center; margin-bottom:24px; }
     h1 { font-size:20px; margin:0; font-weight:600; letter-spacing:0.5px; }
     .meta { font-size:13px; color:#666; margin-top:4px; }
-    .section { margin-top:28px; text-align:justify; font-size:14px;}
+    .section { margin-top:28px; text-align:justify;}
     .section h2, .section h3 {
       font-size:16px;
       margin:0 0 8px 0;
@@ -36,7 +50,7 @@ body {
       border-bottom:1px solid #ddd;
       padding-bottom:4px;
     }
-    .clausula { margin:12px 0; text-align:justify; font-size:14px}
+    .clausula { margin:12px 0; text-align:justify; }
     ul { margin:6px 0 6px 18px; }
     footer { margin-top:48px; font-size:13px; text-align:center; }
     .signatures { display:flex; justify-content:space-around; margin-top:48px; gap:40px; }
@@ -44,45 +58,25 @@ body {
     .sig-line { margin-top:60px; border-top:1px solid #000; padding-top:6px; font-weight:500; }
     .small { font-size:12px; color:#666; }
 
-    .folha-rosto {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover; /* cobre toda a página */
-  z-index: -1; /* atrás do conteúdo */
-}
-
-@media print {
-  body, .page {
-    margin: 20mm;       /* margem externa da página */
-    padding: 15mm;      /* espaço interno do conteúdo */
-  }
-
-  .folha-rosto {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -1; /* fica atrás do conteúdo */
-  }
-
-  .page {
-    box-shadow: none;
-    border: none;
-  }
-}
-
+    /* Impressão */
+    @media print {
+      body {
+        padding:0;
+        background:#fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      body::before {
+        position: fixed;
+      }
+      .page {
+        box-shadow: none;
+        border: none;
+      }
+    }
   </style>
 </head>
 <body>
-    <img 
-    src="modelos/FolhadeRostoContrato.jpg" 
-    class="folha-rosto" 
-    alt="Folha de rosto do contrato"
-  />
   <div class="page">
     <header>
       <h1>{{contrato_nome}} </h1>
@@ -140,7 +134,7 @@ body {
 
     <section class="section">
       <h2>CLÁUSULA 6 — CONFIDENCIALIDADE</h2>
-      <p class="clausula">As partes obrigam-se a manter sigilo sobre quaisquer informações trocadas em razão deste contrato, pelo prazo de: {{prazo_confidencialidade}}.</p>
+      <p class="clausula">As partes obrigam-se a manter sigilo sobre quaisquer informações trocadas em razão deste contrato, pelo prazo de {{prazo_confidencialidade}} anos.</p>
     </section>
 
     <section class="section">
@@ -148,8 +142,14 @@ body {
       <p class="clausula">Para dirimir quaisquer controvérsias decorrentes deste contrato, as partes elegem o foro da comarca de {{foro_cidade}}/{{foro_estado}}, renunciando a qualquer outro, por mais privilegiado que seja.</p>
     </section>
 
-{{clausulas}}
-
+    {{#if clausulas}}
+      <section class="section">
+        <h2>CLÁUSULAS ADICIONAIS</h2>
+        {{#each clausulas}}
+          <p class="clausula"><strong>Cláusula {{@index}}.</strong> {{this}}</p>
+        {{/each}}
+      </section>
+    {{/if}}
 
     <footer>
       <div class="small">E por estarem justos e contratados, firmam o presente instrumento em duas vias de igual teor e forma.</div>
