@@ -71,7 +71,7 @@ if (Array.isArray(contrato.clausulas) && contrato.clausulas.length > 0) {
   const clausulasHtml = contrato.clausulas
     .map((c: string, idx: number) => `
       <section class="section">
-        <h2>CLÁUSULA ${ultimaClausula + idx + 1} — </h2>
+        <h2>CLÁUSULA ADCICIONAL ${ultimaClausula + idx + 1} </h2>
         <p class="clausula">${c}</p>
       </section>
     `)

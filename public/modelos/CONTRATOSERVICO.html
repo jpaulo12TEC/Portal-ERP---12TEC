@@ -24,9 +24,9 @@ body::before {
   left: 0;
   width: 210mm;   /* largura A4 */
   height: 297mm;  /* altura A4 */
-  background: url("public/modelos/FolhadeRostoContrato.jpg") no-repeat center center;
+  background: url("/modelos/FolhadeRostoContrato.jpg") no-repeat center center;
   background-size: cover; /* cobre toda a área da página */
-  opacity: 0.08;
+  opacity: 1;
   z-index: -1;
 }
 
@@ -50,7 +50,7 @@ body::before {
       border-bottom:1px solid #ddd;
       padding-bottom:4px;
     }
-    .clausula { margin:12px 0; text-align:justify; }
+    .clausula { margin:12px 0; text-align:justify; font-size:13px }
     ul { margin:6px 0 6px 18px; }
     footer { margin-top:48px; font-size:13px; text-align:center; }
     .signatures { display:flex; justify-content:space-around; margin-top:48px; gap:40px; }
@@ -62,7 +62,6 @@ body::before {
     @media print {
       body {
         padding:0;
-        background:#fff;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
