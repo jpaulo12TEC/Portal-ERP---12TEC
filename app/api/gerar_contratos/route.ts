@@ -114,7 +114,7 @@ if (Array.isArray(contrato.clausulas) && contrato.clausulas.length > 0) {
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: 20, bottom: 40, left: 20, right: 20 },
+      margin: { top: 40, bottom: 40, left: 20, right: 20 },
     });
 
     await browser.close();
