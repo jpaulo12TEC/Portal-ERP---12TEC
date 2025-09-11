@@ -456,30 +456,28 @@ export default function CriacaoDeContratos() {
 writtenNumber.defaults.lang = 'pt';
 
 // Atualiza valor numérico e por extenso
-// Atualiza valor numérico e por extenso
 const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   // Pega o valor digitado
-  let raw = e.target.value;
+  const raw = e.target.value;
 
-  // Remove "R$", espaços e formatação
-  raw = raw.replace(/[R$\s]/g, "").replace(/\./g, "").replace(",", ".");
+  // Formata o valor em R$ usando a função utilitária
+  const valorFormatado = formatarValor(raw);
+  setValorNum(valorFormatado);
 
-  const numero = parseFloat(raw) || 0;
-
-  // Atualiza o input formatado em reais
-  setValorNum(numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+  // Converte para número para calcular por extenso
+  const numero = parseFloat(valorFormatado.replace(/[R$\s\.]/g, "").replace(",", ".")) || 0;
 
   // Inteiro e centavos
   const inteiro = Math.floor(numero);
   const centavos = Math.round((numero - inteiro) * 100);
 
   // Valor por extenso
-let ext = writtenNumber(inteiro, { lang: 'pt' });
-ext += inteiro === 1 ? ' real' : ' reais'; // adiciona 'real' ou 'reais'
-if (centavos > 0) {
-  ext += ` e ${writtenNumber(centavos, { lang: 'pt' })}`;
-  ext += centavos === 1 ? ' centavo' : ' centavos';
-}
+  let ext = writtenNumber(inteiro, { lang: 'pt' });
+  ext += inteiro === 1 ? ' real' : ' reais';
+  if (centavos > 0) {
+    ext += ` e ${writtenNumber(centavos, { lang: 'pt' })}`;
+    ext += centavos === 1 ? ' centavo' : ' centavos';
+  }
 
   setValorExtenso(ext);
 };
