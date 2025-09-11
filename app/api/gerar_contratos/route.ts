@@ -36,13 +36,21 @@ export async function POST(req: Request) {
     }
 
 
-    const contratadoLis = contrato.obrigacoes_contratado_lista
-  ? contrato.obrigacoes_contratado_lista.map((item: string) => `<li>${item}</li>`).join('')
+const contratadoLis = contrato.obrigacoes_contratado_lista
+  ? contrato.obrigacoes_contratado_lista
+      .filter((item: string) => item && item.trim() !== '') // define tipo explicitamente
+      .map((item: string) => `<li>${item}</li>`)
+      .join('')
   : '';
 
 const contratanteLis = contrato.obrigacoes_contratante_lista
-  ? contrato.obrigacoes_contratante_lista.map((item: string) => `<li>${item}</li>`).join('')
+  ? contrato.obrigacoes_contratante_lista
+      .filter((item: string) => item && item.trim() !== '')
+      .map((item: string) => `<li>${item}</li>`)
+      .join('')
   : '';
+
+
 
 
 
