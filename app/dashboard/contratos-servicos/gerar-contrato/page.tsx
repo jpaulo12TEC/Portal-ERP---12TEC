@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState, useRef } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { Search, ArrowLeft } from "lucide-react";
+import { escreverExtenso } from "numero-por-extenso";
+import { useUser } from '@/components/UserContext';
 
 interface Contrato {
   id: number;
@@ -316,6 +318,7 @@ licenciamento: {
 };
 
 export default function CriacaoDeContratos() {
+  const { nome } = useUser();
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -345,7 +348,7 @@ export default function CriacaoDeContratos() {
   const [estado, setEstado] = useState('Sergipe');
   const [foroCidade, setForoCidade] = useState('Aracaju');
   const [foroEstado, setForoEstado] = useState('Sergipe');
-  const [geradoPor, setGeradoPor] = useState('');
+  const [geradoPor, setGeradoPor] = useState(nome);
 
   // Obrigações padrão
   const [obrigacoesContratado, setObrigacoesContratado] = useState([
@@ -432,6 +435,61 @@ export default function CriacaoDeContratos() {
       setLoading(false);
     }
   }
+
+
+
+
+
+
+    // Formata valor em R$
+  const formatarValor = (valor: string) => {
+    // Remove tudo que não é número
+    const num = valor.replace(/\D/g, "");
+    if (!num) return "";
+    
+    // Formata em R$ 1.234,56
+    const numero = parseFloat(num) / 100;
+    return numero.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  };
+
+  // Atualiza valor numérico e por extenso
+  const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "");
+    const formatted = formatarValor(raw);
+    setValorNum(formatted);
+
+    // Converte para extenso usando inteiro (sem centavos, ou arredonda)
+    const inteiro = Math.floor(parseFloat(raw) / 100);
+    const centavos = parseInt(raw.slice(-2)) || 0;
+    let ext = escreverExtenso(inteiro, { moeda: true });
+    if (centavos > 0) ext += ` e ${escreverExtenso(centavos)} centavos`;
+    setValorExtenso(ext);
+  };
+
+  // Formata CPF ou CNPJ automaticamente
+  const handleCpfCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, ""); // remove não numérico
+    if (val.length <= 11) {
+      // CPF
+      val = val.replace(/(\d{3})(\d)/, "$1.$2")
+               .replace(/(\d{3})(\d)/, "$1.$2")
+               .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    } else {
+      // CNPJ
+      val = val.replace(/^(\d{2})(\d)/, "$1.$2")
+               .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+               .replace(/\.(\d{3})(\d)/, ".$1/$2")
+               .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+    }
+    setContratado({ ...contratante, cpfCnpj: val })};
+  
+
+
+
+
+
+
+
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800">
@@ -529,7 +587,7 @@ export default function CriacaoDeContratos() {
                 <input type="text" placeholder="Nome" className="w-full rounded-xl px-4 py-2 mb-2 text-white bg-gray-600"
                   value={contratado.nome} onChange={e => setContratado({ ...contratado, nome: e.target.value })} />
                 <input type="text" placeholder="CPF/CNPJ" className="w-full rounded-xl px-4 py-2 mb-2 text-white bg-gray-600"
-                  value={contratado.cpfCnpj} onChange={e => setContratado({ ...contratado, cpfCnpj: e.target.value })} />
+                  value={contratado.cpfCnpj} onChange={handleCpfCnpjChange} />
                 <input type="text" placeholder="Endereço" className="w-full rounded-xl px-4 py-2 text-white bg-gray-600"
                   value={contratado.endereco} onChange={e => setContratado({ ...contratado, endereco: e.target.value })} />
               </div>
@@ -573,7 +631,7 @@ export default function CriacaoDeContratos() {
       type="text"
       className="w-full rounded-xl px-4 py-2 text-white bg-gray-600"
       value={valorNum}
-      onChange={e => setValorNum(e.target.value)}
+      onChange={handleValorChange}
     />
   </div>
 
@@ -583,7 +641,7 @@ export default function CriacaoDeContratos() {
       type="text"
       className="w-full rounded-xl px-4 py-2 text-white bg-gray-600"
       value={valorExtenso}
-      onChange={e => setValorExtenso(e.target.value)}
+      readOnly
     />
   </div>
 
@@ -644,6 +702,7 @@ export default function CriacaoDeContratos() {
       className="w-full rounded-xl px-4 py-2 text-white bg-gray-600"
       value={geradoPor}
       onChange={e => setGeradoPor(e.target.value)}
+      readOnly
     />
   </div>
 
