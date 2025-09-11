@@ -7,14 +7,16 @@
   <style>
     :root { --max-width:800px; --accent:#111827 }
 
-    body {
-      font-family: 'Georgia', serif;
-      color:#222;
-      line-height:1.6;
-      padding: 14px;
-      position: relative;
-    }
+body {
+  font-family: 'Georgia', serif;
+  color: #222;
+  line-height: 1.6;
+  padding: 0; /* sem padding */
+  margin: 0;  /* sem margin */
+  position: relative;
+}
 
+/* Marca d’água ocupando toda a tela */
 body::before {
   content: "";
   position: fixed;
@@ -28,15 +30,16 @@ body::before {
   z-index: -1;
 }
 
+/* Conteúdo da página */
+.page {
+  max-width: var(--max-width);
+  background: transparent; /* deixa a imagem aparecer atrás */
+  margin: 0 auto 50px auto; /* só margem de baixo maior */
+  padding: 30px; /* só dentro da page */
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  border-radius: 6px;
+}
 
-    .page {
-      max-width: var(--max-width);
-      background: transparent; /* deixa a imagem do body::before aparecer por trás */
-      margin: 0 auto 50px auto; /* margin-bottom: 50px */
-      padding: 30px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      border-radius: 6px;
-    }
 
     header { text-align:center; margin-bottom:24px; }
     h1 { font-size:20px; margin:0; font-weight:600; letter-spacing:0.5px; }
