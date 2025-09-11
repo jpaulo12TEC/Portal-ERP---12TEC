@@ -12,7 +12,6 @@
       color:#222;
       line-height:1.6;
       padding:24px;
-      background:#f9f9f9;
       position: relative;
     }
 
@@ -26,12 +25,13 @@
       height: 297mm;  /* altura A4 */
       background: url("https://intranet12tec.vercel.app/modelos/FolhadeRostoContrato.jpg") no-repeat center center;
       background-size: cover; /* cobre toda a área da página */
-      opacity: 1;
-      z-index: 0;
+      opacity: 0.8;
+      z-index: -1;
     }
 
     .page {
       max-width: var(--max-width);
+      background: transparent; /* deixa a imagem do body::before aparecer por trás */
       margin: 0 auto;
       padding: 30px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
