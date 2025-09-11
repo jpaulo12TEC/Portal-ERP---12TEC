@@ -26,78 +26,293 @@ const modelosDeContrato: Record<string, Partial<Contrato> & {
   condicoesRescisao?: string;
   prazoConfidencialidade?: string;
 }> = {
-  servico: {
-    nome: "Contrato de Prestação de Serviço",
-    objeto: "Prestação de serviços especializados conforme descrito entre as partes.",
-    clausulas: ["O CONTRATADO prestará serviços conforme escopo definido."],
-    obrigacoesContratado: [
-      "Executar os serviços conforme especificações.",
-      "Cumprir prazos estabelecidos.",
-      "Manter sigilo sobre informações do CONTRATANTE."
-    ],
-    obrigacoesContratante: [
-      "Fornecer informações e documentos necessários.",
-      "Efetuar pagamento conforme acordado.",
-      "Garantir acesso a recursos necessários."
-    ],
-    condicoesPagamento: "O pagamento será realizado em até 30 dias após a entrega da nota fiscal.",
-    condicoesRescisao: "Encerramento por comum acordo ou por descumprimento das obrigações.",
-    prazoConfidencialidade: "Enquanto durar o contrato"
-  },
-  aluguel: {
-    nome: "Contrato de Aluguel",
-    objeto: "Cessão do uso de bem imóvel ou móvel conforme acordado.",
-    clausulas: ["O LOCATÁRIO se compromete a conservar o bem."],
-    condicoesPagamento: "Pagamento mensal até o 5º dia útil.",
-    condicoesRescisao: "Rescisão em caso de atraso superior a 30 dias."
-  },
-  comodato: {
-    nome: "Contrato de Comodato",
-    objeto: "Empréstimo gratuito de bem por prazo determinado.",
-    clausulas: ["O COMODATÁRIO deve devolver o bem ao final do prazo estabelecido."]
-  },
-  parceria: {
-    nome: "Contrato de Parceria Comercial",
-    objeto: "União de esforços entre as partes para execução de projeto conjunto.",
-    clausulas: ["As partes dividirão custos e lucros proporcionalmente."],
-    condicoesRescisao: "Rescisão por descumprimento contratual ou comum acordo."
-  },
-  confidencialidade: {
-    nome: "Acordo de Confidencialidade (NDA)",
-    objeto: "Proteção de informações sigilosas trocadas entre as partes.",
-    clausulas: ["As informações confidenciais não poderão ser divulgadas."],
-    prazoConfidencialidade: "5 anos após a assinatura"
-  },
-  compra_venda: {
-    nome: "Contrato de Compra e Venda",
-    objeto: "Transferência de propriedade de um bem mediante pagamento.",
-    clausulas: ["O vendedor declara ser legítimo proprietário do bem."],
-    condicoesPagamento: "Pagamento à vista na assinatura do contrato."
-  },
-  estagio: {
-    nome: "Contrato de Estágio",
-    objeto: "Atividades educacionais e de aprendizado supervisionadas.",
-    clausulas: ["O estágio terá acompanhamento pedagógico e duração definida pela lei."],
-    condicoesRescisao: "Rescisão por interesse de qualquer das partes com aviso prévio de 5 dias."
-  },
-  freelancer: {
-    nome: "Contrato de Freelancer",
-    objeto: "Execução de trabalho autônomo conforme escopo acordado.",
-    clausulas: ["O FREELANCER prestará o serviço com independência técnica."],
-    condicoesPagamento: "Pagamento integral após a entrega do trabalho."
-  },
-  representacao: {
-    nome: "Contrato de Representação Comercial",
-    objeto: "Representação de produtos ou serviços em nome da empresa.",
-    clausulas: ["O REPRESENTANTE deverá atuar conforme as diretrizes da empresa."],
-    condicoesPagamento: "Remuneração por comissão sobre vendas."
-  },
-  licenciamento: {
-    nome: "Contrato de Licenciamento de Uso",
-    objeto: "Autorização de uso de software, marca ou patente.",
-    clausulas: ["O LICENCIADO poderá utilizar o bem licenciado dentro dos limites estabelecidos."],
-    condicoesPagamento: "Pagamento mensal de royalties conforme contrato."
-  }
+servico: {
+  nome: "Contrato de Prestação de Serviço",
+  objeto: "Prestação de serviços especializados conforme descrito entre as partes.",
+  clausulas: [
+    "O CONTRATADO prestará serviços conforme escopo definido.",
+    "Os valores poderão ser reajustados anualmente de acordo com índice oficial.",
+    "Em caso de descumprimento das obrigações, poderão ser aplicadas penalidades e multas.",
+    "O CONTRATADO responderá civilmente por eventuais danos causados por dolo ou culpa.",
+    "Este contrato não implica exclusividade entre as partes, salvo ajuste em contrário.",
+    "É vedada a subcontratação dos serviços sem autorização expressa do CONTRATANTE.",
+    "Alterações contratuais somente terão validade se feitas por escrito e assinadas pelas partes.",
+    "O foro da comarca do CONTRATANTE será competente para dirimir controvérsias."
+  ],
+  obrigacoesContratado: [
+    "Executar os serviços conforme especificações.",
+    "Cumprir prazos estabelecidos.",
+    "Manter sigilo sobre informações do CONTRATANTE.",
+    "Zelar pela qualidade dos serviços prestados.",
+    "Cumprir integralmente a legislação trabalhista, previdenciária e fiscal aplicável.",
+    "Arcar com tributos, encargos e taxas referentes à execução do serviço.",
+    "Comunicar imediatamente ao CONTRATANTE qualquer fato que possa atrasar ou comprometer a execução.",
+    "Apresentar relatórios de acompanhamento da execução do serviço, quando solicitado.",
+    "Não utilizar nome, marca ou logotipo do CONTRATANTE sem autorização expressa."
+  ],
+  obrigacoesContratante: [
+    "Fornecer informações e documentos necessários.",
+    "Efetuar pagamento conforme acordado.",
+    "Garantir acesso a recursos necessários.",
+    "Pagar despesas adicionais previamente autorizadas.",
+    "Fornecer condições adequadas para execução do serviço (ambiente, equipamentos, materiais).",
+    "Aprovar ou rejeitar entregas parciais dentro de prazo razoável.",
+    "Responsabilizar-se por informações incorretas ou incompletas fornecidas ao CONTRATADO.",
+    "Cumprir a legislação aplicável às atividades relacionadas ao objeto do contrato."
+  ],
+  condicoesPagamento: "O pagamento será realizado em até 30 dias após a entrega da nota fiscal.",
+  condicoesRescisao: "Encerramento por comum acordo ou por descumprimento das obrigações.",
+  prazoConfidencialidade: "Enquanto durar o contrato"
+},
+
+aluguel: {
+  nome: "Contrato de Aluguel",
+  objeto: "Cessão do uso de bem imóvel ou móvel (descreva o bem) conforme acordado.",
+  clausulas: [
+    "O LOCATÁRIO se compromete a conservar o bem durante todo o período de locação.",
+    "O LOCADOR garante que o bem se encontra em condições adequadas de uso no momento da entrega.",
+    "O LOCATÁRIO não poderá sublocar, ceder ou transferir o uso do bem sem autorização expressa do LOCADOR.",
+    "Em caso de atraso no pagamento, incidirá multa e juros conforme legislação vigente.",
+    "As despesas ordinárias de manutenção e consumo ficam a cargo do LOCATÁRIO.",
+    "O LOCADOR será responsável por reparos estruturais ou defeitos ocultos preexistentes.",
+    "O presente contrato poderá ser renovado por acordo entre as partes, mediante aditivo.",
+   ],
+  obrigacoesContratante: [ 
+    "Pagar pontualmente o valor do aluguel nas datas acordadas.",
+    "Utilizar o bem apenas para os fins previstos no contrato.",
+    "Conservar e zelar pelo bem, devolvendo-o no estado em que recebeu, salvo desgaste natural.",
+    "Arcar com contas de consumo (água, luz, gás, condomínio, etc.), quando aplicável.",
+    "Comunicar imediatamente ao LOCADOR qualquer dano ou defeito no bem.",
+    "Não realizar modificações no bem sem prévia autorização por escrito do LOCADOR.",
+    "Permitir a vistoria do bem pelo LOCADOR, mediante aviso prévio razoável."
+  ],
+  obrigacoesContratado: [ 
+    "Entregar o bem em condições adequadas de uso.",
+    "Garantir o direito de uso pacífico do bem durante o período de locação.",
+    "Realizar reparos estruturais ou de responsabilidade do proprietário.",
+    "Fornecer recibos ou comprovantes dos pagamentos efetuados.",
+    "Cumprir com obrigações fiscais e legais relacionadas à propriedade do bem.",
+    "Comunicar ao LOCATÁRIO com antecedência razoável sobre necessidade de vistoria ou reparos."
+  ],
+  condicoesPagamento: "O pagamento será realizado em até 30 dias após a emissão da nota fiscal.",
+  condicoesRescisao: "Rescisão em caso de atraso superior a 30 dias ou descumprimento contratual.",
+  prazoConfidencialidade: "Enquanto durar o contrato"
+},
+
+comodato: {
+  nome: "Contrato de Comodato",
+  objeto: "Empréstimo gratuito de bem por prazo determinado.",
+  clausulas: [
+    "O COMODATÁRIO deve devolver o bem ao final do prazo estabelecido.",
+    "O bem deverá ser devolvido nas mesmas condições em que foi entregue, salvo desgaste natural.",
+    "É vedada a utilização do bem para fins diversos dos previstos neste contrato.",
+    "O COMODANTE poderá solicitar a devolução do bem em caso de necessidade urgente, mediante aviso prévio.",
+    "Fica eleito o foro da comarca do COMODANTE para solução de eventuais controvérsias."
+  ],
+  obrigacoesContratante: [ // COMODATÁRIO
+    "Zelar pela conservação do bem recebido em comodato.",
+    "Utilizar o bem apenas para os fins ajustados.",
+    "Devolver o bem no prazo estabelecido.",
+    "Arcar com despesas de uso e manutenção ordinária do bem.",
+    "Comunicar imediatamente ao COMODANTE qualquer dano ou defeito ocorrido."
+  ],
+  obrigacoesContratado: [ // COMODANTE
+    "Entregar o bem em condições adequadas de uso.",
+    "Garantir ao COMODATÁRIO o uso pacífico do bem durante o prazo do contrato.",
+    "Arcar com reparos estruturais ou defeitos ocultos preexistentes.",
+    "Fornecer informações necessárias ao correto uso do bem."
+  ],
+  condicoesPagamento: "O pagamento será realizado em até 30 dias após a emissão da nota fiscal.",
+  condicoesRescisao: "Rescisão por descumprimento contratual ou comum acordo.",
+  prazoConfidencialidade: "Enquanto durar o contrato"
+},
+
+
+
+parceria: {
+  nome: "Contrato de Parceria Comercial",
+  objeto: "União de esforços entre as partes para execução de projeto conjunto.",
+  clausulas: [
+    "As partes dividirão custos e lucros proporcionalmente.",
+    "As responsabilidades serão distribuídas conforme definido no plano de trabalho.",
+    "É vedada a atuação de qualquer das partes em concorrência desleal com a parceria.",
+    "O contrato poderá ser alterado por comum acordo, mediante aditivo escrito.",
+    "O foro da comarca definida pelas partes será competente para resolver litígios."
+  ],
+  obrigacoesContratado: [ // Parceiro A
+    "Cumprir as responsabilidades assumidas no projeto conjunto.",
+    "Aportar os recursos financeiros, materiais ou humanos acordados.",
+    "Respeitar a confidencialidade das informações compartilhadas.",
+    "Prestar contas de sua atuação dentro da parceria."
+  ],
+  obrigacoesContratante: [ // Parceiro B
+    "Cumprir igualmente as responsabilidades assumidas.",
+    "Aportar os recursos prometidos para viabilizar o projeto.",
+    "Respeitar os prazos acordados para execução de tarefas.",
+    "Comunicar tempestivamente quaisquer problemas que afetem a parceria."
+  ],
+  condicoesRescisao: "Rescisão por descumprimento contratual ou comum acordo.",
+  condicoesPagamento: "O pagamento será realizado em até 30 dias após a emissão da nota fiscal.",
+  prazoConfidencialidade: "Enquanto durar o contrato"
+},
+
+
+confidencialidade: {
+  nome: "Acordo de Confidencialidade (NDA)",
+  objeto: "Proteção de informações sigilosas trocadas entre as partes.",
+  clausulas: [
+    "As informações confidenciais não poderão ser divulgadas a terceiros.",
+    "As partes deverão utilizar as informações apenas para os fins previstos no acordo.",
+    "O dever de confidencialidade permanecerá válido mesmo após o término da relação contratual.",
+    "Excluem-se do dever de confidencialidade informações de conhecimento público ou obtidas de forma independente."
+  ],
+  obrigacoesContratado: [
+    "Manter em sigilo todas as informações recebidas.",
+    "Utilizar as informações confidenciais apenas para o fim permitido.",
+    "Não copiar ou reproduzir informações sem autorização expressa.",
+    "Devolver ou destruir documentos sigilosos ao término da relação."
+  ],
+  obrigacoesContratante: [
+    "Fornecer apenas informações necessárias ao objeto do acordo.",
+    "Classificar claramente o que é considerado informação confidencial.",
+    "Cumprir o mesmo dever de confidencialidade em relação às informações recebidas da outra parte."
+  ],
+  condicoesRescisao: "Rescisão por descumprimento contratual ou comum acordo.",
+  condicoesPagamento: "O pagamento será realizado em até 30 dias após a emissão da nota fiscal.",
+  prazoConfidencialidade: "5 anos após a assinatura"
+},
+
+compra_venda: {
+  nome: "Contrato de Compra e Venda",
+  objeto: "Transferência de propriedade de um bem (descreva o bem) mediante pagamento.",
+  clausulas: [
+    "O vendedor declara ser legítimo proprietário do bem.",
+    "O comprador se compromete a pagar o valor ajustado nas condições estabelecidas.",
+    "A transferência da propriedade se dará após o pagamento integral.",
+    "O vendedor garante que o bem está livre de ônus ou gravames.",
+    "Em caso de vícios ocultos, aplicam-se as disposições do Código Civil."
+  ],
+  obrigacoesContratado: [ // Comprador
+    "Efetuar o pagamento conforme acordado.",
+    "Receber o bem na data e local estipulados.",
+    "Assumir os riscos e responsabilidades sobre o bem a partir da entrega."
+  ],
+  obrigacoesContratante: [ // Vendedor
+    "Entregar o bem nas condições ajustadas.",
+    "Garantir a legitimidade da propriedade transferida.",
+    "Responder por vícios ou defeitos ocultos existentes antes da entrega."
+  ],
+  condicoesPagamento: "Pagamento à vista na assinatura do contrato.",
+  condicoesRescisao: "Rescisão por descumprimento contratual ou comum acordo.",
+  prazoConfidencialidade: "Sem prazo de confidencialidade"
+},
+
+
+estagio: {
+  nome: "Contrato de Estágio",
+  objeto: "Atividades educacionais e de aprendizado supervisionadas.",
+  clausulas: [
+    "O estágio terá acompanhamento pedagógico e duração definida pela lei.",
+    "Não gera vínculo empregatício, desde que atendidas as condições legais.",
+    "A jornada de estágio deverá ser compatível com o horário escolar.",
+    "A concessão de bolsa e auxílio-transporte seguirá acordo entre as partes."
+  ],
+  obrigacoesContratado: [ // Estagiário
+    "Cumprir a jornada e atividades designadas no plano de estágio.",
+    "Manter conduta ética e respeitosa no ambiente de estágio.",
+    "Informar ao supervisor quaisquer dificuldades ou necessidades.",
+    "Cumprir regulamentos internos da concedente."
+  ],
+  obrigacoesContratante: [ // Concedente
+    "Oferecer ambiente adequado ao aprendizado.",
+    "Designar supervisor responsável pelo acompanhamento do estágio.",
+    "Cumprir a legislação relativa ao estágio (Lei nº 11.788/2008).",
+    "Emitir relatórios de avaliação periódica."
+  ],
+  condicoesRescisao: "Rescisão por interesse de qualquer das partes com aviso prévio de 5 dias.",
+  condicoesPagamento: "O pagamento será realizado até o 5º dia útil",
+  prazoConfidencialidade: "Sem prazo de confidencialidade"
+},
+
+
+
+freelancer: {
+  nome: "Contrato de Freelancer",
+  objeto: "Execução de trabalho autônomo conforme escopo acordado.",
+  clausulas: [
+    "O FREELANCER prestará o serviço com independência técnica.",
+    "Não há vínculo empregatício entre FREELANCER e CONTRATANTE.",
+    "O pagamento será efetuado conforme as entregas aprovadas.",
+    "O FREELANCER garante a originalidade e autoria do trabalho entregue."
+  ],
+  obrigacoesContratado: [ // Freelancer
+    "Executar o trabalho conforme especificações e prazos.",
+    "Manter sigilo sobre informações do contratante.",
+    "Entregar o trabalho em formato e qualidade acordados.",
+    "Corrigir eventuais falhas ou ajustes solicitados dentro de prazo razoável."
+  ],
+  obrigacoesContratante: [ // Contratante
+    "Fornecer briefing e informações necessárias à execução.",
+    "Avaliar e aprovar entregas dentro de prazo razoável.",
+    "Efetuar o pagamento conforme acordado.",
+    "Não exigir exclusividade não prevista em contrato."
+  ],
+  condicoesPagamento: "Pagamento integral após a entrega do trabalho.",
+  condicoesRescisao: "Rescisão por interesse de qualquer das partes com aviso prévio de 5 dias.",
+  prazoConfidencialidade: "Sem prazo de confidencialidade"
+},
+
+
+representacao: {
+  nome: "Contrato de Representação Comercial",
+  objeto: "Representação de produtos ou serviços em nome da empresa.",
+  clausulas: [
+    "O REPRESENTANTE deverá atuar conforme as diretrizes da empresa.",
+    "A remuneração será calculada com base em comissão sobre vendas efetivas.",
+    "O REPRESENTANTE não poderá assumir obrigações em nome da empresa sem autorização.",
+    "O contrato não gera vínculo empregatício entre as partes."
+  ],
+  obrigacoesContratado: [ // Representante
+    "Promover os produtos ou serviços da empresa.",
+    "Cumprir metas e diretrizes comerciais.",
+    "Prestar contas periódicas das atividades realizadas.",
+    "Não atuar em concorrência direta sem autorização da empresa."
+  ],
+  obrigacoesContratante: [ // Empresa
+    "Fornecer material de apoio e informações sobre os produtos.",
+    "Pagar pontualmente as comissões devidas.",
+    "Comunicar alterações nas políticas comerciais.",
+    "Respeitar a autonomia técnica do representante dentro dos limites estabelecidos."
+  ],
+  condicoesPagamento: "Remuneração por comissão sobre vendas.",
+  condicoesRescisao: "Rescisão por interesse de qualquer das partes com aviso prévio de 5 dias.",
+  prazoConfidencialidade: "Sem prazo de confidencialidade"
+},
+licenciamento: {
+  nome: "Contrato de Licenciamento de Uso",
+  objeto: "Autorização de uso de software, marca ou patente.",
+  clausulas: [
+    "O LICENCIADO poderá utilizar o bem licenciado dentro dos limites estabelecidos.",
+    "É vedada a cessão ou sublicenciamento sem autorização do LICENCIANTE.",
+    "O LICENCIANTE garante que possui os direitos sobre o bem licenciado.",
+    "Em caso de violação, o contrato poderá ser rescindido imediatamente."
+  ],
+  obrigacoesContratado: [ // Licenciado
+    "Utilizar o objeto licenciado conforme os limites do contrato.",
+    "Não reproduzir, copiar ou redistribuir sem autorização.",
+    "Efetuar o pagamento das taxas ou royalties devidos.",
+    "Comunicar qualquer violação de direitos que venha a tomar conhecimento."
+  ],
+  obrigacoesContratante: [ // Licenciante
+    "Garantir ao LICENCIADO o uso pacífico do objeto licenciado.",
+    "Assegurar que possui legitimidade sobre o objeto licenciado.",
+    "Prestar suporte técnico ou informações necessárias, quando aplicável.",
+    "Respeitar a duração e condições do contrato de licenciamento."
+  ],
+  condicoesPagamento: "Pagamento mensal de royalties conforme contrato.",
+  condicoesRescisao: "Rescisão por interesse de qualquer das partes com aviso prévio de 5 dias.",
+  prazoConfidencialidade: "Sem prazo de confidencialidade"
+}
 };
 
 export default function CriacaoDeContratos() {
@@ -134,17 +349,11 @@ export default function CriacaoDeContratos() {
 
   // Obrigações padrão
   const [obrigacoesContratado, setObrigacoesContratado] = useState([
-    "1. Executar os serviços de acordo com as especificações acordadas",
-    "2. Cumprir os prazos estabelecidos para a entrega dos serviços",
-    "3. Manter sigilo sobre todas as informações e documentos recebidos",
-    "4. Responsabilizar-se por quaisquer danos causados por má execução"
+''
   ]);
 
   const [obrigacoesContratante, setObrigacoesContratante] = useState([
-    "1. Fornecer todas as informações e documentos necessários para a execução dos serviços",
-    "2. Efetuar o pagamento nas condições e prazos estipulados",
-    "3. Garantir acesso às dependências ou recursos necessários para a execução dos serviços",
-    "4. Comunicar eventuais problemas ou necessidades de ajuste no prazo adequado"
+''
   ]);
 
   // Aplicar template

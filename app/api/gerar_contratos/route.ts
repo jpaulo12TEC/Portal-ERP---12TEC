@@ -55,10 +55,10 @@ export async function POST(req: Request) {
       .replace(/\{\{foro_estado\}\}/g, contrato.foro_estado || '')
       .replace(/\{\{gerado_por\}\}/g, contrato.gerado_por || '')
       .replace(/\{\{contratante\.nome\}\}/g, contrato.contratante.nome || '')
-      .replace(/\{\{contratante\.cpf\}\}/g, contrato.contratante.cpf || '')
+      .replace(/\{\{contratante\.cpf\}\}/g, contrato.contratante.cpfCnpj || '')
       .replace(/\{\{contratante\.endereco\}\}/g, contrato.contratante.endereco || '')
       .replace(/\{\{contratado\.nome\}\}/g, contrato.contratado.nome || '')
-      .replace(/\{\{contratado\.cnpj\}\}/g, contrato.contratado.cnpj || '')
+      .replace(/\{\{contratado\.cnpj\}\}/g, contrato.contratado.cpfCnpj || '')
       .replace(/\{\{contratado\.endereco\}\}/g, contrato.contratado.endereco || '')
       .replace(/\{\{obrigacoes_contratado_lista\}\}/g, contrato.obrigacoes_contratado_lista || '')
       .replace(/\{\{obrigacoes_contratante_lista\}\}/g, contrato.obrigacoes_contratante_lista || '');
