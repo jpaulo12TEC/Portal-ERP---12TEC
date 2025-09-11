@@ -39,6 +39,7 @@ export async function POST(req: Request) {
     let html = contrato.html;
 
     html = html
+    .replace(/\{\{contrato_nome\}\}/g, contrato.nome || '')
       .replace(/\{\{contrato_id\}\}/g, contrato.id || '')
       .replace(/\{\{data_assinatura\}\}/g, contrato.data_assinatura || '')
       .replace(/\{\{cidade\}\}/g, contrato.cidade || '')
