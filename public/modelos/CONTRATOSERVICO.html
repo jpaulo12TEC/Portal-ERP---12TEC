@@ -17,18 +17,18 @@
     }
 
     /* Marca d’água */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 210mm;   /* largura A4 */
-  height: 297mm;  /* altura A4 */
-  background: url("/modelos/Folha de Rosto Contrato.jpg") no-repeat center center;
-  background-size: cover; /* cobre toda a área da página */
-  opacity: 0.08;
-  z-index: -1;
-}
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 210mm;   /* largura A4 */
+      height: 297mm;  /* altura A4 */
+      background: url("/modelos/Folha de Rosto Contrato.jpg") no-repeat center center;
+      background-size: cover; /* cobre toda a área da página */
+      opacity: 0.08;
+      z-index: -1;
+    }
 
     .page {
       max-width: var(--max-width);
