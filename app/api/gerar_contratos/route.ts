@@ -114,7 +114,7 @@ if (Array.isArray(contrato.clausulas) && contrato.clausulas.length > 0) {
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: 20, bottom: 20, left: 20, right: 20 },
+      margin: { top: 20, bottom: 5, left: 20, right: 20 },
     });
 
     await browser.close();
@@ -127,7 +127,7 @@ if (Array.isArray(contrato.clausulas) && contrato.clausulas.length > 0) {
       const { width, height } = page.getSize();
       page.drawText(`Página ${idx + 1} de ${pdfDoc.getPages().length}`, {
         x: width - 100,
-        y: 20,
+        y: 25,
         size: 10,
         font: helveticaFont,
         color: rgb(0.5, 0.5, 0.5),
