@@ -331,7 +331,7 @@ export default function CriacaoDeContratos() {
     objeto: '',
   });
 
-  const [contratante, setContratante] = useState<Parte>({ nome: '', cpfCnpj: '', endereco: '' });
+  const [contratante, setContratante] = useState<Parte>({ nome: '12 TEC Engenharia LTDA', cpfCnpj: '30.257.741/0001-13', endereco: 'Travessa Iguaçu, n.30, bairro: 18 do forte, Aracaju-Sergipe, CEP: 49072-330' });
   const [contratado, setContratado] = useState<Parte>({ nome: '', cpfCnpj: '', endereco: '' });
   const [dataAssinatura, setDataAssinatura] = useState('');
   const [dataInicio, setDataInicio] = useState('');
