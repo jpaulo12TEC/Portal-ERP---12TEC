@@ -35,6 +35,17 @@ export async function POST(req: Request) {
       });
     }
 
+
+    const contratadoLis = contrato.obrigacoes_contratado_lista
+  ? contrato.obrigacoes_contratado_lista.map((item: string) => `<li>${item}</li>`).join('')
+  : '';
+
+const contratanteLis = contrato.obrigacoes_contratante_lista
+  ? contrato.obrigacoes_contratante_lista.map((item: string) => `<li>${item}</li>`).join('')
+  : '';
+
+
+
     // --- Preencher placeholders no HTML ---
     let html = contrato.html;
 
@@ -61,8 +72,8 @@ export async function POST(req: Request) {
       .replace(/\{\{contratado\.nome\}\}/g, contrato.contratado.nome || '')
       .replace(/\{\{contratado\.cnpj\}\}/g, contrato.contratado.cpfCnpj || '')
       .replace(/\{\{contratado\.endereco\}\}/g, contrato.contratado.endereco || '')
-      .replace(/\{\{obrigacoes_contratado_lista\}\}/g, contrato.obrigacoes_contratado_lista || '')
-      .replace(/\{\{obrigacoes_contratante_lista\}\}/g, contrato.obrigacoes_contratante_lista || '');
+.replace(/\{\{obrigacoes_contratado_lista\}\}/g, contratadoLis)
+  .replace(/\{\{obrigacoes_contratante_lista\}\}/g, contratanteLis);
 
       // ultimaClausula = número da última cláusula fixa antes das adicionais (ex: 7)
 const ultimaClausula = 7;
