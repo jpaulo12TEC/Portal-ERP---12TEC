@@ -318,6 +318,7 @@ licenciamento: {
 };
 
 export default function CriacaoDeContratos() {
+  
   const { nome } = useUser();
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -376,6 +377,34 @@ export default function CriacaoDeContratos() {
     if (modelo.condicoesRescisao) setCondicoesRescisao(modelo.condicoesRescisao);
     if (modelo.prazoConfidencialidade) setPrazoConfidencialidade(modelo.prazoConfidencialidade);
   }
+
+function formatarDataPorExtenso(data: Date) {
+  const meses = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+  ];
+
+  const dia = data.getDate();
+  const mes = meses[data.getMonth()];
+  const ano = data.getFullYear();
+
+  return `${dia} de ${mes} de ${ano}`;
+}
+
+const dataInicioFormatada = formatarDataPorExtenso(new Date(dataInicio));
+
+
+
+function formatarDataNumerica(data: Date) {
+  const dia = String(data.getDate()).padStart(2, '0');
+  const mes = String(data.getMonth() + 1).padStart(2, '0'); // Janeiro = 0
+  const ano = data.getFullYear();
+
+  return `${dia}/${mes}/${ano}`;
+}
+
+const dataAssinaturaFormatada = formatarDataNumerica(new Date(dataAssinatura));
+
 
   // Função para enviar para API (mesma que você já tinha)
   async function gerarContrato() {
@@ -438,32 +467,7 @@ export default function CriacaoDeContratos() {
 
 
 
-function formatarDataPorExtenso(data: Date) {
-  const meses = [
-    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
-  ];
 
-  const dia = data.getDate();
-  const mes = meses[data.getMonth()];
-  const ano = data.getFullYear();
-
-  return `${dia} de ${mes} de ${ano}`;
-}
-
-const dataInicioFormatada = formatarDataPorExtenso(new Date(dataInicio));
-
-
-
-function formatarDataNumerica(data: Date) {
-  const dia = String(data.getDate()).padStart(2, '0');
-  const mes = String(data.getMonth() + 1).padStart(2, '0'); // Janeiro = 0
-  const ano = data.getFullYear();
-
-  return `${dia}/${mes}/${ano}`;
-}
-
-const dataAssinaturaFormatada = formatarDataNumerica(new Date(dataAssinatura));
 
 
 
