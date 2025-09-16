@@ -4,7 +4,7 @@ export async function uploadFileToOneDrive(
   fileName: string,
   dataCompra: string,
   fornecedor: string,
-  tipo: "cadastro-fornecedor-servico" | "cadastro-fornecedor" |"orçamentos-contratos" | "compras" | "contratos"  = "compras", // padrão compras
+  tipo: "cadastro-fornecedor-servico" | "cadastro-fornecedor" |"orçamentos-contratos" | "romaneio-itens" | "romaneio" |"compras" | "contratos"  = "compras", // padrão compras
   caminho?: string // agora é opcional
 ): Promise<string | null> {
   const graphBase = "https://graph.microsoft.com/v1.0/users/compras@12tec.com.br/drive";
@@ -20,6 +20,8 @@ export async function uploadFileToOneDrive(
 
 const caminhoPastas = 
   tipo === "compras" ? ["Financeiro", "Compras", "Notas Fiscais", ano, mes, fornecedorSanitizado] :
+  tipo === "romaneio" ? ["Logistica", "Romaneios", `${ano}_${mes}_${dia}_${fornecedorSanitizado}`] :
+  tipo === "romaneio-itens" ? ["Logistica", "Romaneios", `${ano}_${mes}_${dia}_${fornecedorSanitizado}`, "Fotos dos itens"] :
   tipo === "contratos" ? ["Financeiro", "Contratos", fornecedorSanitizado, `${ano}_${mes}_${caminho}`] :
   tipo === "cadastro-fornecedor" ? ["Fornecedores", "Serviços", fornecedorSanitizado, "Dados Cadastrais"] :
   tipo === "cadastro-fornecedor-servico" ? ["Fornecedores", "Serviços", fornecedorSanitizado,"Orçamentos", caminho ?? ""] :

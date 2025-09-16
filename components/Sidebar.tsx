@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { FaHome, FaUser, FaComment, FaChartBar, FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import { FaHome, FaUser, FaComment, FaChartBar, FaTruck ,FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import { FaFileContract } from 'react-icons/fa';
 import msalInstance from "@/lib/msalConfig";
 import { FaShieldAlt } from 'react-icons/fa'; // ícone para SSMA
@@ -155,6 +155,19 @@ useEffect(() => {
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Solicitação</div>
                   </Link>
                 </li>
+
+<li
+  className={activeTab === 'Logística' ? 'active' : ''}
+  onClick={(e) => activeLink(e, 'logistica')}
+>
+  <Link href="/logistica">
+    <div className="icon">
+      <FaTruck />
+    </div>
+    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Logística</div>
+  </Link>
+</li>
+
                 <li className={activeTab === 'Financeiro' ? 'active' : ''} onClick={(e) => activeLink(e, 'Financeiro')}>
                   <Link href="">
                     <div className="icon">
