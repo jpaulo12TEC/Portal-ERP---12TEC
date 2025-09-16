@@ -14,7 +14,7 @@ export default function RomaneioPage() {
   const handleNavClick = async (tab: string) => {
     try {
       setActiveTab(tab);
-      router.push(`/logistica/${tab.toLowerCase()}`);
+      router.push(`/dashboard/${tab}`);
     } catch (error) {
       console.error("Erro ao navegar:", error);
     }
