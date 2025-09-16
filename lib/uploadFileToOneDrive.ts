@@ -14,14 +14,15 @@ export async function uploadFileToOneDrive(
 
     const [ano, mesStr, dia] = dataCompra.split("-");
     const mes = mesStr.padStart(2, "0");
+    const diaSanitizado = dia.replace(/[<>:"/\\|?*]/g, "").trim();
 
     const fornecedorSanitizado = fornecedor.replace(/[<>:"/\\|?*]/g, "").trim();
         // Monta o caminho conforme tipo
 
 const caminhoPastas = 
   tipo === "compras" ? ["Financeiro", "Compras", "Notas Fiscais", ano, mes, fornecedorSanitizado] :
-  tipo === "romaneio" ? ["Logistica", "Romaneios", `${ano}_${mes}_${dia}_${fornecedorSanitizado}`] :
-  tipo === "romaneio-itens" ? ["Logistica", "Romaneios", `${ano}_${mes}_${dia}_${fornecedorSanitizado}`, "Fotos dos itens"] :
+  tipo === "romaneio" ? ["Logistica", "Romaneios", `${ano}_${mes}_${diaSanitizado}_${fornecedorSanitizado}`] :
+  tipo === "romaneio-itens" ? ["Logistica", "Romaneios", `${ano}_${mes}_${diaSanitizado}_${fornecedorSanitizado}`, "Fotos dos itens"] :
   tipo === "contratos" ? ["Financeiro", "Contratos", fornecedorSanitizado, `${ano}_${mes}_${caminho}`] :
   tipo === "cadastro-fornecedor" ? ["Fornecedores", "Serviços", fornecedorSanitizado, "Dados Cadastrais"] :
   tipo === "cadastro-fornecedor-servico" ? ["Fornecedores", "Serviços", fornecedorSanitizado,"Orçamentos", caminho ?? ""] :

@@ -42,7 +42,7 @@ export default function SaidaRomaneioPage() {
   const removeItem = (index: number) => {
     setItens(itens.filter((_, i) => i !== index));
   };
-const dataFormatada = new Date().toISOString().slice(0,10).replace(/-/g,"_"); // só ano_mes_dia
+const dataFormatada = new Date().toISOString().slice(0,10); // ex: 2025-09-16
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
