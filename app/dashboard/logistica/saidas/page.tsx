@@ -42,7 +42,7 @@ export default function SaidaRomaneioPage() {
   const removeItem = (index: number) => {
     setItens(itens.filter((_, i) => i !== index));
   };
-
+const dataFormatada = new Date().toISOString().slice(0,10).replace(/-/g,"_"); // só ano_mes_dia
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -81,7 +81,7 @@ try {
       accessToken,
       documentoFile,
       fileName,
-      new Date().toISOString(), // data/hora
+      dataFormatada, // data/hora
       saindoDe,                // origem
       "romaneio",    // pasta
       romaneioId.toString()     // descrição usando romaneioId
@@ -113,7 +113,7 @@ try {
         accessToken,
         item.imagemFile,
         fileName,
-        new Date().toISOString(), // data/hora
+        dataFormatada, // data/hora
         saindoDe,
         "romaneio-itens",
         romaneioId.toString() // aqui a descrição é o romaneioId
