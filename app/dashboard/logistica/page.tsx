@@ -24,7 +24,7 @@ export default function RomaneioPage() {
 const cards = [
   { id: "entradas", title: "Entradas", icon: <Upload size={32} />, route: "/dashboard//logistica/entradas" },
   { id: "saidas", title: "Saídas", icon: <Download size={32} />, route: "/dashboard/logistica/saidas" },
-  { id: "relatorios", title: "Relatórios de Romaneio", icon: <ClipboardList size={32} />, route: "/logistica/relatorios" },
+  { id: "relatorios", title: "Relatórios de Romaneio", icon: <ClipboardList size={32} />, route: "/dashboard//logistica/relatorioromaneio" },
 ];
 
   return (
