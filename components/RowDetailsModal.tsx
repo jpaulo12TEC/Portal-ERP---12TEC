@@ -3,6 +3,8 @@ import Button from "../components/ui/button";
 import { supabase } from "../lib/superbase";
 import { Card }  from '../components/ui/card'; // ou onde estiver o componente
 import { FileText, Eye, UploadCloud, CreditCard, Printer } from 'lucide-react';
+import { getAccessToken } from '@/lib/auth';
+import { uploadFileToOneDrive } from '@/lib/uploadFileToOneDrive';
 
 import {
   Dialog,
@@ -28,6 +30,11 @@ interface Material {
 }
 
 const RowDetailsModal: React.FC<RowDetailsModalProps> = ({ selectedRow, onClose }) => {
+  const [openUploadModal, setOpenUploadModal] = useState(false);
+const [selectedBoletoFile, setSelectedBoletoFile] = useState<File | null>(null);
+const [currentRowId, setCurrentRowId] = useState<number | null>(null);
+
+
   const [openModal, setOpenModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
   const [additionalRows, setAdditionalRows] = useState<any[]>([]);
@@ -60,23 +67,6 @@ const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
 
 
 
-const handleViewComprovante = async (filePath: string) => {
-  const { data, error } = await supabase
-    .storage
-    .from('comprovantes-pagamentos')
-    .createSignedUrl(filePath, 60); // Link válido por 60 segundos
-
-  if (error) {
-    console.error('Erro ao gerar link do comprovante:', error);
-    alert('Erro ao abrir o comprovante.');
-    return;
-  }
-
-  if (data?.signedUrl) {
-    window.open(data.signedUrl, '_blank');
-  }
-};
-
 const handleInsertComprovante = async () => {
   if (!comprovanteFile) {
     alert('Por favor, selecione um comprovante para anexar.');
@@ -89,24 +79,33 @@ const handleInsertComprovante = async () => {
   }
 
   try {
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error("Token de acesso não encontrado.");
+
     const timestamp = Date.now();
     const fileExtension = comprovanteFile.name.split('.').pop();
-    const comprovanteFileName = `comprovante_${selectedRowId}_${timestamp}.${fileExtension}`;
+    const fileName = `comprovante_${selectedRowId}_${timestamp}.${fileExtension}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('comprovantes-pagamentos')
-      .upload(comprovanteFileName, comprovanteFile);
+    // Upload para o OneDrive
+    const uploaded = await uploadFileToOneDrive(
+          accessToken,
+          comprovanteFile,
+          fileName,
+          new Date().toISOString().slice(0, 10), // data do pagamento,
+          selectedRow.empresa,
+          "financeiro", // origem
+          "compras"     // pasta destino no OneDrive
+        );
 
-    if (uploadError) {
-      console.error('Erro no upload:', uploadError);
-      alert('Erro ao fazer upload do comprovante.');
-      return;
+    if (!uploaded?.url) {
+      throw new Error("Falha no upload do comprovante para o OneDrive.");
     }
 
+    // Atualiza a URL no banco
     const { error: updateError } = await supabase
       .from('provisao_pagamentos')
       .update({
-        comprovante_pagamento: comprovanteFileName,
+        comprovante_pagamento: uploaded.url,
       })
       .eq('id', selectedRowId);
 
@@ -127,6 +126,7 @@ const handleInsertComprovante = async () => {
     fetchAdditionalRows();
   }
 };
+
 
 
   // Função para buscar mais linhas no Supabase
@@ -193,35 +193,74 @@ const handleAddPayment = (id: string, mode: "pagar" | "comprovante") => {
 
 
 
-  // Função para abrir boleto pelo caminho recebido
-const handlePrintBoleto = async (boletoPath: string, formaDePagamento: string) => {
-  if (!boletoPath) {
-    setModalMessage(`Forma de pagamento: ${formaDePagamento}`);
-    setOpenModal(true);
+const handlePrintBoleto = async (boletoUrl: string | null, formaDePagamento: string, rowId: number) => {
+  if (boletoUrl) {
+    try {
+      window.open(boletoUrl, "_blank");
+    } catch (error) {
+      console.error("Erro ao abrir boleto:", error);
+      alert("Erro ao abrir boleto.");
+    }
+    return;
+  }
+
+  // Se não existe boleto, abre modal de upload
+  setCurrentRowId(rowId);
+  setModalMessage(`Forma de pagamento: ${formaDePagamento}`);
+  setOpenUploadModal(true);
+};
+
+// Função para enviar o arquivo para OneDrive e atualizar a tabela
+const handleUploadBoleto = async () => {
+  if (!selectedBoletoFile || !currentRowId) {
+    alert("Selecione um arquivo antes de enviar.");
     return;
   }
 
   try {
     setLoadingBoleto(true);
-    const { data, error } = await supabase.storage
-      .from("boletos")
-      .download(boletoPath);
+    const accessToken = await getAccessToken();
+    if (!accessToken) throw new Error("Token de acesso não encontrado.");
 
-    if (error) {
-      console.error("Erro ao baixar boleto:", error);
-      alert("Erro ao baixar boleto.");
-      return;
+    const timestamp = Date.now();
+    const fileExtension = selectedBoletoFile.name.split(".").pop();
+    const fileName = `boleto_${currentRowId}_${timestamp}.${fileExtension}`;
+
+    const uploaded = await uploadFileToOneDrive(
+      accessToken,
+      selectedBoletoFile,
+      fileName,
+      new Date().toISOString().slice(0, 10),
+      selectedRow.empresa,
+      "financeiroboletos", // Origem
+      "boletos"     // Pasta destino no OneDrive
+    );
+
+    if (!uploaded?.url) {
+      throw new Error("Falha ao enviar boleto para o OneDrive.");
     }
 
-    const url = URL.createObjectURL(data);
-    window.open(url, "_blank");
-  } catch (error) {
-    console.error("Erro:", error);
-    alert("Erro inesperado.");
+    // Atualiza a tabela provisao_pagamentos com a URL do OneDrive
+    const { error } = await supabase
+      .from("provisao_pagamentos")
+      .update({ boleto: uploaded.url })
+      .eq("id", currentRowId);
+
+    if (error) throw error;
+
+    alert("Boleto enviado e registrado com sucesso!");
+    setOpenUploadModal(false);
+    setSelectedBoletoFile(null);
+    setCurrentRowId(null);
+    fetchAdditionalRows(); // Recarrega a tabela
+  } catch (err) {
+    console.error("Erro ao enviar boleto:", err);
+    alert("Erro ao enviar boleto.");
   } finally {
     setLoadingBoleto(false);
   }
 };
+
 
 const handleConfirmPayment = async () => {
   if (!paymentDate) {
@@ -234,34 +273,42 @@ const handleConfirmPayment = async () => {
     return;
   }
 
-  const now = new Date();
-  const pagoem = now.toISOString().slice(0, 19).replace('T', ' ');
+  const pagoem = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
   try {
-    let comprovanteFileName = null;
+    let comprovanteUrl: string | null = null;
 
     if (comprovanteFile) {
+      const accessToken = await getAccessToken();
+      if (!accessToken) throw new Error("Token de acesso não encontrado.");
+
       const timestamp = Date.now();
       const fileExtension = comprovanteFile.name.split('.').pop();
-      comprovanteFileName = `comprovante_${selectedRowId}_${timestamp}.${fileExtension}`;
+      const fileName = `comprovante_${selectedRowId}_${timestamp}.${fileExtension}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('comprovantes-pagamentos')
-        .upload(comprovanteFileName, comprovanteFile);
+      // Upload para o OneDrive
+      const uploaded = await uploadFileToOneDrive(
+          accessToken,
+          comprovanteFile,
+          fileName,
+          new Date().toISOString().slice(0, 10), // data do pagamento,
+          selectedRow.empresa,
+          "financeiro", // origem
+          "compras"     // pasta destino no OneDrive
+        );
 
-      if (uploadError) {
-        console.error('Erro no upload:', uploadError);
-        alert('Erro ao fazer upload do comprovante.');
-        return;
+      if (!uploaded?.url) {
+        throw new Error("Falha no upload do comprovante para o OneDrive.");
       }
+
+      comprovanteUrl = uploaded.url;
     }
 
     const { error: updateError } = await supabase
       .from('provisao_pagamentos')
       .update({
-        
-        pagoem: pagoem, // 👈 Aqui vai com data + hora
-        comprovante_pagamento: comprovanteFileName,
+        pagoem,
+        ...(comprovanteUrl ? { comprovante_pagamento: comprovanteUrl } : {}),
       })
       .eq('id', selectedRowId);
 
@@ -280,9 +327,20 @@ const handleConfirmPayment = async () => {
     setPaymentDate('');
     setComprovanteFile(null);
     setSelectedRowId(null);
-    fetchAdditionalRows(); // <- Essa é a função que você já deve ter para carregar os dados
+    fetchAdditionalRows();
   }
 };
+
+// Função para visualizar o comprovante pelo link salvo no banco
+const handleViewComprovante = async (comprovanteUrl?: string) => {
+  if (!comprovanteUrl) {
+    alert('Nenhum comprovante disponível.');
+    return;
+  }
+
+  window.open(comprovanteUrl, '_blank');
+};
+
 
 
 
@@ -797,17 +855,14 @@ useEffect(() => {
       {loadingBoleto ? "Carregando..." : "Pagar"}
     </button>
 
-    <button
-      onClick={() => handlePrintBoleto(row.boleto, row.formaaserpago)}
-      disabled={loadingBoleto}
-      className={`flex items-center gap-2 px-2 py-1 rounded-md text-sm 
-        border border-gray-300 
-        text-gray-700 hover:border-gray-500 hover:text-black 
-        disabled:text-gray-400 disabled:border-gray-200 transition`}
-    >
-      <Printer size={16} />
-      {loadingBoleto ? "Carregando..." : "Boleto"}
-    </button>
+<button
+  onClick={() => handlePrintBoleto(row.boleto, row.formaaserpago, row.id)}
+  disabled={loadingBoleto}
+  className="flex items-center gap-2 px-2 py-1 rounded-md text-sm border border-gray-300 text-gray-700 hover:border-gray-500 hover:text-black disabled:text-gray-400 disabled:border-gray-200 transition"
+>
+  <Printer size={16} />
+  {loadingBoleto ? "Carregando..." : "Boleto"}
+</button>
   </>
 )}
 
@@ -865,6 +920,34 @@ useEffect(() => {
 
 
 </div>
+
+{openUploadModal && (
+  <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+    <div className="bg-white p-6 rounded-xl shadow-lg w-[400px]">
+      <h3 className="text-lg font-semibold mb-4">Enviar Boleto</h3>
+      <input
+        type="file"
+        accept=".pdf,.png,.jpg"
+        onChange={(e) => setSelectedBoletoFile(e.target.files?.[0] || null)}
+      />
+      <div className="flex justify-end gap-3 mt-6">
+        <button
+          onClick={() => setOpenUploadModal(false)}
+          className="px-4 py-2 border rounded-lg"
+        >
+          Cancelar
+        </button>
+        <button
+          onClick={handleUploadBoleto}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+        >
+          Enviar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
 
 {openModal && (

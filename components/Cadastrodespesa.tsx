@@ -346,56 +346,67 @@ if (errorProdutos) {
 
 
 // 🔥 Gerar nome do arquivo do boleto
-const fileNameBoleto = `boleto_parcela_${new Date().toISOString().replace(/[:.]/g, "-")}`;
-// 🔥 Fazer upload do boleto (se existir)
+// 🔥 Gerar nome do arquivo do boleto
+let boletoUrl: string | null = null;
 if (formData.boleto) {
-  const { error: uploadErrorBoleto } = await supabase.storage
-    .from("boletos")
-    .upload(fileNameBoleto, formData.boleto, {
-      cacheControl: "3600",
-      upsert: true,
-    });
+  const accessToken = await getAccessToken();
+  if (!accessToken) throw new Error("Token de acesso não encontrado.");
 
-  if (uploadErrorBoleto) {
-    console.error("Erro no upload do boleto:", uploadErrorBoleto);
-    alert("Erro no upload do boleto.");
+  const timestamp = Date.now();
+  const fileExtension = formData.boleto.name.split(".").pop();
+  const fileNameBoleto = `boleto_parcela_${timestamp}.${fileExtension}`;
+
+  // 🔥 Fazer upload do boleto para o OneDrive
+  const uploaded = await uploadFileToOneDrive(
+      accessToken,
+      formData.boleto,
+      fileNameBoleto,
+      new Date().toISOString().slice(0, 10),
+      formData.empresa,
+      "financeiroboletos", // Origem
+      "boletos"     // Pasta destino no OneDrive
+  );
+
+  if (!uploaded?.url) {
+    console.error("Erro no upload do boleto para o OneDrive.");
+    alert("Erro ao enviar o boleto.");
     return;
   }
+
+  // Salva a URL do OneDrive
+  boletoUrl = uploaded.url;
 }
 
+// PROVISÃO DE PAGAMENTOS
+const quantidadeParcelas = Number(formData.parcela);
+const dataInicial = new Date(formData.primeiraParcela);
+const valorParcela = Number(String(formData.valorParcela).replace(",", "."));
 
-      
-    // PROVISÃO DE PAGAMENTOS
-
-  const quantidadeParcelas = Number(formData.parcela);
-  const dataInicial = new Date(formData.primeiraParcela);
-  const valorParcela = Number(String(formData.valorParcela).replace(",", "."));
-
-      // 🔥 Gerar os registros das parcelas
-    const parcelas = Array.from({ length: quantidadeParcelas }, (_, index) => {
-    const dataParcela = gerarDataParcela(dataInicial, index, formData.periodicidade);
-    return {
-      codigo: protocolo,
-      periodicidade: formData.periodicidade,
-      origem: "Contratos",
-      data_compra: dataInicial,
-      empresa: formData.empresa,
-      cnpj: formData.cnpjcpf,
-      valor: valorParcela,
-      boleto: fileNameBoleto ? fileNameBoleto : null,
-      valor_total: valorParcela * quantidadeParcelas, // corrigido aqui
-      lancadopor: nome,
-      venceem: dataParcela,
-      pagoem: null,
-      nparcelas: index + 1, // 🔥 Aqui é o número da parcela (1, 2, 3, ...)
-      qtdparcelas: quantidadeParcelas,
-      formapagamento: null,
-      formaaserpago: formData.dadosBancarios,
-      lancadoem: new Date().toISOString(),
-      pedidon: null,
-      comprovante_pagamento: null,
-    };
-  });
+// 🔥 Gerar os registros das parcelas
+const parcelas = Array.from({ length: quantidadeParcelas }, (_, index) => {
+  const dataParcela = gerarDataParcela(dataInicial, index, formData.periodicidade);
+  return {
+    codigo: protocolo,
+    periodicidade: formData.periodicidade,
+    origem: "Contratos",
+    data_compra: dataInicial,
+    empresa: formData.empresa,
+    cnpj: formData.cnpjcpf,
+    valor: valorParcela,
+    boleto: boletoUrl, // 🔥 Aqui salva a URL do OneDrive
+    valor_total: valorParcela * quantidadeParcelas,
+    lancadopor: nome,
+    venceem: dataParcela,
+    pagoem: null,
+    nparcelas: index + 1,
+    qtdparcelas: quantidadeParcelas,
+    formapagamento: null,
+    formaaserpago: formData.dadosBancarios,
+    lancadoem: new Date().toISOString(),
+    pedidon: null,
+    comprovante_pagamento: null,
+  };
+});
 
    const { error: errorProvisao } = await supabase
     .from("provisao_pagamentos")

@@ -911,20 +911,31 @@ const arquivosBoleto = await Promise.all(
   parcelas.map(async (parcela, index) => {
     if (parcela.boleto) {
       try {
-        const fileNameboleto = `boleto_parcela_${new Date().toISOString()}_${index}`;
-      
+        const accessToken = await getAccessToken();
+        if (!accessToken) throw new Error("Token de acesso não encontrado.");
 
-        const { error } = await supabase.storage
-          .from("boletos")
-          .upload(fileNameboleto, parcela.boleto);
+        const timestamp = Date.now();
+        const fileExtension = parcela.boleto.name.split(".").pop();
+        const fileNameBoleto = `boleto_parcela_${timestamp}_${index}.${fileExtension}`;
 
-        if (error) {
-          console.error("Erro no upload do boleto:", error.message);
+        // 🔥 Upload para OneDrive
+        const uploaded = await uploadFileToOneDrive(
+          accessToken,
+          parcela.boleto,
+          fileNameBoleto,
+          new Date().toISOString().slice(0, 10), // data do boleto
+          fornecedor,
+          "financeiroboletos", // Origem
+          "boletos"     // Pasta no OneDrive
+        );
+
+        if (!uploaded?.url) {
+          console.error("Erro no upload do boleto para o OneDrive.");
           return null;
         }
 
-        // Retorna o nome do arquivo
-        return fileNameboleto;
+        // Retorna a URL do OneDrive
+        return uploaded.url;
       } catch (err) {
         console.error("Erro inesperado no upload do boleto:", err);
         return null;
@@ -934,7 +945,7 @@ const arquivosBoleto = await Promise.all(
   })
 );
 
-const arquivosBoletoFiltrados = arquivosBoleto.filter((nome) => nome !== null);
+const arquivosBoletoFiltrados = arquivosBoleto.filter((url) => url !== null);
 
 let urlNF: string | null = null; // <-- declare fora
 

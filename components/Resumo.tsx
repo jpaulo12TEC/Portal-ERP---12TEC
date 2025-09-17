@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/superbase'
+import { getAccessToken } from '@/lib/auth';
+import { uploadFileToOneDrive } from '@/lib/uploadFileToOneDrive';
 import {
     isAfter,
   format,
@@ -520,6 +522,7 @@ const renderTabela = (
       <div className="flex justify-end gap-2">
         <button onClick={() => setModalAberto(false)} className="text-gray-600">Cancelar</button>
 <button
+  className="bg-blue-600 text-white px-4 py-2 rounded"
   onClick={async () => {
     if (!dataPagamento) {
       alert('Informe a data!');
@@ -529,50 +532,64 @@ const renderTabela = (
     let comprovanteFileName = null;
 
     if (comprovante) {
-      const timestamp = Date.now();
-      const fileExtension = comprovante.name.split('.').pop();
-      comprovanteFileName = `comprovante_${pagamentoSelecionado!.id}_${timestamp}.${fileExtension}`;
+      try {
+        const accessToken = await getAccessToken();
+        if (!accessToken) throw new Error("Token de acesso não encontrado.");
 
-      const { error: uploadError } = await supabase.storage
-        .from('comprovantes-pagamentos')
-        .upload(comprovanteFileName, comprovante);
+        const timestamp = Date.now();
+        const fileExtension = comprovante.name.split('.').pop();
+        const fileName = `comprovante_${pagamentoSelecionado!.id}_${timestamp}.${fileExtension}`;
 
-      if (uploadError) {
-        console.error('Erro no upload:', uploadError);
-        alert('Erro ao fazer upload do comprovante.');
-        return;
+        // Upload para o OneDrive
+        const uploaded = await uploadFileToOneDrive(
+          accessToken,
+          comprovante,
+          fileName,
+          new Date().toISOString().slice(0, 10), // data do pagamento,
+          pagamentoSelecionado.empresa,
+          "financeiro", // origem
+          "compras"     // pasta destino no OneDrive
+        );
+
+        if (!uploaded?.url) {
+          throw new Error("Falha no upload do comprovante para o OneDrive.");
+        }
+
+        // Salvar URL do OneDrive no banco
+        const updateData: any = {
+          pagoem: dataPagamento,
+          comprovante_pagamento: uploaded.url,
+        };
+
+        if (valorpago !== "") {
+          updateData.valor = valorpago;
+        }
+
+        const { error: updateError } = await supabase
+          .from('provisao_pagamentos')
+          .update(updateData)
+          .eq('id', pagamentoSelecionado!.id);
+
+        if (updateError) {
+          console.error('Erro na atualização:', updateError);
+          alert('Erro ao salvar as informações.');
+          return;
+        }
+
+        alert('Pagamento registrado com sucesso!');
+        setModalAberto(false);
+        fetchPagamentos(); // recarrega os dados
+
+      } catch (err) {
+        console.error("Erro ao enviar comprovante para o OneDrive:", err);
+        alert("Erro ao enviar o comprovante.");
       }
     }
-
-const updateData: any = {
-  pagoem: dataPagamento,
-  comprovante_pagamento: comprovanteFileName,
-};
-
-if (valorpago !== "") {
-  updateData.valor = valorpago;
-}
-
-const { error: updateError } = await supabase
-  .from('provisao_pagamentos')
-  .update(updateData)
-  .eq('id', pagamentoSelecionado!.id);
-
-
-    if (updateError) {
-      console.error('Erro na atualização:', updateError);
-      alert('Erro ao salvar as informações.');
-      return;
-    }
-
-    alert('Pagamento registrado com sucesso!');
-    setModalAberto(false);
-    fetchPagamentos(); // recarrega os dados
   }}
-  className="bg-blue-600 text-white px-4 py-2 rounded"
 >
   Salvar
 </button>
+
 
       </div>
     </div>
