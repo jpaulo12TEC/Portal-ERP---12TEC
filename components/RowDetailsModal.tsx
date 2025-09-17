@@ -193,7 +193,7 @@ const handleAddPayment = (id: string, mode: "pagar" | "comprovante") => {
 
 
 
-const handlePrintBoleto = async (boletoUrl: string | null, formaDePagamento: string, rowId: number) => {
+const handlePrintBoleto = async (boletoUrl: string | null, formaaserpago: string, rowId: number) => {
   if (boletoUrl) {
     try {
       window.open(boletoUrl, "_blank");
@@ -206,7 +206,8 @@ const handlePrintBoleto = async (boletoUrl: string | null, formaDePagamento: str
 
   // Se não existe boleto, abre modal de upload
   setCurrentRowId(rowId);
-  setModalMessage(`Forma de pagamento: ${formaDePagamento}`);
+  setModalMessage(`Forma de pagamento: ${formaaserpago}`);
+  setOpenModal(true)
   setOpenUploadModal(true);
 };
 
