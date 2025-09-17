@@ -4,9 +4,9 @@ export async function uploadFileToOneDrive(
   fileName: string,
   dataCompra: string,
   fornecedor: string,
-  tipo: "cadastro-fornecedor-servico" | "cadastro-fornecedor" |"orçamentos-contratos" | "romaneio-itens" | "romaneio" |"compras" | "contratos"  = "compras", // padrão compras
-  caminho?: string // agora é opcional
-): Promise<string | null> {
+  tipo: "cadastro-fornecedor-servico" | "cadastro-fornecedor" | "formularios" | "orçamentos-contratos" | "romaneio-itens" | "romaneio" | "compras" | "contratos"  = "compras", // padrão compras
+  caminho?: string
+): Promise<{ id: string; url: string } | null> {
   const graphBase = "https://graph.microsoft.com/v1.0/users/compras@12tec.com.br/drive";
 
   try {
@@ -14,48 +14,36 @@ export async function uploadFileToOneDrive(
 
     const [ano, mesStr, dia] = dataCompra.split("-");
     const mes = mesStr.padStart(2, "0");
-    const diaSanitizado = dia.replace(/[<>:"/\\|?*]/g, "").trim();
+    const diaSanitizado = dia.replace(/[<>:\"/\\|?*]/g, "").trim();
+    const fornecedorSanitizado = fornecedor.replace(/[<>:\"/\\|?*]/g, "").trim();
 
-    const fornecedorSanitizado = fornecedor.replace(/[<>:"/\\|?*]/g, "").trim();
-        // Monta o caminho conforme tipo
+    // Monta caminho
+    const caminhoPastas = 
+      tipo === "formularios" ? ["Modelos e Formularios", "Formularios"] :
+      tipo === "compras" ? ["Financeiro", "Compras", "Notas Fiscais", ano, mes, fornecedorSanitizado] :
+      tipo === "romaneio" ? ["Logistica", "Romaneios", `${ano}_${mes}_${diaSanitizado}_${fornecedorSanitizado}`] :
+      tipo === "romaneio-itens" ? ["Logistica", "Romaneios", `${ano}_${mes}_${diaSanitizado}_${fornecedorSanitizado}`, "Fotos dos itens"] :
+      tipo === "contratos" ? ["Financeiro", "Contratos", fornecedorSanitizado, `${ano}_${mes}_${caminho}`] :
+      tipo === "cadastro-fornecedor" ? ["Fornecedores", "Serviços", fornecedorSanitizado, "Dados Cadastrais"] :
+      tipo === "cadastro-fornecedor-servico" ? ["Fornecedores", "Serviços", fornecedorSanitizado, "Orçamentos", caminho ?? ""] :
+      tipo === "orçamentos-contratos" ? ["Financeiro", "Orçamentos", "Contratos", ano, mes, fornecedorSanitizado] :
+      [];
 
-const caminhoPastas = 
-  tipo === "compras" ? ["Financeiro", "Compras", "Notas Fiscais", ano, mes, fornecedorSanitizado] :
-  tipo === "romaneio" ? ["Logistica", "Romaneios", `${ano}_${mes}_${diaSanitizado}_${fornecedorSanitizado}`] :
-  tipo === "romaneio-itens" ? ["Logistica", "Romaneios", `${ano}_${mes}_${diaSanitizado}_${fornecedorSanitizado}`, "Fotos dos itens"] :
-  tipo === "contratos" ? ["Financeiro", "Contratos", fornecedorSanitizado, `${ano}_${mes}_${caminho}`] :
-  tipo === "cadastro-fornecedor" ? ["Fornecedores", "Serviços", fornecedorSanitizado, "Dados Cadastrais"] :
-  tipo === "cadastro-fornecedor-servico" ? ["Fornecedores", "Serviços", fornecedorSanitizado,"Orçamentos", caminho ?? ""] :
-  tipo === "orçamentos-contratos" ? ["Financeiro", "Orçamentos", "Contratos", ano, mes, fornecedorSanitizado] :
-  [];
-
+    // Garante que as pastas existem
     async function ensureFolderPath(pathParts: string[]): Promise<string> {
       let parentId = "root";
 
       for (const folderName of pathParts) {
-        console.log(`📁 Verificando/criando pasta: ${folderName} (pai: ${parentId})`);
-
-        // Verifica se a pasta já existe
         const checkRes = await fetch(`${graphBase}/items/${parentId}/children?$filter=name eq '${folderName}'`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
+          headers: { Authorization: `Bearer ${accessToken}` },
         });
-
-        if (!checkRes.ok) {
-          console.error(`❌ Erro ao buscar pasta '${folderName}':`, await checkRes.text());
-          throw new Error("Erro ao verificar pasta.");
-        }
 
         const checkData = await checkRes.json();
         const existingFolder = checkData.value?.find((item: any) => item.name === folderName && item.folder);
 
         if (existingFolder) {
           parentId = existingFolder.id;
-          console.log(`✅ Pasta existente encontrada: ${folderName}`);
         } else {
-          console.log(`➕ Criando nova pasta: ${folderName}`);
-
           const createRes = await fetch(`${graphBase}/items/${parentId}/children`, {
             method: "POST",
             headers: {
@@ -69,11 +57,6 @@ const caminhoPastas =
             }),
           });
 
-          if (!createRes.ok) {
-            console.error(`❌ Erro ao criar pasta '${folderName}':`, await createRes.text());
-            throw new Error(`Erro ao criar pasta '${folderName}'`);
-          }
-
           const created = await createRes.json();
           parentId = created.id;
         }
@@ -83,11 +66,9 @@ const caminhoPastas =
     }
 
     const pastaDestinoId = await ensureFolderPath(caminhoPastas);
-    console.log("📂 Pasta destino criada com ID:", pastaDestinoId);
 
     // Upload do arquivo
     const uploadUrl = `${graphBase}/items/${pastaDestinoId}:/${fileName}:/content`;
-    console.log("📤 Enviando arquivo para:", uploadUrl);
 
     const uploadResponse = await fetch(uploadUrl, {
       method: "PUT",
@@ -104,24 +85,17 @@ const caminhoPastas =
     }
 
     const uploadedFile = await uploadResponse.json();
-    const itemId = uploadedFile.id;
-    console.log("✅ Upload concluído. ID do arquivo:", itemId);
+    const itemId = uploadedFile.id; // <-- pegamos o ID interno do arquivo
 
-    // Gera link
-    const linkResponse = await fetch(
-      `${graphBase}/items/${itemId}/createLink`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: "view",
-          scope: "anonymous",
-        }),
-      }
-    );
+    // Gera link público
+    const linkResponse = await fetch(`${graphBase}/items/${itemId}/createLink`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ type: "view", scope: "anonymous" }),
+    });
 
     if (!linkResponse.ok) {
       console.error("❌ Erro ao gerar link público:", await linkResponse.text());
@@ -129,15 +103,10 @@ const caminhoPastas =
     }
 
     const linkData = await linkResponse.json();
-    console.log("🔗 Link público criado:", linkData.link.webUrl);
-    return linkData.link.webUrl;
+    return { id: itemId, url: linkData.link.webUrl };
 
   } catch (err: any) {
-    if (err instanceof Error) {
-      console.error("💥 Erro inesperado:", err.message);
-    } else {
-      console.error("💥 Erro inesperado (sem Error):", err);
-    }
+    console.error("💥 Erro inesperado:", err);
     return null;
   }
 }

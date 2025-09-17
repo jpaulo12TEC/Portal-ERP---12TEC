@@ -150,30 +150,33 @@ setLoading(true); // Inicia o loading
 
     // Função auxiliar para subir arquivo e retornar a URL ou null
       // Função para gerar nome do arquivo baseado no label + data
-      const uploadDoc = async (file?: File, key?: string) => {
-        if (!file) return null;
-        const label = key && fileFieldLabels[key] ? fileFieldLabels[key] : "Arquivo";
+const uploadDoc = async (file?: File, key?: string) => {
+  if (!file) return null;
+  const label = key && fileFieldLabels[key] ? fileFieldLabels[key] : "Arquivo";
 
-        const cleanLabel = label
-          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^a-zA-Z0-9_ ]/g, "")
-          .replace(/\s+/g, "_");
+  const cleanLabel = label
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_ ]/g, "")
+    .replace(/\s+/g, "_");
 
-        const today = new Date();
-        const dateStr = `${String(today.getDate()).padStart(2,"0")}${String(today.getMonth()+1).padStart(2,"0")}${today.getFullYear()}`;
+  const today = new Date();
+  const dateStr = `${String(today.getDate()).padStart(2,"0")}${String(today.getMonth()+1).padStart(2,"0")}${today.getFullYear()}`;
 
-        const extension = file.name.split('.').pop(); // pega o que vem depois do último ponto
-        const fileName = `${cleanLabel}_${dateStr}.${extension}`;
+  const extension = file.name.split('.').pop(); // pega a extensão
+  const fileName = `${cleanLabel}_${dateStr}.${extension}`;
 
-        return await uploadFileToOneDrive(
-          accessToken,
-          file,
-          fileName,
-          today.toISOString().slice(0, 10),
-          formData.razaoSocial,
-          "cadastro-fornecedor"
-        );
-      };
+  const uploaded = await uploadFileToOneDrive(
+    accessToken,
+    file,
+    fileName,
+    today.toISOString().slice(0, 10),
+    formData.razaoSocial,
+    "cadastro-fornecedor"
+  );
+
+  return uploaded?.url || null; // retorna somente a URL
+};
+
 
       // Uploads específicos
       const fichaCadastralUrl = await uploadDoc(formData.fichaCadastral[0], "fichaCadastral");

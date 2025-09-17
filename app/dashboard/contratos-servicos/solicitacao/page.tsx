@@ -162,14 +162,17 @@ const fileName = `${apelidoSanitizado}_orcamento${i + 1}_${new Date()
         const fornecedorAtual = fornecedoresOrcamento[i]?.trim() || "sem_fornecedor";
         console.log(`🟡 Enviando Orçamento ${i + 1} para OneDrive...`);
         
-    const url = await uploadFileToOneDrive(
-      accessToken,
-      arquivo,
-      fileName,
-      new Date().toISOString().slice(0, 10), // dataCompra
-      fornecedorAtual,
-      "orçamentos-contratos"
-    );
+const uploadedFile = await uploadFileToOneDrive(
+  accessToken,
+  arquivo,
+  fileName,
+  new Date().toISOString().slice(0, 10), // dataCompra
+  fornecedorAtual,
+  "orçamentos-contratos"
+);
+
+const url = uploadedFile?.url || null; // pega apenas a URL
+
 
         if (!url) {
           console.warn(`⚠️ Orçamento ${i + 1} não retornou URL`);

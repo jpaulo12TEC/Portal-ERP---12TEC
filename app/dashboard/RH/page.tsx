@@ -19,7 +19,7 @@ import {
 export default function AdmissaoColaborador() {
   const { nome } = useUser();
   const [menuActive, setMenuActive] = useState(false);
-  const [activeTab, setActiveTab] = useState('');
+  const [activeTab, setActiveTab] = useState('Pessoal');
   const router = useRouter();
   const [foto, setFoto] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);

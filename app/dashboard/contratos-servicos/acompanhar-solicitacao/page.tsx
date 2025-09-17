@@ -560,19 +560,22 @@ const handleUploadOrcamento = async (id: string, numero: number, file: File | nu
         .replace(/[:.]/g, '-')}${arquivo.name.slice(arquivo.name.lastIndexOf('.'))}`;
 
       // Envia para o OneDrive
-      const url = await uploadFileToOneDrive(
-        accessToken,
-        arquivo,
-        fileName,
-        new Date().toISOString().slice(0, 10),
-        "sem_fornecedor", // fornecedor fixo
-        "orçamentos-contratos"
-      );
+const arquivoEnviado = await uploadFileToOneDrive(
+  accessToken,
+  arquivo,
+  fileName,
+  new Date().toISOString().slice(0, 10),
+  "sem_fornecedor", // fornecedor fixo
+  "orçamentos-contratos"
+);
 
-      if (!url) {
-        alert(`Erro ao enviar Orçamento ${indice}`);
-        return;
-      }
+const url = arquivoEnviado?.url || null;
+
+if (!url) {
+  alert(`Erro ao enviar Orçamento ${indice}`);
+  return;
+}
+
 
       // Atualiza no Supabase
       const coluna = `orcamento${indice}`;

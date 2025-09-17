@@ -63,15 +63,18 @@ export default function EntradaRomaneioPage() {
         const accessToken = await getAccessToken();
         if (!accessToken) throw new Error("Token de acesso não encontrado.");
 
-        documentoUrl = await uploadFileToOneDrive(
-          accessToken,
-          documentoFile,
-          fileName,
-          dataFormatada,
-          recebidoDe,
-          "romaneio",
-          romaneioId.toString()
-        );
+const uploaded = await uploadFileToOneDrive(
+  accessToken,
+  documentoFile,
+  fileName,
+  dataFormatada,
+  recebidoDe,
+  "romaneio",
+  romaneioId.toString()
+);
+
+documentoUrl = uploaded?.url || null; // pega apenas a URL
+
 
         if (!documentoUrl) throw new Error("URL do documento não retornada pelo OneDrive.");
 
@@ -91,15 +94,18 @@ export default function EntradaRomaneioPage() {
           const accessToken = await getAccessToken();
           if (!accessToken) throw new Error("Token de acesso não encontrado.");
 
-          urlImagem = await uploadFileToOneDrive(
-            accessToken,
-            item.imagemFile,
-            fileName,
-            dataFormatada,
-            recebidoDe,
-            "romaneio-itens",
-            romaneioId.toString()
-          );
+const uploadedw = await uploadFileToOneDrive(
+  accessToken,
+  item.imagemFile,
+  fileName,
+  dataFormatada,
+  recebidoDe,
+  "romaneio-itens",
+  romaneioId.toString()
+);
+
+urlImagem = uploadedw?.url || null; // pega apenas a URL
+
         }
 
         const { error: itemError } = await supabase.from('romaneio_itens').insert([{

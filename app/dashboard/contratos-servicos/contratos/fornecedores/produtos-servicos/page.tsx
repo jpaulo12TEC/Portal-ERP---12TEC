@@ -117,16 +117,17 @@ const dataFormatada = `${hoje.getFullYear()}${String(hoje.getMonth() + 1).padSta
 const nomeArquivo = `${dataFormatada}_orcamento_${descricao.replace(/\s+/g, '_')}.${extensao}`;
 
 
-// Faz upload
-fileUrl = await uploadFileToOneDrive(
+const uploaded = await uploadFileToOneDrive(
   accessToken,
   file,
   nomeArquivo,
-  hoje.toISOString().slice(0, 10),       // dataCompra
-  nomeFornecedor,      // fornecedor
+  hoje.toISOString().slice(0, 10), // dataCompra
+  nomeFornecedor,                 // fornecedor
   "cadastro-fornecedor-servico",
   descricao
 );
+
+fileUrl = uploaded?.url || null; // pega somente a URL
 
 
       }

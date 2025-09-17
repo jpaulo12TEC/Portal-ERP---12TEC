@@ -2,22 +2,31 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../../../lib/superbase'; // usa a sua instância já configurada
+import { supabase } from '../../../../lib/superbase';
 import Sidebar from '@/components/Sidebar';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, FilePlus, FileText, Upload } from 'lucide-react';
-import { getAccessToken } from '@/lib/auth'; 
-import { uploadFileToOneDrive } from '@/lib/uploadFileToOneDrive'; 
+import { getAccessToken } from '@/lib/auth';
+import { uploadFileToOneDrive } from '@/lib/uploadFileToOneDrive';
+import { moveFileOnOneDrive } from '@/lib/moveFileOnOneDrive';
+import { useUser } from '@/components/UserContext';
 
 interface Formulario {
   id: number;
   nome_do_formulario: string;
   sobre: string;
-  versao: string;
+  versao: number;
+  tipo: string;
   ultima_modificacao: string;
   created_at: string;
   url: string;
+  item_id: string;
 }
+
+const tiposDocumento = [
+  "Tabela", "Procedimento", "Formulario", "Apostila", 
+  "Apresentação", "Ficha Técnica", "Manual", "Template"
+];
 
 export default function ListaFormularios() {
   const router = useRouter();
@@ -26,25 +35,37 @@ export default function ListaFormularios() {
   const [formularios, setFormularios] = useState<Formulario[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingForm, setEditingForm] = useState<Formulario | null>(null);
+  
 
   // Campos do formulário
   const [nome, setNome] = useState('');
   const [sobre, setSobre] = useState('');
-  const [versao, setVersao] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [tipo, setTipo] = useState<string>(tiposDocumento[0]);
 
   useEffect(() => {
     fetchFormularios();
   }, []);
 
   const fetchFormularios = async () => {
+    // Buscar última versão de cada formulário
     const { data, error } = await supabase
       .from('formularios')
       .select('*')
-      .order('ultima_modificacao', { ascending: false });
+      .order('nome_do_formulario', { ascending: true })
+      .order('versao', { ascending: false });
 
     if (error) console.error(error);
-    else setFormularios(data || []);
+    else {
+      // Pega apenas a última versão de cada formulário
+      const latestVersions: Record<string, Formulario> = {};
+      (data || []).forEach((f: Formulario) => {
+        if (!latestVersions[f.nome_do_formulario]) {
+          latestVersions[f.nome_do_formulario] = f;
+        }
+      });
+      setFormularios(Object.values(latestVersions));
+    }
   };
 
   const handleNavClick = (tab: string) => {
@@ -56,8 +77,8 @@ export default function ListaFormularios() {
     setEditingForm(null);
     setNome('');
     setSobre('');
-    setVersao('');
     setFile(null);
+    setTipo(tiposDocumento[0]);
     setModalOpen(true);
   };
 
@@ -65,65 +86,87 @@ export default function ListaFormularios() {
     setEditingForm(form);
     setNome(form.nome_do_formulario);
     setSobre(form.sobre);
-    setVersao(form.versao);
+    setTipo(form.tipo);
     setFile(null);
     setModalOpen(true);
   };
 
   const handleSalvarFormulario = async () => {
-    let fileUrl = editingForm?.url || '';
+    const { data: { user } } = await supabase.auth.getUser();
 
-    // Upload do arquivo (se houver)
-    if (file) {
-      const filePath = `formularios/${Date.now()}_${file.name}`;
-      const { data: uploaded, error: uploadError } = await supabase.storage
-        .from('arquivos') // bucket "arquivos"
-        .upload(filePath, file);
+        if (!user) {
+      console.warn("⚠️ Usuário não autenticado!");
+      alert("Usuário não autenticado!");
 
-      if (uploadError) {
-        console.error(uploadError);
-        return;
-      }
-
-      const { data: publicUrl } = supabase.storage
-        .from('arquivos')
-        .getPublicUrl(filePath);
-
-      fileUrl = publicUrl.publicUrl;
+      return;
     }
 
-    if (editingForm) {
-      // Atualizar
-      const { error } = await supabase
-        .from('formularios')
-        .update({
-          nome_do_formulario: nome,
-          sobre,
-          versao,
-          ultima_modificacao: new Date().toISOString(),
-          url: fileUrl,
-        })
-        .eq('id', editingForm.id);
+    try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) throw new Error("Token de acesso não encontrado.");
 
-      if (error) console.error(error);
-    } else {
-      // Inserir novo
+      let fileUrl = '';
+      let fileId = '';
+
+      // Upload do arquivo (se houver)
+      if (file) {
+        const extension = file.name.split('.').pop(); // 'pdf', 'docx', etc.
+         const fileName = `formulario_${Date.now()}.${extension}`;
+        const newFile = await uploadFileToOneDrive(
+          accessToken,
+          file,
+          fileName,
+          new Date().toISOString().slice(0,10),
+          "",
+          "formularios"
+        );
+
+        if (!newFile) throw new Error("Falha no upload do arquivo.");
+        fileUrl = newFile.url;
+        fileId = newFile.id;
+      }
+
+      // Determina a nova versão
+      let novaVersao = 1;
+      if (editingForm) {
+        // Pega última versão existente do formulário
+        const { data: ultimaVersao } = await supabase
+          .from('formularios')
+          .select('versao')
+          .eq('nome_do_formulario', editingForm.nome_do_formulario)
+          .order('versao', { ascending: false })
+          .limit(1)
+          .single();
+        novaVersao = ultimaVersao?.versao + 1 || 1;
+
+        // Move arquivo antigo para Não Vigentes
+        if (editingForm.item_id) {
+          await moveFileOnOneDrive(accessToken, editingForm.item_id, "formularios");
+        }
+      }
+
+      // Insere nova versão sempre
       const { error } = await supabase.from('formularios').insert([
         {
           nome_do_formulario: nome,
           sobre,
-          versao,
+          tipo,
+          versao: novaVersao,
           ultima_modificacao: new Date().toISOString(),
           created_at: new Date().toISOString(),
           url: fileUrl,
+          item_id: fileId,
+          usuario_id: user.id
         },
       ]);
 
-      if (error) console.error(error);
-    }
+      if (error) throw error;
 
-    setModalOpen(false);
-    fetchFormularios();
+      setModalOpen(false);
+      fetchFormularios();
+    } catch (err) {
+      console.error("Erro ao salvar formulário:", err);
+    }
   };
 
   return (
@@ -185,6 +228,7 @@ export default function ListaFormularios() {
                 </div>
                 <p className="text-sm text-gray-600 mb-4">{form.sobre}</p>
                 <div className="text-xs text-gray-500 space-y-1">
+                  <p><strong>Tipo:</strong> {form.tipo}</p>
                   <p><strong>Versão:</strong> {form.versao}</p>
                   <p><strong>Última modificação:</strong> {new Date(form.ultima_modificacao).toLocaleDateString()}</p>
                   <p><strong>Criado em:</strong> {new Date(form.created_at).toLocaleDateString()}</p>
@@ -217,13 +261,15 @@ export default function ListaFormularios() {
                 value={sobre}
                 onChange={(e) => setSobre(e.target.value)}
               />
-              <input
-                type="text"
-                placeholder="Versão"
+              <select
                 className="w-full border rounded-lg px-3 py-2"
-                value={versao}
-                onChange={(e) => setVersao(e.target.value)}
-              />
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value)}
+              >
+                {tiposDocumento.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
               <input
                 type="file"
                 className="w-full"

@@ -396,15 +396,18 @@ try {
       const fileName = `${descricaoSanitizada}${arquivo.name.slice(arquivo.name.lastIndexOf('.'))}`;
       console.log(`🟡 Enviando Documento ${i + 1} com filename: ${fileName}`);
 
-      const url = await uploadFileToOneDrive(
-        accessToken,
-        arquivo,
-        fileName,
-        new Date().toISOString().slice(0, 10),
-        servicosanitizado,
-        "contratos",
-        servicoSelecionadoNome
-      );
+const uploaded = await uploadFileToOneDrive(
+  accessToken,
+  arquivo,
+  fileName,
+  new Date().toISOString().slice(0, 10),
+  servicosanitizado,
+  "contratos",
+  servicoSelecionadoNome
+);
+
+const url = uploaded?.url || null; // pega apenas a URL
+
 
       console.log(`Resultado envio Documento ${i + 1}:`, url);
 
@@ -433,15 +436,18 @@ if (arquivoContrato) {
   const fileName2 = `Contrato${arquivoContrato.name.slice(arquivoContrato.name.lastIndexOf('.'))}`;
 
  
-  const urld = await uploadFileToOneDrive(
-    accessToken,
-    arquivoContrato,
-    fileName2,
-    new Date().toISOString().slice(0, 10),
-    servicosanitizado,
-    "contratos",
-    servicoSelecionadoNome || ""  // envia o nome do serviço
-  );
+const uploadedContrato = await uploadFileToOneDrive(
+  accessToken,
+  arquivoContrato,
+  fileName2,
+  new Date().toISOString().slice(0, 10),
+  servicosanitizado,
+  "contratos",
+  servicoSelecionadoNome || "" // envia o nome do serviço
+);
+
+const urld = uploadedContrato?.url || null; // pega apenas a URL
+
 
   if (!urld) {
     console.warn("⚠️ Não foi possível enviar o contrato");

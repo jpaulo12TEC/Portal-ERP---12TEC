@@ -140,20 +140,20 @@ useEffect(() => {
                   </Link>
                 </li>
 
-<li
-  className={activeTab === 'Qualidade' ? 'active' : ''}
-  onClick={(e) => activeLink(e, 'qualidade')}
->
-  <Link href="/dashboard/qualidade">
-    <div className="icon">
-      <FaCheckCircle />
-    </div>
-    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Qualidade</div>
-  </Link>
-</li>
+              <li
+                className={activeTab === 'Qualidade' ? 'active' : ''}
+                onClick={(e) => activeLink(e, 'qualidade')}
+              >
+                <Link href="/dashboard/qualidade">
+                  <div className="icon">
+                    <FaCheckCircle />
+                  </div>
+                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>Qualidade</div>
+                </Link>
+              </li>
 
-                <li className={activeTab === 'Pessoal' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
-                  <Link href="/">
+                <li className={activeTab === 'Pessoal' ? 'active' : ''} onClick={(e) => activeLink(e, 'RH')}>
+                  <Link href="/dashboard/RH">
                     <div className="icon">
                       <FaUser />
                     </div>

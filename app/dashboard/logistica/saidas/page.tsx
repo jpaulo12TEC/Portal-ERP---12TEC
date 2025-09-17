@@ -77,15 +77,18 @@ try {
     const accessToken = await getAccessToken();
     if (!accessToken) throw new Error("Token de acesso não encontrado.");
 
-    documentoUrl = await uploadFileToOneDrive(
-      accessToken,
-      documentoFile,
-      fileName,
-      dataFormatada, // data/hora
-      saindoDe,                // origem
-      "romaneio",    // pasta
-      romaneioId.toString()     // descrição usando romaneioId
-    );
+const uploaded = await uploadFileToOneDrive(
+  accessToken,
+  documentoFile,
+  fileName,
+  dataFormatada, // data/hora
+  saindoDe,      // origem
+  "romaneio",    // pasta
+  romaneioId.toString() // descrição usando romaneioId
+);
+
+documentoUrl = uploaded?.url || null; // pega apenas a URL
+
 
     if (!documentoUrl) throw new Error("URL do documento não retornada pelo OneDrive.");
 
@@ -109,15 +112,18 @@ try {
       const accessToken = await getAccessToken();
       if (!accessToken) throw new Error("Token de acesso não encontrado.");
 
-      urlImagem = await uploadFileToOneDrive(
-        accessToken,
-        item.imagemFile,
-        fileName,
-        dataFormatada, // data/hora
-        saindoDe,
-        "romaneio-itens",
-        romaneioId.toString() // aqui a descrição é o romaneioId
-      );
+const uploadedd = await uploadFileToOneDrive(
+  accessToken,
+  item.imagemFile,
+  fileName,
+  dataFormatada, // data/hora
+  saindoDe,
+  "romaneio-itens",
+  romaneioId.toString() // descrição
+);
+
+urlImagem = uploadedd?.url || null; // pega somente a URL
+
 
       if (!urlImagem) throw new Error("URL do item não retornada pelo OneDrive.");
     }

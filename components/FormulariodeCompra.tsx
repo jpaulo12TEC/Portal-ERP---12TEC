@@ -962,7 +962,17 @@ try {
   console.log("📄 Nome do arquivo:", fileName);
 
   // Upload para o OneDrive
-    urlNF = await uploadFileToOneDrive(accessToken, arquivo, fileName, dataCompra, fornecedor, "compras");
+    const uploaded = await uploadFileToOneDrive(
+  accessToken,
+  arquivo,
+  fileName,
+  dataCompra,
+  fornecedor,
+  "compras"
+);
+
+urlNF = uploaded?.url || null; // pega somente a URL
+
 
   if (!urlNF) {
     console.error("⚠️ URL não retornada pelo OneDrive.");
