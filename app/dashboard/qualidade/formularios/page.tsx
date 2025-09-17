@@ -136,6 +136,15 @@ const handleUpdate = (form: Formulario) => {
 
 
 const handleSalvarFormulario = async () => {
+  console.log(">> handleSalvarFormulario INICIADO", {
+    editingForm,
+    updateMode,
+    nome,
+    sobre,
+    tipo,
+    file
+  });
+
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -146,6 +155,7 @@ const handleSalvarFormulario = async () => {
 
   try {
     const accessToken = await getAccessToken();
+    console.log("accessToken obtido?", !!accessToken);
     if (!accessToken) throw new Error("Token de acesso não encontrado.");
 
     let fileUrl = editingForm?.url || '';
@@ -153,8 +163,15 @@ const handleSalvarFormulario = async () => {
 
     // Se enviou arquivo novo → faz upload
     if (file) {
+      console.log("Arquivo recebido para upload:", {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
+
       const extension = file.name.split('.').pop();
       const fileName = `formulario_${Date.now()}.${extension}`;
+      console.log("Nome do arquivo gerado:", fileName);
 
       const newFile = await uploadFileToOneDrive(
         accessToken,
@@ -165,85 +182,114 @@ const handleSalvarFormulario = async () => {
         "formularios"
       );
 
-      if (!newFile) throw new Error("Falha no upload do arquivo.");
-      fileUrl = newFile.url;
-      fileId = newFile.id;
+      console.log("Resposta uploadFileToOneDrive:", newFile);
+      if (!newFile) throw new Error("Falha no upload do arquivo. newFile === null/undefined");
+      // newFile deve conter { url, id } segundo sua implementação recente
+      fileUrl = (newFile as any).url ?? '';
+      fileId = (newFile as any).id ?? '';
+
+      console.log("Arquivo novo -> url:", fileUrl, "id:", fileId);
 
       // Opcional: mover arquivo antigo para "Não Vigentes"
       if (editingForm?.item_id) {
-        await moveFileOnOneDrive(accessToken, editingForm.item_id, "formularios");
+        try {
+          console.log("Tentando mover arquivo antigo (item_id):", editingForm.item_id);
+          await moveFileOnOneDrive(accessToken, editingForm.item_id, "formularios");
+          console.log("Arquivo antigo movido para Não Vigentes.");
+        } catch (moveErr) {
+          console.warn("Falha ao mover arquivo antigo (não fatal):", moveErr);
+        }
       }
+    } else {
+      console.log("Nenhum arquivo novo enviado - mantendo fileUrl/item_id existentes:", { fileUrl, fileId });
     }
 
     if (editingForm) {
       if (updateMode) {
         // 🔄 Atualizar o mesmo registro
-        const { error } = await supabase
-          .from("formularios")
-          .update({
-            nome_do_formulario: nome,
-            sobre,
-            tipo,
-            ultima_modificacao: new Date().toISOString(),
-            url: fileUrl,
-            item_id: fileId,
-            usuario_id: user.id,
-          })
-          .eq("id", editingForm.id);
-
-        if (error) throw error;
-      } else {
-        // ➕ Criar nova versão
-        const { data: ultimaVersao } = await supabase
-          .from("formularios")
-          .select("versao")
-          .eq("nome_do_formulario", editingForm.nome_do_formulario)
-          .order("versao", { ascending: false })
-          .limit(1)
-          .single();
-
-        const novaVersao = ultimaVersao?.versao + 1 || 1;
-
-        const { error } = await supabase.from("formularios").insert([
-          {
-            nome_do_formulario: nome,
-            sobre,
-            tipo,
-            versao: novaVersao,
-            ultima_modificacao: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            url: fileUrl,
-            item_id: fileId,
-            usuario_id: user.id,
-          },
-        ]);
-
-        if (error) throw error;
-      }
-    } else {
-      // 🆕 Novo formulário
-      const { error } = await supabase.from("formularios").insert([
-        {
+        const payload = {
           nome_do_formulario: nome,
           sobre,
           tipo,
-          versao: 1,
+          ultima_modificacao: new Date().toISOString(),
+          url: fileUrl,
+          item_id: fileId,
+          usuario_id: user.id,
+        };
+        console.log("Fazendo UPDATE com payload:", payload, " onde id =", editingForm.id);
+
+        const { data, error } = await supabase
+          .from("formularios")
+          .update(payload)
+          .eq("id", editingForm.id)
+          .select();
+
+        console.log("Resposta UPDATE Supabase:", { data, error });
+        if (error) throw error;
+      } else {
+        // ➕ Criar nova versão
+        console.log("Criando nova versão para:", editingForm.nome_do_formulario);
+        const { data: ultimaVersaoData, error: ultimaErr } = await supabase
+          .from('formularios')
+          .select('versao')
+          .eq('nome_do_formulario', editingForm.nome_do_formulario)
+          .order('versao', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (ultimaErr && (ultimaErr.code !== 'PGRST116' && ultimaErr.code !== 'PGRST117')) {
+          // PGRST116/117 são exemplos; adaptação depende do Supabase — apenas logamos
+          console.warn("Erro ao buscar última versão (pode ser ok se não existir):", ultimaErr);
+        }
+
+        const ultimaVersao = (ultimaVersaoData as any)?.versao;
+        const novaVersao = (ultimaVersao ?? 0) + 1;
+        console.log("Última versão:", ultimaVersao, "→ novaVersao:", novaVersao);
+
+        const insertPayload = {
+          nome_do_formulario: nome,
+          sobre,
+          tipo,
+          versao: novaVersao,
           ultima_modificacao: new Date().toISOString(),
           created_at: new Date().toISOString(),
           url: fileUrl,
           item_id: fileId,
           usuario_id: user.id,
-        },
-      ]);
+        };
+        console.log("Fazendo INSERT com payload:", insertPayload);
 
+        const { data, error } = await supabase.from("formularios").insert([insertPayload]).select();
+        console.log("Resposta INSERT Supabase:", { data, error });
+        if (error) throw error;
+      }
+    } else {
+      // 🆕 Novo formulário
+      const insertPayload = {
+        nome_do_formulario: nome,
+        sobre,
+        tipo,
+        versao: 1,
+        ultima_modificacao: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        url: fileUrl,
+        item_id: fileId,
+        usuario_id: user.id,
+      };
+      console.log("Inserindo novo formulário com payload:", insertPayload);
+
+      const { data, error } = await supabase.from("formularios").insert([insertPayload]).select();
+      console.log("Resposta INSERT (novo) Supabase:", { data, error });
       if (error) throw error;
     }
 
+    console.log("✔️ Salvar formulário concluído com sucesso.");
     setModalOpen(false);
     fetchFormularios();
     setUpdateMode(false); // volta pro normal
-  } catch (err) {
+  } catch (err: any) {
     console.error("Erro ao salvar formulário:", err);
+    alert(`Erro ao salvar formulário: ${err.message ?? err}`);
   }
 };
 
