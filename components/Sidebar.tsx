@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { FaHome, FaUser, FaComment, FaChartBar, FaCheckCircle, FaCertificate, FaClipboardCheck, FaBalanceScale, FaTruck ,FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import { FaHome, FaUser, FaComment, FaBoxes, FaChartBar, FaCheckCircle, FaCertificate, FaClipboardCheck, FaBalanceScale, FaTruck ,FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import { FaFileContract } from 'react-icons/fa';
 import msalInstance from "@/lib/msalConfig";
 import { FaShieldAlt } from 'react-icons/fa'; // ícone para SSMA
@@ -197,14 +197,15 @@ useEffect(() => {
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Contratos</div>
                   </Link>
                 </li>
-                <li className={activeTab === 'Compras' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
-                  <Link href="">
-                    <div className="icon">
-                      <FaShoppingCart />
-                    </div>
-                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Compra</div>
-                  </Link>
-                </li>
+                <li className={activeTab === 'Suprimentos' ? 'active' : ''} onClick={(e) => activeLink(e, 'Suprimentos')}>
+  <Link href="/dashboard/suprimentos">
+    <div className="icon">
+      <FaBoxes /> {/* ícone mais adequado para Suprimentos */}
+    </div>
+    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Suprimentos</div>
+  </Link>
+</li>
+
                   <li
                   className={activeTab === 'SSMA' ? 'active' : ''}
                   onClick={(e) => activeLink(e, 'SSMA')}
