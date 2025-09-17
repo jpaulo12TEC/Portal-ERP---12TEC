@@ -186,7 +186,7 @@ useEffect(() => {
   className={activeTab === 'Logística' ? 'active' : ''}
   onClick={(e) => activeLink(e, 'logistica')}
 >
-  <Link href="/logistica">
+  <Link href="/dashboard/logistica">
     <div className="icon">
       <FaTruck />
     </div>
@@ -230,14 +230,7 @@ useEffect(() => {
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>SSMA</div>
                   </Link>
                 </li>
-                <li className={activeTab === 'Configurações' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
-                  <Link href="/">
-                    <div className="icon">
-                      <FaCog />
-                    </div>
-                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Configurações</div>
-                  </Link>
-                </li>
+
 
 
               </div>
