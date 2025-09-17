@@ -12,7 +12,7 @@ export default function PaginaQualidade() {
   const [menuActive, setMenuActive] = useState(false);
 
   const botoesPrincipais = [
-    { label: 'Formulários', icon: FileText, path: '/dashboard/qualidade/formularios' },
+    { label: 'Documentos da Qualidade', icon: FileText, path: '/dashboard/qualidade/formularios' },
     { label: 'Sugestões / Reclamações', icon: AlertCircle, path: '/dashboard/qualidade/sugestoes' },
     { label: 'Indicadores de Desempenho', icon: BarChart, path: '/dashboard/qualidade/indicadores' },
     { label: 'Auditorias', icon: CheckSquare, path: '/dashboard/qualidade/auditorias' },
