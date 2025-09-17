@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { FaHome, FaUser, FaComment, FaBoxes, FaChartBar, FaCheckCircle, FaCertificate, FaClipboardCheck, FaBalanceScale, FaTruck ,FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
+import { FaHome, FaUser, FaComment, FaBoxes, FaChartBar, FaCheckCircle, FaCogs, FaCertificate, FaClipboardCheck, FaBalanceScale, FaTruck ,FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import { FaFileContract } from 'react-icons/fa';
 import msalInstance from "@/lib/msalConfig";
 import { FaShieldAlt } from 'react-icons/fa'; // ícone para SSMA
@@ -168,6 +168,19 @@ useEffect(() => {
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Solicitação</div>
                   </Link>
                 </li>
+
+                <li
+  className={activeTab === 'Ordens de Serviço' ? 'active' : ''}
+  onClick={(e) => activeLink(e, 'Ordens de Serviço')}
+>
+  <Link href="/dashboard/ordensdeservico">
+    <div className="icon">
+      <FaCogs /> {/* ícone representando tarefas/OS */}
+    </div>
+    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Operações</div>
+  </Link>
+</li>
+
 
 <li
   className={activeTab === 'Logística' ? 'active' : ''}
