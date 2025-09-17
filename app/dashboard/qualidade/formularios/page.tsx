@@ -374,7 +374,7 @@ const handleSalvarFormulario = async () => {
       </div>
 
       {/* Descrição */}
-      <p className="text-sm text-gray-600 mb-4 line-clamp-2">{form.sobre}</p>
+      <p className="text-sm text-gray-600 mb-4 ">{form.sobre}</p>
 
       {/* Metadados */}
       <div className="text-xs text-gray-500 space-y-1 mb-4">
