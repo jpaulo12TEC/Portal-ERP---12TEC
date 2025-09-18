@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import { supabase } from '@/lib/superbase';
 import { getAccessToken } from '@/lib/auth';
 import { uploadFileToOneDrive } from '@/lib/uploadFileToOneDrive';
+import { useUser } from '@/components/UserContext';
 
 interface Material {
   nome: string;
@@ -15,6 +16,8 @@ interface Material {
 }
 
 export default function NovoPedidoCompra() {
+    
+  const { nome } = useUser();
   const router = useRouter();
   const [menuActive, setMenuActive] = useState(false);
 
@@ -26,7 +29,7 @@ export default function NovoPedidoCompra() {
   const [orcamentos, setOrcamentos] = useState<(File | null)[]>([null]);
   const [loading, setLoading] = useState(false);
 
-  const usuarioSolicitante = 'João Silva';
+  const usuarioSolicitante = nome;
   const dataSolicitacao = new Date().toLocaleDateString('pt-BR');
 
   const handleMaterialChange = (index: number, field: keyof Material, value: string | number) => {
@@ -85,10 +88,14 @@ const handleSubmit = async () => {
         return { url: newFile.url, id: newFile.id };
       })
     );
-
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    alert("Usuário não autenticado!");
+    return;
+  }
     // Monta o payload para inserir no Supabase
     const pedido = {
-      id_solicitante: usuarioSolicitante,
+      id_solicitante: user.id,
       created_at: new Date().toISOString(),
       materiais: JSON.stringify(materiais),
       centro_custo: destino,
