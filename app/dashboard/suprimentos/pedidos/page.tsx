@@ -110,7 +110,7 @@ const handleSubmit = async () => {
       observacoes: null,
     };
 
-    const { error } = await supabase.from('Pedidosdecompra').insert([pedido]);
+    const { error } = await supabase.from('pedidosdecompra').insert([pedido]);
     if (error) throw error;
 
     alert('Pedido criado com sucesso!');

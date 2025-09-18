@@ -48,7 +48,7 @@ const [filtros, setFiltros] = useState<FiltroProps>({
   useEffect(() => {
     const fetchPedidos = async () => {
       const { data, error } = await supabase
-        .from('Pedidosdecompra')
+        .from('pedidosdecompra')
         .select('*')
 
       if (error) {
