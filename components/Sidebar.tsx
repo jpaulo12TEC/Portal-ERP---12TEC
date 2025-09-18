@@ -1,15 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { FaHome, FaUser, FaComment, FaBoxes, FaChartBar, FaCheckCircle, FaCogs, FaCertificate, FaClipboardCheck, FaBalanceScale, FaTruck ,FaShoppingCart, FaCog, FaSignOutAlt } from 'react-icons/fa';
-import { FaFileContract } from 'react-icons/fa';
+import { FaHome, FaUser, FaComment, FaBoxes, FaChartBar, FaCheckCircle, FaCogs, FaFileContract, FaTruck, FaShieldAlt, FaSignOutAlt } from 'react-icons/fa';
 import msalInstance from "@/lib/msalConfig";
-import { FaShieldAlt } from 'react-icons/fa'; // ícone para SSMA
-import Link from 'next/link';
 import '../app/stylesidebar.css';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-
 
 interface SidebarProps {
   className?: string;
@@ -23,100 +19,79 @@ const Sidebar = ({ className = '', onNavClickAction, menuActive, setMenuActive, 
   const router = useRouter();
   const supabase = createClientComponentClient();
   const [fotoCaminho, setFotoCaminho] = useState<string | null>(null);
-
-  const [openFinanceiro, setOpenFinanceiro] = useState(false);
   const [nome, setNome] = useState<string | null>(null);
   const [cargo, setCargo] = useState<string | null>(null);
 
-  const toggleSidebar = () => {
-    setMenuActive(!menuActive);
-  };
+  const toggleSidebar = () => setMenuActive(!menuActive);
 
-const handleLogout = async () => {
-  try {
-    // 1️⃣ Logout Supabase
-    await supabase.auth.signOut();
-
-    // 2️⃣ Logout MSAL (remove conta do cache)
-    const accounts = msalInstance.getAllAccounts();
-    if (accounts.length > 0) {
-      await msalInstance.logoutRedirect({
-        account: accounts[0], // pode iterar se tiver várias contas
-        postLogoutRedirectUri: window.location.origin,
-      });
-    } else {
-      // Se não houver conta MSAL, só redireciona
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) {
+        await msalInstance.logoutRedirect({
+          account: accounts[0],
+          postLogoutRedirectUri: window.location.origin,
+        });
+      } else {
+        router.push('/');
+      }
+    } catch (err) {
+      console.error("Erro ao fazer logout:", err);
       router.push('/');
     }
-  } catch (err) {
-    console.error("Erro ao fazer logout:", err);
-    router.push('/');
-  }
-};
-
-  const activeLink = (e: React.MouseEvent, tab: string) => {
-    onNavClickAction(tab);
   };
 
-  // 🔥 Puxando dados do Supabase
-useEffect(() => {
-  const fetchUserData = async () => {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+  const navigateTo = (tab: string, path: string) => {
+    onNavClickAction(tab);
+    router.push(path);
+  };
 
-    if (userError) {
-      console.error('Erro ao obter usuário:', userError.message);
-      return;
-    }
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) return console.error('Erro ao obter usuário:', userError.message);
+      if (!user) return;
 
-    if (user) {
       const { data, error } = await supabase
         .from('profiles')
         .select('nome, cargo, fotocaminho')
         .eq('id', user.id)
         .single();
 
-      if (error) {
-        console.error('Erro ao buscar perfil:', error.message);
+      if (error) return console.error('Erro ao buscar perfil:', error.message);
+
+      setNome(data?.nome);
+      setCargo(data?.cargo);
+
+      if (data?.fotocaminho) {
+        const { data: signedUrlData, error: signedUrlError } = await supabase
+          .storage
+          .from('fotoperfil')
+          .createSignedUrl(data.fotocaminho, 60);
+        if (signedUrlError) setFotoCaminho(null);
+        else setFotoCaminho(signedUrlData.signedUrl);
       } else {
-        setNome(data?.nome);
-        setCargo(data?.cargo);
-
-        if (data?.fotocaminho) {
-          // gera signed URL para a foto
-          const { data: signedUrlData, error: signedUrlError } = await supabase
-            .storage
-            .from('fotoperfil')
-            .createSignedUrl(data.fotocaminho, 60); // expira em 60 segundos
-
-          if (signedUrlError) {
-            console.error('Erro ao gerar URL da foto:', signedUrlError.message);
-            setFotoCaminho(null);
-          } else {
-            setFotoCaminho(signedUrlData.signedUrl);
-          }
-        } else {
-          setFotoCaminho(null);
-        }
+        setFotoCaminho(null);
       }
-    }
-  };
-
-  fetchUserData();
-}, [supabase]);
+    };
+    fetchUserData();
+  }, [supabase]);
 
   return (
     <div>
-      <div className={`sidebarWrapper ${menuActive ? 'menu-active' : ''}`}   onMouseEnter={() => setMenuActive(true)}
-  onMouseLeave={() => setMenuActive(false)} onClick={toggleSidebar}>
+      <div
+        className={`sidebarWrapper ${menuActive ? 'menu-active' : ''}`}
+        onMouseEnter={() => setMenuActive(true)}
+        onMouseLeave={() => setMenuActive(false)}
+        onClick={toggleSidebar}
+      >
         <div className={`sidebar ${menuActive ? 'active' : ''}`} onClick={toggleSidebar}>
           <ul>
             <div className="Menu">
-              <div className="Primeiro" >
-                <li className={"Perfil"} onClick={(e) => activeLink(e, '')}>
-                  <a href="/dashboard/meuperfil">
+              <div className="Primeiro">
+                <li className="Perfil">
+                  <a href="/dashboard/meuperfil" onClick={(e) => { e.preventDefault(); navigateTo('', '/dashboard/meuperfil'); }}>
                     <div className="Perfil2">
                       <div className="icon">
                         <div className="imgBx">
@@ -131,116 +106,81 @@ useEffect(() => {
               </div>
 
               <div className="Menulist">
-                <li className={activeTab === 'Início' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
-                  <Link href="">
-                    <div className="icon">
-                      <FaHome />
-                    </div>
+                <li className={activeTab === 'Início' ? 'active' : ''}>
+                  <a href="/dashboard" onClick={(e) => { e.preventDefault(); navigateTo('Início', '/dashboard'); }}>
+                    <div className="icon"><FaHome /></div>
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Início</div>
-                  </Link>
+                  </a>
                 </li>
 
-              <li
-                className={activeTab === 'Qualidade' ? 'active' : ''}
-                onClick={(e) => activeLink(e, 'qualidade')}
-              >
-                <Link href="/dashboard/qualidade">
-                  <div className="icon">
-                    <FaCheckCircle />
-                  </div>
-                  <div className={`text ${menuActive ? '' : 'collapsed'}`}>Qualidade</div>
-                </Link>
-              </li>
+                <li className={activeTab === 'Qualidade' ? 'active' : ''}>
+                  <a href="/dashboard/qualidade" onClick={(e) => { e.preventDefault(); navigateTo('Qualidade', '/dashboard/qualidade'); }}>
+                    <div className="icon"><FaCheckCircle /></div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Qualidade</div>
+                  </a>
+                </li>
 
-                <li className={activeTab === 'Pessoal' ? 'active' : ''} onClick={(e) => activeLink(e, 'RH')}>
-                  <Link href="/dashboard/RH">
-                    <div className="icon">
-                      <FaUser />
-                    </div>
+                <li className={activeTab === 'Pessoal' ? 'active' : ''}>
+                  <a href="/dashboard/RH" onClick={(e) => { e.preventDefault(); navigateTo('Pessoal', '/dashboard/RH'); }}>
+                    <div className="icon"><FaUser /></div>
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Pessoal</div>
-                  </Link>
+                  </a>
                 </li>
-                <li className={activeTab === 'Solicitação' ? 'active' : ''} onClick={(e) => activeLink(e, '')}>
-                  <Link href="/">
-                    <div className="icon">
-                      <FaComment />
-                    </div>
+
+                <li className={activeTab === 'Solicitação' ? 'active' : ''}>
+                  <a href="/" onClick={(e) => { e.preventDefault(); navigateTo('Solicitação', '/'); }}>
+                    <div className="icon"><FaComment /></div>
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Solicitação</div>
-                  </Link>
+                  </a>
                 </li>
 
-                <li
-  className={activeTab === 'Ordens de Serviço' ? 'active' : ''}
-  onClick={(e) => activeLink(e, 'Ordens de Serviço')}
->
-  <Link href="/dashboard/ordensdeservico">
-    <div className="icon">
-      <FaCogs /> {/* ícone representando tarefas/OS */}
-    </div>
-    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Operações</div>
-  </Link>
-</li>
+                <li className={activeTab === 'Ordens de Serviço' ? 'active' : ''}>
+                  <a href="/dashboard/ordensdeservico" onClick={(e) => { e.preventDefault(); navigateTo('Ordens de Serviço', '/dashboard/ordensdeservico'); }}>
+                    <div className="icon"><FaCogs /></div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Operações</div>
+                  </a>
+                </li>
 
+                <li className={activeTab === 'Logística' ? 'active' : ''}>
+                  <a href="/dashboard/logistica" onClick={(e) => { e.preventDefault(); navigateTo('Logística', '/dashboard/logistica'); }}>
+                    <div className="icon"><FaTruck /></div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Logística</div>
+                  </a>
+                </li>
 
-<li
-  className={activeTab === 'Logística' ? 'active' : ''}
-  onClick={(e) => activeLink(e, 'logistica')}
->
-  <Link href="/dashboard/logistica">
-    <div className="icon">
-      <FaTruck />
-    </div>
-    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Logística</div>
-  </Link>
-</li>
-
-                <li className={activeTab === 'Financeiro' ? 'active' : ''} onClick={(e) => activeLink(e, 'Financeiro')}>
-                  <Link href="">
-                    <div className="icon">
-                      <FaChartBar />
-                    </div>
+                <li className={activeTab === 'Financeiro' ? 'active' : ''}>
+                  <a href="/dashboard/financeiro" onClick={(e) => { e.preventDefault(); navigateTo('Financeiro', '/dashboard/financeiro'); }}>
+                    <div className="icon"><FaChartBar /></div>
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Financeiro</div>
-                  </Link>
+                  </a>
                 </li>
-                <li className={activeTab === 'contratos' ? 'active' : ''} onClick={(e) => activeLink(e, 'contratos-servicos')}>
-                  <Link href="">
-                    <div className="icon">
-                      <FaFileContract />
-                    </div>
+
+                <li className={activeTab === 'Contratos' ? 'active' : ''}>
+                  <a href="/dashboard/contratos" onClick={(e) => { e.preventDefault(); navigateTo('Contratos', '/dashboard/contratos-servicos'); }}>
+                    <div className="icon"><FaFileContract /></div>
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Contratos</div>
-                  </Link>
+                  </a>
                 </li>
-                <li className={activeTab === 'Suprimentos' ? 'active' : ''} onClick={(e) => activeLink(e, 'Suprimentos')}>
-  <Link href="/dashboard/suprimentos">
-    <div className="icon">
-      <FaBoxes /> {/* ícone mais adequado para Suprimentos */}
-    </div>
-    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Suprimentos</div>
-  </Link>
-</li>
 
-                  <li
-                  className={activeTab === 'SSMA' ? 'active' : ''}
-                  onClick={(e) => activeLink(e, 'SSMA')}
-                >
-                  <Link href="/ssma">
-                    <div className="icon">
-                      <FaShieldAlt />
-                    </div>
+                <li className={activeTab === 'Suprimentos' ? 'active' : ''}>
+                  <a href="/dashboard/suprimentos" onClick={(e) => { e.preventDefault(); navigateTo('Suprimentos', '/dashboard/suprimentos'); }}>
+                    <div className="icon"><FaBoxes /></div>
+                    <div className={`text ${menuActive ? '' : 'collapsed'}`}>Suprimentos</div>
+                  </a>
+                </li>
+
+                <li className={activeTab === 'SSMA' ? 'active' : ''}>
+                  <a href="/ssma" onClick={(e) => { e.preventDefault(); navigateTo('SSMA', '/dashboard/SSMA'); }}>
+                    <div className="icon"><FaShieldAlt /></div>
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>SSMA</div>
-                  </Link>
+                  </a>
                 </li>
-
-
-
               </div>
 
               <div className="bottom">
                 <li onClick={handleLogout} style={{ cursor: 'pointer' }}>
                   <a href="#">
-                    <div className="icon">
-                      <FaSignOutAlt />
-                    </div>
+                    <div className="icon"><FaSignOutAlt /></div>
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Logout</div>
                   </a>
                 </li>

@@ -67,7 +67,10 @@ export default function AcompanhamentoPedidos() {
       if (data) {
         setPedidos(data as Pedido[])
         setCentrosCusto(Array.from(new Set(data.map((p: any) => p.centro_custo))).filter(Boolean))
-        setSolicitantes(Array.from(new Set(data.map((p: any) => p.id_solicitante))).filter(Boolean))
+        setSolicitantes(
+  Array.from(new Set(data.map((p: any) => p.profiles?.nome))).filter(Boolean)
+)
+
         setOrdensServico(Array.from(new Set(data.map((p: any) => p.ordem_servico))).filter(Boolean))
       }
     }
@@ -144,7 +147,8 @@ export default function AcompanhamentoPedidos() {
   const pedidosFiltrados = pedidos.filter((p) => {
     if (filtros.status !== 'todos' && p.status !== filtros.status) return false
     if (filtros.centroCusto !== 'todos' && p.centro_custo !== filtros.centroCusto) return false
-    if (filtros.solicitante !== 'todos' && p.id_solicitante !== filtros.solicitante) return false
+    if (filtros.solicitante !== 'todos' && p.profiles?.nome !== filtros.solicitante) return false
+
     if (filtros.ordemServico !== 'todos' && p.ordem_servico !== filtros.ordemServico) return false
     if (filtros.dataInicio && new Date(p.created_at) < new Date(filtros.dataInicio)) return false
     if (filtros.dataFim && new Date(p.created_at) > new Date(filtros.dataFim)) return false

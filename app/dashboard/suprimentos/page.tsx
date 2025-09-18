@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, ArrowLeft } from "lucide-react";
 import Sidebar from '../../../components/Sidebar';
-import { ShoppingCart, Box, ClipboardList, CalendarCheck, FileText  } from 'lucide-react';
+import { ShoppingCart, Box, ClipboardList,Users, CalendarCheck, FileText  } from 'lucide-react';
 import AcompanhamentoPedidos from '@/components/Acompanhamentodepedidos';
+import ProdutosAnalise from "@/components/catalogoprodutos";
 
 
 export default function Compras() {
@@ -19,10 +20,11 @@ export default function Compras() {
 
   const acoes = [
     { label: 'Pedido de Compra', path: '/dashboard/suprimentos/pedidos', icon: ShoppingCart },
-    { label: 'Catálogo de Produtos', path: '/dashboard/compras/catalogo', icon: Box },
+    { label: 'Catálogo de Produtos', path: '/dashboard/suprimentos/catalogo', icon: Box },
+    { label: 'Fornecedores', path: '/dashboard/suprimentos/fornecedores', icon: Users, section: 'fornecedores' }, // nova aba
     { label: 'Estoque', path: '/dashboard/compras/estoque', icon: ClipboardList },
-    { label: 'Inventário', path: '/dashboard/compras/inventario', icon: ClipboardList },
-    { label: 'Acompanhamento', path: '/dashboard/compras/acompanhamento', icon: CalendarCheck },
+    { label: 'Inventário', path: '/dashboard/compras/inventario', icon: CalendarCheck },
+   
     { label: 'Documentos de Compra', path: '/dashboard/compras/documentos', icon: FileText },
   ];
 
