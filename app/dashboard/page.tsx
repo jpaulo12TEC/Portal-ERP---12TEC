@@ -7,6 +7,7 @@ import { supabase } from '../../lib/superbase';
 import { useUser } from '@/components/UserContext';
 import { useRef } from 'react';
 import { getAccessToken } from "../../lib/auth"; // ajuste o caminho
+import { motion } from 'framer-motion';
 
 
 interface Aniversariante {
@@ -244,7 +245,7 @@ export default function Dashboard() {
     >
       
       <span className="text-sm font-medium"
-      onClick={() => setShowMurals((prev) => !prev)}>INTRANET 13 TEC</span>
+      onClick={() => setShowMurals((prev) => !prev)}>INTRANET - 12 TEC</span>
     </button>
     <button onClick={sendMessageToCaio}>
   

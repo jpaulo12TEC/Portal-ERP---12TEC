@@ -47,36 +47,56 @@ const Sidebar = ({ className = '', onNavClickAction, menuActive, setMenuActive, 
     router.push(path);
   };
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) return console.error('Erro ao obter usuário:', userError.message);
-      if (!user) return;
+useEffect(() => {
+  const fetchUserData = async () => {
+    // Verifica se já tem a foto no localStorage
+    const cachedPhoto = localStorage.getItem('fotoCaminho');
+    const cachedNome = localStorage.getItem('nomeUsuario');
+    const cachedCargo = localStorage.getItem('cargoUsuario');
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('nome, cargo, fotocaminho')
-        .eq('id', user.id)
-        .single();
+    if (cachedPhoto || cachedNome || cachedCargo) {
+      if (cachedPhoto) setFotoCaminho(cachedPhoto);
+      if (cachedNome) setNome(cachedNome);
+      if (cachedCargo) setCargo(cachedCargo);
+      return; // sai do fetch
+    }
 
-      if (error) return console.error('Erro ao buscar perfil:', error.message);
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) return console.error('Erro ao obter usuário:', userError.message);
+    if (!user) return;
 
-      setNome(data?.nome);
-      setCargo(data?.cargo);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('nome, cargo, fotocaminho')
+      .eq('id', user.id)
+      .single();
 
-      if (data?.fotocaminho) {
-        const { data: signedUrlData, error: signedUrlError } = await supabase
-          .storage
-          .from('fotoperfil')
-          .createSignedUrl(data.fotocaminho, 60);
-        if (signedUrlError) setFotoCaminho(null);
-        else setFotoCaminho(signedUrlData.signedUrl);
-      } else {
+    if (error) return console.error('Erro ao buscar perfil:', error.message);
+
+    setNome(data?.nome);
+    setCargo(data?.cargo);
+    localStorage.setItem('nomeUsuario', data?.nome || '');
+    localStorage.setItem('cargoUsuario', data?.cargo || '');
+
+    if (data?.fotocaminho) {
+      const { data: signedUrlData, error: signedUrlError } = await supabase
+        .storage
+        .from('fotoperfil')
+        .createSignedUrl(data.fotocaminho, 60 * 60 * 24 * 1); // expira em 7 dias
+      if (signedUrlError) {
         setFotoCaminho(null);
+      } else {
+        setFotoCaminho(signedUrlData.signedUrl);
+        localStorage.setItem('fotoCaminho', signedUrlData.signedUrl);
       }
-    };
-    fetchUserData();
-  }, [supabase]);
+    } else {
+      setFotoCaminho(null);
+    }
+  };
+
+  fetchUserData();
+}, [supabase]);
+
 
   return (
     <div>
