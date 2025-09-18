@@ -2,6 +2,7 @@ import React from 'react';
 
 type ButtonProps = {
   children: React.ReactNode;
+  size?: "sm" | "lg" | "default";
 onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   className?: string; // className para customizar
   disabled?: boolean; // Adicionando a propriedade disabled

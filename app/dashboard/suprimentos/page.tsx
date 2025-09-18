@@ -3,35 +3,13 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, ArrowLeft } from "lucide-react";
 import Sidebar from '../../../components/Sidebar';
-import { FileText, ShoppingCart, Box, ClipboardList, CalendarCheck, PlusCircle, Trash2 } from 'lucide-react';
+import { ShoppingCart, Box, ClipboardList, CalendarCheck, FileText  } from 'lucide-react';
+import AcompanhamentoPedidos from '@/components/Acompanhamentodepedidos';
+
 
 export default function Compras() {
   const router = useRouter();
   const [menuActive, setMenuActive] = useState(false);
-
-  // Fake data para demonstração
-  const pedidos = [
-    {
-      numero: '00123',
-      solicitante: 'João Silva',
-      materiais: 'Parafusos, Porcas, Chapas',
-      destino: 'Armazém Central',
-      status: 'Em andamento',
-      ultimaObs: 'Aguardando aprovação',
-      link: '#',
-      telefone: '(79) 99999-9999',
-    },
-    {
-      numero: '00124',
-      solicitante: 'Maria Souza',
-      materiais: 'Tintas, Rolos',
-      destino: 'Filial 2',
-      status: 'Concluído',
-      ultimaObs: 'Recebido pelo setor',
-      link: '#',
-      telefone: '(79) 98888-8888',
-    },
-  ];
 
   const avisos = [
     { title: 'Pedido atrasado', description: 'Pedido nº 00120 ainda não entregue.' },
@@ -40,12 +18,15 @@ export default function Compras() {
   ];
 
   const acoes = [
-    { label: 'Pedido de Compra', path: '/dashboard/compras/pedidos', icon: ShoppingCart },
+    { label: 'Pedido de Compra', path: '/dashboard/suprimentos/pedidos', icon: ShoppingCart },
     { label: 'Catálogo de Produtos', path: '/dashboard/compras/catalogo', icon: Box },
     { label: 'Estoque', path: '/dashboard/compras/estoque', icon: ClipboardList },
     { label: 'Inventário', path: '/dashboard/compras/inventario', icon: ClipboardList },
     { label: 'Acompanhamento', path: '/dashboard/compras/acompanhamento', icon: CalendarCheck },
+    { label: 'Documentos de Compra', path: '/dashboard/compras/documentos', icon: FileText },
   ];
+
+
 
   return (
     <div className={`flex flex-col h-screen ${menuActive ? "ml-[300px]" : "ml-[80px]"}`}>
@@ -90,7 +71,7 @@ export default function Compras() {
           activeTab={'Suprimentos'}
         />
 
-        <div className="p-6 w-full max-w-[1200px] mx-auto space-y-6">
+        <div className="p-6 w-[85%] mx-auto space-y-6">
           
           {/* Ações rápidas */}
           <div>
@@ -110,55 +91,9 @@ export default function Compras() {
           </div>
 
           {/* Quadro de acompanhamento de pedidos */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#5a0d0d] mb-4">Acompanhamento de Pedidos</h2>
-            <div className="overflow-x-auto border border-gray-200 rounded-xl shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {['Pedido nº', 'Solicitante', 'Lista de Materiais', 'Destino', 'Status', 'Última Obs', 'Link', 'Contato'].map((header) => (
-                      <th
-                        key={header}
-                        scope="col"
-                        className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {pedidos.map((pedido, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 text-sm">{pedido.numero}</td>
-                      <td className="px-4 py-2 text-sm">{pedido.solicitante}</td>
-                      <td className="px-4 py-2 text-sm">{pedido.materiais}</td>
-                      <td className="px-4 py-2 text-sm">{pedido.destino}</td>
-                      <td className="px-4 py-2 text-sm">{pedido.status}</td>
-                      <td className="px-4 py-2 text-sm">{pedido.ultimaObs}</td>
-                      <td className="px-4 py-2 text-sm">
-                        <a href={pedido.link} className="text-blue-600 hover:underline">Acompanhar</a>
-                      </td>
-                      <td className="px-4 py-2 text-sm">{pedido.telefone}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          
+          <AcompanhamentoPedidos />
 
-          {/* Avisos e Lembretes */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#5a0d0d] mb-4">Avisos e Lembretes</h2>
-            <div className="flex flex-col gap-4">
-              {avisos.map(({ title, description }, idx) => (
-                <div key={idx} className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all">
-                  <h3 className="text-sm font-semibold text-[#5a0d0d]">{title}</h3>
-                  <p className="text-xs text-gray-600 mt-1">{description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
 
         </div>
       </div>
