@@ -19,7 +19,15 @@ export default function SharePointPage() {
   }, []);
 
   if (!data) return <div>Carregando...</div>;
-  if (data.error) return <div>Erro: {data.error}</div>;
+ if (data.error) {
+  return (
+    <div>
+      <h2>Erro ao acessar SharePoint</h2>
+      <pre>{JSON.stringify(data.error, null, 2)}</pre>
+    </div>
+  );
+}
+
 
   return (
     <div>
