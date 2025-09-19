@@ -8,7 +8,8 @@ export async function uploadFileToOneDrive(
   caminho?: string
 ): Promise<{ id: string; url: string } | null> {
   try {
-    const graphBase = `https://graph.microsoft.com/v1.0/drives/${process.env.ONEDRIVE_DRIVE_ID}`;
+    //const graphBase = `https://graph.microsoft.com/v1.0/drives/${process.env.ONEDRIVE_DRIVE_ID}`;
+    const graphBase = "https://graph.microsoft.com/v1.0/users/compras@12tec.com.br/drive";
     const [ano, mesStr, dia] = dataCompra.split("-");
     const mes = mesStr.padStart(2, "0");
     const diaSanitizado = dia.replace(/[<>:\"/\\|?*]/g, "").trim();

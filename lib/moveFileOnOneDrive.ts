@@ -41,7 +41,8 @@ export async function moveFileOnOneDrive(
         ? "Fornecedores/Serviços/Orçamentos/Não Vigentes"
         : "Arquivos/Não Vigentes";
 
-    const graphBase = `https://graph.microsoft.com/v1.0/drives/${process.env.ONEDRIVE_DRIVE_ID}`;
+        //const graphBase = `https://graph.microsoft.com/v1.0/drives/${process.env.ONEDRIVE_DRIVE_ID}`;
+    const graphBase = "https://graph.microsoft.com/v1.0/users/compras@12tec.com.br/drive";
 
     async function ensureFolderPath(path: string): Promise<string> {
       const pathParts = path.split("/");
