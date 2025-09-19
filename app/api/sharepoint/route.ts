@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
 export async function GET(req: NextRequest) {
-  const tenantId = "73df9aea-8a0d-4f03-a71d-339f8816d836";
-  const clientId = "a7383e84-46a2-49eb-8f21-953a7b9e24dd";
-  const clientSecret = "OpG8Q~yUaDxqWgOMjxFnuEqqFK9nzeCXTIUt0bWL";
+  const tenantId = process.env.AZURE_TENANT_ID!;
+  const clientId = process.env.AZURE_CLIENT_ID!;
+  const clientSecret = process.env.AZURE_CLIENT_SECRET!;
   const scope = 'https://graph.microsoft.com/.default';
 
   try {
