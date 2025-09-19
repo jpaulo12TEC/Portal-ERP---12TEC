@@ -1,5 +1,5 @@
 export async function uploadFileToOneDrive(
-  accessToken: string, // <- recebe token por parâmetro
+  accessToken: string,
   file: File,
   fileName: string,
   dataCompra: string,
@@ -9,7 +9,6 @@ export async function uploadFileToOneDrive(
 ): Promise<{ id: string; url: string } | null> {
   try {
     const graphBase = `https://graph.microsoft.com/v1.0/drives/${process.env.ONEDRIVE_DRIVE_ID}`;
-    //const graphBase = "https://graph.microsoft.com/v1.0/users/compras@12tec.com.br/drive";
     const [ano, mesStr, dia] = dataCompra.split("-");
     const mes = mesStr.padStart(2, "0");
     const diaSanitizado = dia.replace(/[<>:\"/\\|?*]/g, "").trim();
@@ -48,8 +47,9 @@ export async function uploadFileToOneDrive(
         });
         const checkData = await checkRes.json();
         const existingFolder = checkData.value?.find((item: any) => item.name === folderName && item.folder);
-        if (existingFolder) parentId = existingFolder.id;
-        else {
+        if (existingFolder) {
+          parentId = existingFolder.id;
+        } else {
           const createRes = await fetch(`${graphBase}/items/${parentId}/children`, {
             method: "POST",
             headers: {
@@ -71,6 +71,7 @@ export async function uploadFileToOneDrive(
 
     const pastaDestinoId = await ensureFolderPath(caminhoPastas);
 
+    // Upload do arquivo
     const uploadUrl = `${graphBase}/items/${pastaDestinoId}:/${fileName}:/content`;
     const uploadResponse = await fetch(uploadUrl, {
       method: "PUT",
@@ -87,24 +88,10 @@ export async function uploadFileToOneDrive(
     }
 
     const uploadedFile = await uploadResponse.json();
-    const itemId = uploadedFile.id;
 
-    const linkResponse = await fetch(`${graphBase}/items/${itemId}/createLink`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ type: "view", scope: "anonymous" }),
-    });
+    // 🔑 Aqui já temos a URL interna, não precisa de createLink
+    return { id: uploadedFile.id, url: uploadedFile.webUrl };
 
-    if (!linkResponse.ok) {
-      console.error("Erro ao gerar link público:", await linkResponse.text());
-      return null;
-    }
-
-    const linkData = await linkResponse.json();
-    return { id: itemId, url: linkData.link.webUrl };
   } catch (err: any) {
     console.error("Erro inesperado:", err);
     return null;
