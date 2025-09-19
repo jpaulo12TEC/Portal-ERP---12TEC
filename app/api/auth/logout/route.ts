@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const response = NextResponse.redirect('/');
+    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/`);
 
     // Deleta o cookie passando um objeto
     response.cookies.delete({ name: 'azure_token', path: '/' });

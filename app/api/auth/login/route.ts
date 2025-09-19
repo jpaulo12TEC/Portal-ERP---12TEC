@@ -1,33 +1,52 @@
-import { NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const code = req.nextUrl.searchParams.get('code');
+  if (!code) {
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/?error=NoCode`);
+  }
+
+  const codeVerifier = req.cookies.get('code_verifier')?.value;
+  if (!codeVerifier) {
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/?error=NoCodeVerifier`);
+  }
+
   const clientId = process.env.AZURE_CLIENT_ID!;
+  const clientSecret = process.env.AZURE_CLIENT_SECRET!;
   const tenantId = process.env.AZURE_TENANT_ID!;
   const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback`;
 
-  // PKCE: gerar code_verifier e code_challenge
-  const codeVerifier = crypto.randomBytes(32).toString('hex');
-  const codeChallenge = crypto
-    .createHash('sha256')
-    .update(codeVerifier)
-    .digest('base64url');
+  const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
-  const scope = encodeURIComponent('User.Read Files.ReadWrite.All offline_access');
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: redirectUri,
+    code_verifier: codeVerifier,
+    scope: 'User.Read Files.ReadWrite.All offline_access',
+  });
 
-  const authUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(
-    redirectUri
-  )}&response_mode=query&scope=${scope}&state=12345&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+  const res = await fetch(tokenUrl, { method: 'POST', body });
+  const data = await res.json();
 
-  const response = NextResponse.redirect(authUrl);
+  if (!res.ok) {
+    console.error('Token error:', data);
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/?error=TokenFailed`);
+  }
 
-  // Salvar code_verifier em cookie seguro temporário
-  response.cookies.set('code_verifier', codeVerifier, {
+  // Redireciona para o dashboard e salva token em cookie HttpOnly
+  const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`);
+  response.cookies.set('azure_token', data.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: 300, // 5 minutos
+    maxAge: data.expires_in,
   });
+
+  // Remove o code_verifier
+  response.cookies.delete({ name: 'azure_token', path: '/' });
 
   return response;
 }
