@@ -1,8 +1,9 @@
-// lib/moveFileOnOneDrive.ts
-import axios from "axios";
+
+import { getAppToken } from './oneDrive';
+import axios from 'axios';
 
 export async function moveFileOnOneDrive(
-  accessToken: string,
+  
   fileIdOrUrl: string,
   tipo:
     | "formularios"
@@ -13,18 +14,17 @@ export async function moveFileOnOneDrive(
     | "orçamentos-contratos"
     | "cadastro-fornecedor"
     | "cadastro-fornecedor-servico" = "formularios"
-): Promise<void> {
+) {
   try {
+    const accessToken = await getAppToken();
     let itemId = fileIdOrUrl;
 
-    // Se vier uma URL, extrai o itemId
     if (fileIdOrUrl.includes("items/")) {
       const match = fileIdOrUrl.match(/items\/([^?]+)/);
       if (!match) throw new Error("Não foi possível extrair itemId do OneDrive.");
       itemId = match[1];
     }
 
-    // Define o caminho de destino dependendo do tipo
     const destinoPath =
       tipo === "formularios"
         ? "Modelos e Formularios/Formularios/Não Vigentes"
@@ -44,54 +44,51 @@ export async function moveFileOnOneDrive(
         ? "Fornecedores/Serviços/Orçamentos/Não Vigentes"
         : "Arquivos/Não Vigentes";
 
-    // Verifica/cria pasta de destino
-    const folderRes = await fetch(
-      `https://graph.microsoft.com/v1.0/me/drive/root:/${destinoPath}`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }
-    );
+    const graphBase = "https://graph.microsoft.com/v1.0/users/compras@12tec.com.br/drive";
 
-    let folderData = await folderRes.json();
-
-    if (folderData.error) {
-      // cria a pasta se não existir
-      const parentPath = destinoPath.substring(0, destinoPath.lastIndexOf("/"));
-      const folderName = destinoPath.split("/").pop();
-
-      const createRes = await fetch(
-        `https://graph.microsoft.com/v1.0/me/drive/root:/${parentPath}:/children`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: folderName,
-            folder: {},
-            "@microsoft.graph.conflictBehavior": "replace",
-          }),
+    // Garante que a pasta de destino exista
+    async function ensureFolderPath(path: string): Promise<string> {
+      const pathParts = path.split("/");
+      let parentId = "root";
+      for (const folderName of pathParts) {
+        const checkRes = await fetch(`${graphBase}/items/${parentId}/children?$filter=name eq '${folderName}'`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const checkData = await checkRes.json();
+        const existingFolder = checkData.value?.find((item: any) => item.name === folderName && item.folder);
+        if (existingFolder) parentId = existingFolder.id;
+        else {
+          const createRes = await fetch(`${graphBase}/items/${parentId}/children`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: folderName,
+              folder: {},
+              "@microsoft.graph.conflictBehavior": "replace",
+            }),
+          });
+          const created = await createRes.json();
+          parentId = created.id;
         }
-      );
-
-      folderData = await createRes.json();
+      }
+      return parentId;
     }
 
-    // Faz PATCH para mover o arquivo
+    const pastaDestinoId = await ensureFolderPath(destinoPath);
+
+    // Move o arquivo
     await axios.patch(
-      `https://graph.microsoft.com/v1.0/me/drive/items/${itemId}`,
-      {
-        parentReference: { id: folderData.id },
-      },
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }
+      `${graphBase}/items/${itemId}`,
+      { parentReference: { id: pastaDestinoId } },
+      { headers: { Authorization: `Bearer ${accessToken}` } }
     );
 
-    console.log(`✅ Arquivo movido para ${destinoPath}`);
+    console.log(`Arquivo movido para ${destinoPath}`);
   } catch (err) {
-    console.error("❌ Erro ao mover arquivo no OneDrive:", err);
+    console.error("Erro ao mover arquivo:", err);
     throw err;
   }
 }

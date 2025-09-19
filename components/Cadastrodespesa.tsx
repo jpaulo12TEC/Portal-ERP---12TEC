@@ -8,8 +8,7 @@ import {
 import { useState, useEffect } from "react";
 import { useUser } from '@/components/UserContext';
 import { supabase } from '../lib/superbase';
-import { getAccessToken } from "../lib/auth"; // ajuste o caminho
-import { uploadFileToOneDrive } from "../lib/uploadFileToOneDrive";
+
 
 type CentroCusto = {
   nome: string;
@@ -125,122 +124,80 @@ const gerarDataParcela = (dataInicial: Date, indice: number, periodicidade: stri
 
 
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-      setIsLoading(true);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
 
-// Verificar campos obrigatórios
-if (
-  !formData.referente.trim() ||
-  !formData.cnpjcpf.trim() ||
-  !formData.empresa.trim() ||
-  !formData.valorParcela.toString().trim() ||
-  !formData.parcela.toString().trim() ||
-  !formData.periodicidade.trim() ||
-  !formData.primeiraParcela.trim() ||
-  formData.centrosDeCusto.length === 0
-) {
-  alert("Por favor, preencha todos os campos obrigatórios.");
-  setIsLoading(false);
-  return;
-}
+  try {
+    // Validações iniciais
+    if (
+      !formData.referente.trim() ||
+      !formData.cnpjcpf.trim() ||
+      !formData.empresa.trim() ||
+      !formData.valorParcela.toString().trim() ||
+      !formData.parcela.toString().trim() ||
+      !formData.periodicidade.trim() ||
+      !formData.primeiraParcela.trim() ||
+      formData.centrosDeCusto.length === 0
+    ) {
+      alert("Por favor, preencha todos os campos obrigatórios.");
+      setIsLoading(false);
+      return;
+    }
 
-// Verificar se soma dos percentuais é 100%
-const totalPercentual = formData.centrosDeCusto.reduce(
-  (acc, centro) => acc + Number(centro.percentual),
-  0
-);
+    const totalPercentual = formData.centrosDeCusto.reduce(
+      (acc, centro) => acc + Number(centro.percentual),
+      0
+    );
+    if (Math.abs(totalPercentual - 100) > 0.01) {
+      alert(`A soma dos percentuais deve ser igual a 100%. Soma atual: ${totalPercentual.toFixed(2)}%`);
+      setIsLoading(false);
+      return;
+    }
 
-if (Math.abs(totalPercentual - 100) > 0.01) {
-  alert(`A soma dos percentuais deve ser igual a 100%. Soma atual: ${totalPercentual.toFixed(2)}%`);
-  setIsLoading(false);
-  return;
-}
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert("Usuário não autenticado!");
+      setIsLoading(false);
+      return;
+    }
 
-        
-    const fornecedor = formData.empresa;
-    const temIcms = false; // Ajuste conforme sua lógica  
-    const valorTotal = Number(String(formData.valorParcela).replace(",", "."));
+    // Função para upload via API
+    const uploadViaApi = async (file: File, label: string, pasta: string) => {
+      const extension = file.name.split('.').pop();
+      const fileName = `${label}_${Date.now()}.${extension}`;
+      const formPayload = new FormData();
+      formPayload.append("file", file);
+      formPayload.append("fileName", fileName);
+      formPayload.append("data", formData.primeiraParcela);
+      formPayload.append("fornecedor", formData.empresa);
+      formPayload.append("tipo", pasta);
 
+      const res = await fetch("/api/onedrive/upload", {
+        method: "POST",
+        body: formPayload,
+      });
 
-     // 🔥 Gerar nome do arquivo
-    
-let fileName = ""; // 👈 Declarado no escopo da função
+      const json = await res.json();
+      if (!json?.success || !json.file?.url) {
+        throw new Error(`Falha ao enviar o arquivo ${file.name}`);
+      }
+      return { url: json.file.url, id: json.file.id };
+    };
 
-if (formData.contrato) {
-  const originalFileName = formData.contrato.name;
-  const extension = originalFileName.includes('.') ? originalFileName.split('.').pop() : '';
-  fileName = `contrato_${new Date().toISOString().replace(/[:.]/g, "-")}${extension ? '.' + extension : ''}`;
-}
+    // Upload contrato
+    if (!formData.contrato) {
+      alert("Por favor, selecione o contrato para enviar.");
+      setIsLoading(false);
+      return;
+    }
+    const contratoUpload = await uploadViaApi(formData.contrato, "contrato", "contratos");
+    const urlNF = contratoUpload.url;
 
-// ✅ Agora você pode usar fileName fora do if
-console.log("Nome final do arquivo:", fileName);
+    alert(`Arquivo enviado com sucesso! Link salvo: ${urlNF}`);
 
-
-    let urlNF: string | null = null; // <-- declare fora
-    const accessToken = await getAccessToken();
-
-if (!accessToken) {
-  console.error("Token de acesso não encontrado.");
-  alert("Token de acesso não encontrado.");
-  setIsLoading(false);
-  return;
-}
-
-if (!formData.contrato) {
-  console.error("Nenhum arquivo selecionado.");
-  alert("Por favor, selecione o comprovante para enviar.");
-  setIsLoading(false);
-  return;
-}
-
-
-    // 🔥 Fazer upload do contrato
-try {
-  // Logs para debug
-  console.log("Iniciando upload para o OneDrive...");
-  console.log("AccessToken:", accessToken);
-  console.log("Arquivo (formData.contrato):", formData.contrato);
-  console.log("Nome do arquivo (fileName):", fileName);
-  console.log("Data da compra:", formData.primeiraParcela);
-  console.log("Fornecedor:", fornecedor);
-
-  // Upload para o OneDrive
-  const uploadedFile = await uploadFileToOneDrive(
-  accessToken,
-  formData.contrato,
-  fileName,
-  formData.primeiraParcela,
-  fornecedor,
-  "contratos",
-  "Serviço não especificado"
-);
-
-if (!uploadedFile) throw new Error("Upload falhou");
-
-const urlNF = uploadedFile.url;   // URL
-const fileId = uploadedFile.id;   // ID, caso precise
-
-
-  if (!urlNF) {
-    throw new Error("URL não retornada pelo OneDrive.");
-  }
-
-  console.log("Arquivo enviado para o OneDrive. Link:", urlNF);
-
-  alert(`Arquivo enviado com sucesso! Link salvo: ${urlNF}`);
-} catch (err) {
-  console.error("Erro geral:", err);
-  alert("Erro ao enviar ou salvar o arquivo.");
-  setIsLoading(false);
-}
-
-
-    // ENVIO A TABELA CENTROS DE CUSTO
-try {
-  if (formData.centrosDeCusto.length > 0) {
-    // GERENCIAMENTO DE COMPRAS
-    const { error: errorGerenciamento  } = await supabase.from("gerenciamento_compras").insert([
+    // Inserção no gerenciamento_compras
+    const { error: errorGerenciamento } = await supabase.from("gerenciamento_compras").insert([
       {
         codigo: protocolo,
         nf: urlNF,
@@ -253,27 +210,20 @@ try {
         desconto: 0,
         valor_liquido: Number(String(formData.valorParcela).replace(',', '.')) * Number(formData.parcela),
         cnpj_cpf: formData.cnpjcpf,
-        fornecedor: fornecedor,
-        tem_icms: temIcms,
-        icms_valor: temIcms ? (Number(String(formData.valorParcela).replace(',', '.')) * Number(formData.parcela) * 0.18).toFixed(2) : null,
-        centros_de_custo: formData.centrosDeCusto
-        .map((item: any) => `${item.nome};${item.percentual}%`)
-       .join(";"),
+        fornecedor: formData.empresa,
+        tem_icms: false,
+        icms_valor: null,
+        centros_de_custo: formData.centrosDeCusto.map((item) => `${item.nome};${item.percentual}%`).join(";"),
         ordens_de_servico: null,
         quantidade_produtos: 1,
-        renovacao_automatica: formData.renovacaoAutomatica
+        renovacao_automatica: formData.renovacaoAutomatica,
       },
     ]);
+    if (errorGerenciamento) throw errorGerenciamento;
 
-    if (errorGerenciamento) {
-    console.error("Erro ao salvar no gerenciamento:", errorGerenciamento);
-    alert("Erro ao salvar os dados no gerenciamento.");
-    return;
-  }
-  
+    // Inserção centros_de_custo
     const centrosData = formData.centrosDeCusto.map((centro) => {
       const valorCalculado = Number(String(formData.valorParcela).replace(',', '.')) * Number(formData.parcela);
-
       return {
         codigo: protocolo,
         lancadoem: new Date().toISOString(),
@@ -283,165 +233,97 @@ try {
         valor: valorCalculado.toFixed(2),
       };
     });
+    const { error: errorCentro } = await supabase.from("centros_de_custo").insert(centrosData);
+    if (errorCentro) throw errorCentro;
 
-    const { error: errorCentro } = await supabase
-      .from("centros_de_custo")
-      .insert(centrosData);
+    // Inserção produtos
+    const { error: errorProdutos } = await supabase.from("produtos").insert([
+      {
+        codigo: protocolo,
+        cnpj_cpf: formData.cnpjcpf,
+        fornecedor: formData.empresa,
+        comprovante: "Contrato",
+        numero_comprovante: contratoUpload.id,
+        data_lancamento: new Date().toISOString(),
+        data_compra: new Date(formData.primeiraParcela).toISOString(),
+        item: 1,
+        tipo: "Serviço",
+        discriminacao: null,
+        nome: formData.referente,
+        valor_unitario: Number(String(formData.valorParcela).replace(",", ".")),
+        qtd: Number(formData.parcela),
+        valor_total: Number(String(formData.valorParcela).replace(",", ".")) * Number(formData.parcela),
+        und: formData.periodicidade,
+        lancadopor: nome,
+      },
+    ]);
+    if (errorProdutos) throw errorProdutos;
 
-    if (errorCentro) {
-      console.error("Erro ao salvar centros de custo:", errorCentro);
-      alert("Erro ao salvar centros de custo.");
-      setIsLoading(false);
-      return;
-
-      
-    } else {
-      console.log("Centros de custo salvos com sucesso!");
+    // Upload boleto (opcional)
+    let boletoUrl: string | null = null;
+    if (formData.boleto) {
+      const boletoUpload = await uploadViaApi(formData.boleto, "boleto_parcela", "financeiroboletos");
+      boletoUrl = boletoUpload.url;
     }
-  }
-} catch (error) {
-  console.error("Erro inesperado ao salvar centros de custo:", error);
-  alert("Erro inesperado ao salvar centros de custo.");
-}
+
+    // Inserção provisão de pagamentos
+    const quantidadeParcelas = Number(formData.parcela);
+    const dataInicial = new Date(formData.primeiraParcela);
+    const valorParcela = Number(String(formData.valorParcela).replace(",", "."));
+    const parcelas = Array.from({ length: quantidadeParcelas }, (_, index) => {
+      const dataParcela = gerarDataParcela(dataInicial, index, formData.periodicidade);
+      return {
+        codigo: protocolo,
+        periodicidade: formData.periodicidade,
+        origem: "Contratos",
+        data_compra: dataInicial,
+        empresa: formData.empresa,
+        cnpj: formData.cnpjcpf,
+        valor: valorParcela,
+        boleto: boletoUrl,
+        valor_total: valorParcela * quantidadeParcelas,
+        lancadopor: nome,
+        venceem: dataParcela,
+        pagoem: null,
+        nparcelas: index + 1,
+        qtdparcelas: quantidadeParcelas,
+        formapagamento: null,
+        formaaserpago: formData.dadosBancarios,
+        lancadoem: new Date().toISOString(),
+        pedidon: null,
+        comprovante_pagamento: null,
+      };
+    });
+    const { error: errorProvisao } = await supabase.from("provisao_pagamentos").insert(parcelas);
+    if (errorProvisao) throw errorProvisao;
+
+    alert("Despesa e provisão salvas com sucesso!");
+
+    // Resetar formulário
+    setFormData({
+      referente: "",
+      cnpjcpf: "",
+      empresa: "",
+      dadosBancarios: "",
+      valorParcela: "",
+      parcela: "",
+      periodicidade: "",
+      renovacaoAutomatica: false,
+      primeiraParcela: "",
+      boleto: null,
+      contrato: null,
+      centrosDeCusto: [],
+    });
+    setIsLoading(false);
+    window.location.reload();
     
-//PRODUTO
-const { error: errorProdutos } = await supabase.from("produtos").insert([
-  {
-    codigo: protocolo,
-    cnpj_cpf: formData.cnpjcpf,
-    fornecedor: formData.empresa,
-    comprovante: "Contrato",
-    numero_comprovante: fileName, // ou outro número, se houver
-    data_lancamento: new Date().toISOString(),
-    data_compra: new Date(formData.primeiraParcela).toISOString(),
-    item: 1, // se for só um item, ou gere dinamicamente se quiser mais
-    tipo: "Serviço", // ou "Produto", conforme sua regra
-    discriminacao: null,
-    nome: formData.referente,
-
-    valor_unitario: Number(String(formData.valorParcela).replace(",", ".")),
-    qtd: Number(formData.parcela),
-    valor_total:
-      Number(String(formData.valorParcela).replace(",", ".")) *
-      Number(formData.parcela),
-
-    classificacao_tributaria: null, // se tiver essa info
-    und: formData.periodicidade, // unidade padrão, altere se necessário
-    marca: null, // se houver
-    lancadopor: nome,
-    subcategoria: null, // se desejar informar uma subcategoria
-  },
-]);
-
-if (errorProdutos) {
-  console.error("Erro ao salvar na tabela produtos:", errorProdutos);
-  alert("Erro ao salvar na tabela produtos.");
-} else {
-  console.log("Produto salvo com sucesso!");
-}
-
-
-
-
-
-
-// 🔥 Gerar nome do arquivo do boleto
-// 🔥 Gerar nome do arquivo do boleto
-let boletoUrl: string | null = null;
-if (formData.boleto) {
-  const accessToken = await getAccessToken();
-  if (!accessToken) throw new Error("Token de acesso não encontrado.");
-
-  const timestamp = Date.now();
-  const fileExtension = formData.boleto.name.split(".").pop();
-  const fileNameBoleto = `boleto_parcela_${timestamp}.${fileExtension}`;
-
-  // 🔥 Fazer upload do boleto para o OneDrive
-  const uploaded = await uploadFileToOneDrive(
-      accessToken,
-      formData.boleto,
-      fileNameBoleto,
-      new Date().toISOString().slice(0, 10),
-      formData.empresa,
-      "financeiroboletos", // Origem
-      "boletos"     // Pasta destino no OneDrive
-  );
-
-  if (!uploaded?.url) {
-    console.error("Erro no upload do boleto para o OneDrive.");
-    alert("Erro ao enviar o boleto.");
-    return;
+  } catch (err: any) {
+    console.error("Erro ao enviar formulário:", err);
+    alert("Erro ao salvar os dados: " + (err.message ?? err));
+    setIsLoading(false);
   }
-
-  // Salva a URL do OneDrive
-  boletoUrl = uploaded.url;
-}
-
-// PROVISÃO DE PAGAMENTOS
-const quantidadeParcelas = Number(formData.parcela);
-const dataInicial = new Date(formData.primeiraParcela);
-const valorParcela = Number(String(formData.valorParcela).replace(",", "."));
-
-// 🔥 Gerar os registros das parcelas
-const parcelas = Array.from({ length: quantidadeParcelas }, (_, index) => {
-  const dataParcela = gerarDataParcela(dataInicial, index, formData.periodicidade);
-  return {
-    codigo: protocolo,
-    periodicidade: formData.periodicidade,
-    origem: "Contratos",
-    data_compra: dataInicial,
-    empresa: formData.empresa,
-    cnpj: formData.cnpjcpf,
-    valor: valorParcela,
-    boleto: boletoUrl, // 🔥 Aqui salva a URL do OneDrive
-    valor_total: valorParcela * quantidadeParcelas,
-    lancadopor: nome,
-    venceem: dataParcela,
-    pagoem: null,
-    nparcelas: index + 1,
-    qtdparcelas: quantidadeParcelas,
-    formapagamento: null,
-    formaaserpago: formData.dadosBancarios,
-    lancadoem: new Date().toISOString(),
-    pedidon: null,
-    comprovante_pagamento: null,
-  };
-});
-
-   const { error: errorProvisao } = await supabase
-    .from("provisao_pagamentos")
-    .insert(parcelas);
-
-  if (errorProvisao) {
-    console.error("Erro ao salvar na provisão de pagamentos:", errorProvisao);
-    alert("Erro ao salvar na provisão de pagamentos.");
-    return;
-  }
-
-  // 🔥 Sucesso total
-  alert("Despesa e provisão salvas com sucesso!");
-
-  // 🔄 Resetar formulário
-  setFormData({
-    referente: "",
-    cnpjcpf: "",
-    empresa: "",
-    dadosBancarios: "",
-    valorParcela: "",
-    parcela: "",
-    periodicidade: "",
-    renovacaoAutomatica: false,
-    primeiraParcela: "",
-    boleto: null,
-    contrato: null,
-    centrosDeCusto: [],
-  });
-
-
-
-  setIsLoading(false);
-  window.location.reload(); // 🔄 Atualiza a página
 };
+
 
 
 

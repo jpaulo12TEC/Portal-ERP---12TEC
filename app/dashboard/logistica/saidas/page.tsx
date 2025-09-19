@@ -5,8 +5,7 @@ import Sidebar from '@/components/Sidebar';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Search, Package, Upload, PlusCircle, Trash2 } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { getAccessToken } from "@/lib/auth"; // ajuste o caminho
-import { uploadFileToOneDrive } from "@/lib/uploadFileToOneDrive";
+
 
 
 export default function SaidaRomaneioPage() {
@@ -43,119 +42,118 @@ export default function SaidaRomaneioPage() {
     setItens(itens.filter((_, i) => i !== index));
   };
 const dataFormatada = new Date().toISOString().slice(0,10); // ex: 2025-09-16
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMensagem(null);
 
-try {
-  // 1. Inserir o romaneio sem o documento ainda
-  const { data: romaneioData, error: romaneioError } = await supabase
-    .from('romaneio')
-    .insert([
-      {
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setMensagem(null);
+
+  try {
+    // 1️⃣ Inserir romaneio do tipo 'saida'
+    const { data: romaneioData, error: romaneioError } = await supabase
+      .from('romaneio')
+      .insert([{
         tipo: 'saida',
         saindo_de: saindoDe,
         indo_para: indoPara,
         responsavel_retirada: responsavel,
         contrato_id: contratoId,
-      },
-    ])
-    .select()
-    .single();
-  if (romaneioError) throw romaneioError;
+      }])
+      .select()
+      .single();
+    if (romaneioError) throw romaneioError;
 
-  const romaneioId = romaneioData.id;
+    const romaneioId = romaneioData.id;
 
-  // 2. Upload do documento do romaneio para o OneDrive
-  let documentoUrl: string | null = null;
-  if (documentoFile) {
-    const originalFileName = documentoFile.name;
-    const extension = originalFileName.includes('.') ? originalFileName.split('.').pop() : '';
-    const fileName = `romaneio_${new Date().toISOString().replace(/[:.]/g, "-")}${extension ? '.' + extension : ''}`;
-    
-    const accessToken = await getAccessToken();
-    if (!accessToken) throw new Error("Token de acesso não encontrado.");
+    // 2️⃣ Upload do documento principal via rota API
+    let documentoUrl: string | null = null;
+    if (documentoFile) {
+      const extension = documentoFile.name.split('.').pop() || '';
+      const fileName = `romaneio_${new Date().toISOString().replace(/[:.]/g, "-")}${extension ? '.' + extension : ''}`;
 
-const uploaded = await uploadFileToOneDrive(
-  accessToken,
-  documentoFile,
-  fileName,
-  dataFormatada, // data/hora
-  saindoDe,      // origem
-  "romaneio",    // pasta
-  romaneioId.toString() // descrição usando romaneioId
-);
+      const formData = new FormData();
+      formData.append("file", documentoFile);
+      formData.append("fileName", fileName);
+      formData.append("dataCompra", dataFormatada);
+      formData.append("fornecedor", saindoDe);
+      formData.append("tipo", "romaneio");
+      formData.append("caminho", romaneioId.toString());
 
-documentoUrl = uploaded?.url || null; // pega apenas a URL
+      const res = await fetch("/api/onedrive/upload", {
+        method: "POST",
+        body: formData,
+      });
 
+      const uploaded = await res.json();
+      if (!uploaded?.success) throw new Error(uploaded?.error || "Erro ao enviar documento");
 
-    if (!documentoUrl) throw new Error("URL do documento não retornada pelo OneDrive.");
+      documentoUrl = uploaded.file?.url || null;
 
-    // Atualizar a tabela romaneio com o documento
-    const { error: docUpdateError } = await supabase
-      .from('romaneio')
-      .update({ documento_path: documentoUrl })
-      .eq('id', romaneioId);
-    if (docUpdateError) throw docUpdateError;
-  }
-
-  // 3. Upload e inserção dos itens no OneDrive
-  for (const item of itens) {
-    let urlImagem: string | null = null;
-
-    if (item.imagemFile) {
-      const originalFileName = item.imagemFile.name;
-      const extension = originalFileName.includes('.') ? originalFileName.split('.').pop() : '';
-      const fileName = `romaneio_item_${new Date().toISOString().replace(/[:.]/g, "-")}${extension ? '.' + extension : ''}`;
-
-      const accessToken = await getAccessToken();
-      if (!accessToken) throw new Error("Token de acesso não encontrado.");
-
-const uploadedd = await uploadFileToOneDrive(
-  accessToken,
-  item.imagemFile,
-  fileName,
-  dataFormatada, // data/hora
-  saindoDe,
-  "romaneio-itens",
-  romaneioId.toString() // descrição
-);
-
-urlImagem = uploadedd?.url || null; // pega somente a URL
-
-
-      if (!urlImagem) throw new Error("URL do item não retornada pelo OneDrive.");
+      // Atualiza registro do romaneio com a URL do documento
+      const { error: docUpdateError } = await supabase
+        .from('romaneio')
+        .update({ documento_path: documentoUrl })
+        .eq('id', romaneioId);
+      if (docUpdateError) throw docUpdateError;
     }
 
-    const { error: itemError } = await supabase.from('romaneio_itens').insert([
-      {
+    // 3️⃣ Upload e inserção dos itens via rota API
+    for (const item of itens) {
+      let urlImagem: string | null = null;
+
+      if (item.imagemFile) {
+        const extension = item.imagemFile.name.split('.').pop() || '';
+        const fileName = `romaneio_item_${new Date().toISOString().replace(/[:.]/g, "-")}${extension ? '.' + extension : ''}`;
+
+        const formData = new FormData();
+        formData.append("file", item.imagemFile);
+        formData.append("fileName", fileName);
+        formData.append("dataCompra", dataFormatada);
+        formData.append("fornecedor", saindoDe);
+        formData.append("tipo", "romaneio-itens");
+        formData.append("caminho", romaneioId.toString());
+
+        const resItem = await fetch("/api/onedrive/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadedItem = await resItem.json();
+        if (!uploadedItem?.success && item.imagemFile) {
+          console.warn(`⚠️ Erro ao enviar imagem do item "${item.nome}"`);
+        }
+
+        urlImagem = uploadedItem?.file?.url || null;
+      }
+
+      const { error: itemError } = await supabase.from('romaneio_itens').insert([{
         romaneio_id: romaneioId,
         nome_item: item.nome,
         quantidade: item.quantidade,
         observacao: item.observacao,
         imagem: urlImagem,
-      },
-    ]);
-    if (itemError) throw itemError;
+      }]);
+      if (itemError) throw itemError;
+    }
+
+    // 4️⃣ Resetar estado e exibir mensagem de sucesso
+    setMensagem('Romaneio de saída registrado com sucesso ✅');
+    setItens([]);
+    setSaindoDe('');
+    setIndoPara('');
+    setResponsavel('');
+    setContratoId('');
+    setDocumentoFile(null);
+
+  } catch (err: any) {
+    console.error(err);
+    setMensagem(`Erro: ${err.message}`);
+  } finally {
+    setLoading(false);
   }
+};
 
-  setMensagem('Romaneio registrado com sucesso ✅');
-  setItens([]);
-  setSaindoDe('');
-  setIndoPara('');
-  setResponsavel('');
-  setContratoId('');
-  setDocumentoFile(null);
-
-} catch (err: any) {
-  console.error(err);
-  setMensagem(`Erro: ${err.message}`);
-} finally {
-  setLoading(false);
-}
-
-  };
 
   return (
     <div className="flex flex-col h-screen">

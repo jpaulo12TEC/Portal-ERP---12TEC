@@ -6,8 +6,7 @@ import Sidebar from '../../../../../components/Sidebar';
 import { ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/superbase'
 import { useUser } from '@/components/UserContext';
-import { uploadFileToOneDrive } from "@/lib/uploadFileToOneDrive";
-import { getAccessToken } from "@/lib/auth"; // ajuste o caminho
+
 
 type Orcamento = {
   id: string;
@@ -299,166 +298,93 @@ const servicoSelecionadoNome = fornecedorInfo.servicos?.find(
 
 
 async function handleSubmit() {
-  setLoading(true); // Inicia o loading
+  setLoading(true);
   console.log("🚀 Iniciando handleSubmit...");
-  console.log(servicoSelecionado);
-try {
-  const { error } = await supabase
-    .from('solicitacoes_contratos')
-    .update({
-      status: 'contrato em elaboração',
-    })
-    .eq('id', orcamentoSelecionado);
-
-  if (error) {
-    alert('Erro ao atualizar status da solicitação.');
-    console.error(error);
-    setLoading(false); // finaliza o loading
-    return; // ⬅️ para a execução aqui
-    
-  }
-
-  console.log('Status atualizado para "contrato em elaboração".');
-
-} catch (err) {
-  alert('Erro inesperado ao atualizar status.');
-  console.error(err);
-  setLoading(false); // finaliza o loading
-} finally {
-  setLoading(false); // finaliza o loading
-}
-
 
   try {
-    const accessToken = await getAccessToken();
-    
+    // Atualiza status da solicitação
+    const { error: errorStatus } = await supabase
+      .from('solicitacoes_contratos')
+      .update({ status: 'contrato em elaboração' })
+      .eq('id', orcamentoSelecionado);
+
+    if (errorStatus) {
+      alert('Erro ao atualizar status da solicitação.');
+      console.error(errorStatus);
+      return;
+    }
+
+    console.log('Status atualizado para "contrato em elaboração".');
 
     // Pega usuário logado
     const { data: { user } } = await supabase.auth.getUser();
-    console.log("👤 Usuário logado:", user);
-
     if (!user) {
-      console.warn("⚠️ Usuário não autenticado!");
       alert("Usuário não autenticado!");
-      setLoading(false); // finaliza  o loading
       return;
     }
 
-    if (!accessToken) {
-      console.error("❌ Token de acesso não encontrado.");
-      alert("Token de acesso não encontrado.");
-      setLoading(false); // finaliza  o loading
-      return;
-    }
-
-    console.log("Fornecedor selecionado:", fornecedorInfo);
-    if (!fornecedorInfo.nome) {
-      console.warn("⚠️ Fornecedor não selecionado ou inválido.");
+    if (!fornecedorInfo?.nome) {
       alert("Fornecedor não selecionado ou inválido.");
-      setLoading(false); // finaliza  o loading
       return;
     }
 
-    console.log("Arquivos de documentos:", arquivosDocumentos);
-    if (!arquivosDocumentos.some((a) => a)) {
-      console.warn("⚠️ Nenhum documento selecionado para envio.");
+    if (!arquivosDocumentos.some(a => a)) {
       alert("Nenhum documento selecionado para envio.");
-      setLoading(false); // finaliza  o loading
       return;
     }
 
     const urls: (string | null)[] = [];
     const documentos: Record<string, any> = {};
-    console.log("📝 Preparando envio de documentos...");
+    const hoje = new Date();
+    const dataHoje = hoje.toISOString().slice(0, 10);
 
-    // Envia cada documento para o OneDrive
+    // Envia documentos via API backend
     for (let i = 0; i < arquivosDocumentos.length; i++) {
       const arquivo = arquivosDocumentos[i];
       const descricao = descricaoDocs[i] || 'DOCUMENTO';
-      console.log(`📄 Documento ${i + 1}:`, arquivo, "Descrição:", descricao);
 
-      if (!arquivo) {
-        console.log(`⏭ Documento ${i + 1} vazio, pulando...`);
-        continue;
-      }
+      if (!arquivo) continue;
 
-      // Sanitiza a descrição para filename
-      const descricaoSanitizada = descricao
-        .toUpperCase()
-        .replace(/[\\/:*?"<>|]/g, '_');
+      const fileName = `${descricao.toUpperCase().replace(/[\\/:*?"<>|]/g, '_')}${arquivo.name.slice(arquivo.name.lastIndexOf('.'))}`;
+      const fornecedorSanitizado = fornecedorInfo.nome.toUpperCase().replace(/[\\/:*?"<>|]/g, '_');
 
+      // Chamada à rota API backend
+      const formDataAPI = new FormData();
+      formDataAPI.append("file", arquivo);
+      formDataAPI.append("fileName", fileName);
+      formDataAPI.append("dataCompra", dataHoje);
+      formDataAPI.append("fornecedor", fornecedorSanitizado);
+      formDataAPI.append("tipo", "contratos");
+      formDataAPI.append("caminho", servicoSelecionadoNome || "");
 
-              // Sanitiza a descrição para filename
-      const servicosanitizado = fornecedorInfo.nome
-        .toUpperCase()
-        .replace(/[\\/:*?"<>|]/g, '_');
+      const res = await fetch("/api/onedrive/upload", { method: "POST", body: formDataAPI });
+      const data = await res.json();
 
-      const fileName = `${descricaoSanitizada}${arquivo.name.slice(arquivo.name.lastIndexOf('.'))}`;
-      console.log(`🟡 Enviando Documento ${i + 1} com filename: ${fileName}`);
-
-const uploaded = await uploadFileToOneDrive(
-  accessToken,
-  arquivo,
-  fileName,
-  new Date().toISOString().slice(0, 10),
-  servicosanitizado,
-  "contratos",
-  servicoSelecionadoNome
-);
-
-const url = uploaded?.url || null; // pega apenas a URL
-
-
-      console.log(`Resultado envio Documento ${i + 1}:`, url);
-
-      urls[i] = url || null;
-      documentos[`documento${i + 1}`] = url || null;
+      const url = data.file?.url || null;
+      urls[i] = url;
+      documentos[`documento${i + 1}`] = url;
       documentos[`documento${i + 1}nome`] = descricao;
     }
 
-    console.log("✅ Todas as URLs dos documentos:", urls);
-    console.log("📦 Objeto documentos preparado:", documentos);
+    // Envio do contrato principal
+    let urld: string | null = null;
+    if (arquivoContrato) {
+      const fileNameContrato = `Contrato${arquivoContrato.name.slice(arquivoContrato.name.lastIndexOf('.'))}`;
+      const fornecedorSanitizado = fornecedorInfo.nome.toUpperCase().replace(/[\\/:*?"<>|]/g, '_');
 
+      const formDataContrato = new FormData();
+      formDataContrato.append("file", arquivoContrato);
+      formDataContrato.append("fileName", fileNameContrato);
+      formDataContrato.append("dataCompra", dataHoje);
+      formDataContrato.append("fornecedor", fornecedorSanitizado);
+      formDataContrato.append("tipo", "contratos");
+      formDataContrato.append("caminho", servicoSelecionadoNome || "");
 
-
-
-
-              // Sanitiza a descrição para filename
-      const servicosanitizado = fornecedorInfo.nome
-        .toUpperCase()
-        .replace(/[\\/:*?"<>|]/g, '_');
-
-
-let urld: string | null = null;
-if (arquivoContrato) {
-  console.log("Enviando contrato:", arquivoContrato.name);
-
-  const fileName2 = `Contrato${arquivoContrato.name.slice(arquivoContrato.name.lastIndexOf('.'))}`;
-
- 
-const uploadedContrato = await uploadFileToOneDrive(
-  accessToken,
-  arquivoContrato,
-  fileName2,
-  new Date().toISOString().slice(0, 10),
-  servicosanitizado,
-  "contratos",
-  servicoSelecionadoNome || "" // envia o nome do serviço
-);
-
-const urld = uploadedContrato?.url || null; // pega apenas a URL
-
-
-  if (!urld) {
-    console.warn("⚠️ Não foi possível enviar o contrato");
-  } else {
-    console.log("✅ Contrato enviado com sucesso:", urld);
-  }
-} else {
-  console.warn("⚠️ Nenhum arquivo de contrato selecionado");
-}
-
-
+      const resContrato = await fetch("/api/onedrive/upload", { method: "POST", body: formDataContrato });
+      const dataContrato = await resContrato.json();
+      urld = dataContrato.file?.url || null;
+      if (!urld) console.warn("Não foi possível enviar o contrato");
+    }
 
     // Monta o objeto do contrato
     const novoContrato = {
@@ -472,13 +398,10 @@ const urld = uploadedContrato?.url || null; // pega apenas a URL
       unidade_medida: unidadeMedida,
       tipo_pagamento: pagamentoTipo,
       diasaposemissao: diasAposNota,
-      periodicidade: periodicidade,
-      proximopagamento: proximoPagamento ? new Date(proximoPagamento).toISOString().slice(0, 10)
-  : null,
-      dataencerramento: dataEncerramento
-  ? new Date(dataEncerramento).toISOString().slice(0, 10)
-  : null,
-      controle: controle,
+      periodicidade,
+      proximopagamento: proximoPagamento ? new Date(proximoPagamento).toISOString().slice(0, 10) : null,
+      dataencerramento: dataEncerramento ? new Date(dataEncerramento).toISOString().slice(0, 10) : null,
+      controle,
       diasdasemanacontrole: diasControle,
       nrs: necessitaNR,
       contrato: urld,
@@ -486,33 +409,25 @@ const urld = uploadedContrato?.url || null; // pega apenas a URL
       ...documentos,
     };
 
-    console.log("📝 Objeto do contrato a enviar:", novoContrato);
-
-    // Envia para Supabase
-    const { data, error } = await supabase
-      .from('contratos_servicos')
-      .insert([novoContrato]);
-
+    // Salva no Supabase
+    const { data, error } = await supabase.from('contratos_servicos').insert([novoContrato]);
     if (error) {
-      console.error('❌ Erro ao salvar contrato no Supabase:', error);
+      console.error('Erro ao salvar contrato no Supabase:', error);
       alert('Erro ao salvar contrato. Verifique o console.');
-      setLoading(false); // finaliza  o loading
       return;
     }
 
-    console.log('✅ Contrato salvo com sucesso no Supabase:', data);
-    setLoading(false); // finaliza  o loading
     alert('Contrato salvo com sucesso!');
     router.push('/dashboard/contratos-servicos/contratos/elaboracao');
-    
-
 
   } catch (err) {
-    console.error("❌ Erro geral no envio do contrato:", err);
-    setLoading(false); // finaliza  o loading
+    console.error("Erro geral no envio do contrato:", err);
     alert('Ocorreu um erro ao enviar o contrato. Verifique o console.');
+  } finally {
+    setLoading(false);
   }
 }
+
 
 
 

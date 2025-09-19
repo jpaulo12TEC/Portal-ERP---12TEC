@@ -4,8 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Search, ArrowLeft, Layers, FileText, ClipboardList } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import { supabase } from '@/lib/superbase';
-import { getAccessToken } from '@/lib/auth';
-import { uploadFileToOneDrive } from '@/lib/uploadFileToOneDrive';
+
 import { useUser } from '@/components/UserContext';
 
 interface Material {
@@ -63,10 +62,14 @@ export default function NovoPedidoCompra() {
 const handleSubmit = async () => {
   setLoading(true);
   try {
-    const accessToken = await getAccessToken(); // função que você deve ter
-    if (!accessToken) throw new Error("Token de acesso não encontrado.");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert("Usuário não autenticado!");
+      setLoading(false);
+      return;
+    }
 
-    // Arrays para guardar urls e ids do OneDrive
+    // Upload via rota API
     const uploadedFiles = await Promise.all(
       orcamentos.map(async (file, i) => {
         if (!file) return null;
@@ -74,25 +77,25 @@ const handleSubmit = async () => {
         const extension = file.name.split('.').pop();
         const fileName = `orcamento_${Date.now()}_${i}.${extension}`;
 
-        const newFile = await uploadFileToOneDrive(
-          accessToken,
-          file,
-          fileName,
-          new Date().toISOString().slice(0, 10), // dataCompra
-          fornecedores[i] || '',
-          "pedido_de_compra"
-        );
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("fileName", fileName);
+        formData.append("dataCompra", new Date().toISOString().slice(0, 10));
+        formData.append("fornecedor", fornecedores[i] || '');
+        formData.append("tipo", "pedido_de_compra");
 
-        if (!newFile) throw new Error(`Falha no upload do arquivo ${file.name}`);
+        const res = await fetch("/api/onedrive/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-        return { url: newFile.url, id: newFile.id };
+        const uploaded = await res.json();
+        if (!uploaded?.success) throw new Error(`Falha no upload do arquivo ${file.name}`);
+
+        return { url: uploaded.file.url, id: uploaded.file.id };
       })
     );
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    alert("Usuário não autenticado!");
-    return;
-  }
+
     // Monta o payload para inserir no Supabase
     const pedido = {
       id_solicitante: user.id,
@@ -130,6 +133,7 @@ const handleSubmit = async () => {
     setLoading(false);
   }
 };
+
 
 
 

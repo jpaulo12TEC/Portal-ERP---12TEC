@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { FaHome, FaUser, FaComment, FaBoxes, FaChartBar, FaCheckCircle, FaCogs, FaFileContract, FaTruck, FaShieldAlt, FaSignOutAlt } from 'react-icons/fa';
-import msalInstance from "@/lib/msalConfig";
 import '../app/stylesidebar.css';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -24,23 +23,19 @@ const Sidebar = ({ className = '', onNavClickAction, menuActive, setMenuActive, 
 
   const toggleSidebar = () => setMenuActive(!menuActive);
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length > 0) {
-        await msalInstance.logoutRedirect({
-          account: accounts[0],
-          postLogoutRedirectUri: window.location.origin,
-        });
-      } else {
-        router.push('/');
-      }
-    } catch (err) {
-      console.error("Erro ao fazer logout:", err);
-      router.push('/');
-    }
-  };
+const handleLogout = async () => {
+  try {
+    await supabase.auth.signOut();
+    localStorage.removeItem('nomeUsuario');
+    localStorage.removeItem('cargoUsuario');
+    localStorage.removeItem('fotoCaminho');
+    window.location.href = "/api/auth/logout";
+  } catch (err) {
+    console.error("Erro ao fazer logout:", err);
+    router.push('/');
+  }
+};
+
 
   const navigateTo = (tab: string, path: string) => {
     onNavClickAction(tab);

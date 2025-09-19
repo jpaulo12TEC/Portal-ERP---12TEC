@@ -11,8 +11,6 @@ import { ArrowLeft } from "lucide-react";
 import { Camera } from "lucide-react";
 import { useUser } from '@/components/UserContext';
 import { Palette, CreditCard } from "lucide-react";
-import { getAccessToken } from "../lib/auth"; // ajuste o caminho
-import { uploadFileToOneDrive } from "../lib/uploadFileToOneDrive";
 import { NextResponse } from 'next/server';
 
 type FormaPagamento = {
@@ -902,48 +900,49 @@ setLoading(false)
 
   //ENVIO DE ARQUIVOS AO SUPABASE (BOLETOS E NOTA FISCAL) --------------------------------------------------------------------------------------------------------------------------------
 
-const accessToken = await getAccessToken();
+
 
 
   // (BOLETOS) ----------------------------------------------------------------------------------------
 
 const arquivosBoleto = await Promise.all(
   parcelas.map(async (parcela, index) => {
-    if (parcela.boleto) {
-      try {
-        const accessToken = await getAccessToken();
-        if (!accessToken) throw new Error("Token de acesso não encontrado.");
+    if (!parcela.boleto) return null;
 
-        const timestamp = Date.now();
-        const fileExtension = parcela.boleto.name.split(".").pop();
-        const fileNameBoleto = `boleto_parcela_${timestamp}_${index}.${fileExtension}`;
+    try {
+      
+      const timestamp = Date.now();
+      const fileExtension = parcela.boleto.name.split(".").pop();
+      const fileNameBoleto = `boleto_parcela_${timestamp}_${index}.${fileExtension}`;
 
-        // 🔥 Upload para OneDrive
-        const uploaded = await uploadFileToOneDrive(
-          accessToken,
-          parcela.boleto,
-          fileNameBoleto,
-          new Date().toISOString().slice(0, 10), // data do boleto
-          fornecedor,
-          "financeiroboletos", // Origem
-          "boletos"     // Pasta no OneDrive
-        );
+      // 🔥 Upload via rota API
+      const formPayload = new FormData();
+      formPayload.append("file", parcela.boleto);
+      formPayload.append("fileName", fileNameBoleto);
+      formPayload.append("data", new Date().toISOString().slice(0, 10)); // data do boleto
+      formPayload.append("fornecedor", fornecedor);
+      formPayload.append("tipo", "financeiroboletos");
+      formPayload.append("pasta", "boletos");
 
-        if (!uploaded?.url) {
-          console.error("Erro no upload do boleto para o OneDrive.");
-          return null;
-        }
+      const res = await fetch("/api/onedrive/upload", {
+        method: "POST",
+        body: formPayload,
+      });
 
-        // Retorna a URL do OneDrive
-        return uploaded.url;
-      } catch (err) {
-        console.error("Erro inesperado no upload do boleto:", err);
+      const json = await res.json();
+      if (!json?.success || !json.file?.url) {
+        console.error("Erro no upload do boleto via API:", json);
         return null;
       }
+
+      return json.file.url;
+    } catch (err) {
+      console.error("Erro inesperado no upload do boleto via API:", err);
+      return null;
     }
-    return null;
   })
 );
+
 
 const arquivosBoletoFiltrados = arquivosBoleto.filter((url) => url !== null);
 
@@ -957,47 +956,49 @@ if (!arquivo) {
   return;
 }
 
-if (!accessToken) {
-  console.error("Token de acesso não encontrado.");
-  alert("Token de acesso não encontrado.");
-  return;
-}
+
 
 
 const fileName = `nf_${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`;
 try {
-  console.log("🟡 Iniciando envio para o OneDrive...");
+  console.log("🟡 Iniciando envio para o OneDrive via API...");
 
   console.log("📅 Data da compra recebida:", dataCompra);
   console.log("🏢 Fornecedor recebido:", fornecedor);
   console.log("📄 Nome do arquivo:", fileName);
 
-  // Upload para o OneDrive
-    const uploaded = await uploadFileToOneDrive(
-  accessToken,
-  arquivo,
-  fileName,
-  dataCompra,
-  fornecedor,
-  "compras"
-);
+  // 🔥 Cria o FormData para enviar para a API
+  const formPayload = new FormData();
+  formPayload.append("file", arquivo);
+  formPayload.append("fileName", fileName);
+  formPayload.append("data", dataCompra);
+  formPayload.append("fornecedor", fornecedor);
+  formPayload.append("pasta", "compras");
 
-urlNF = uploaded?.url || null; // pega somente a URL
+  // 🔥 Envia para a rota API
+  const res = await fetch("/api/onedrive/upload", {
+    method: "POST",
+    body: formPayload,
+  });
 
+  const json = await res.json();
 
-  if (!urlNF) {
-    console.error("⚠️ URL não retornada pelo OneDrive.");
-    throw new Error("URL não retornada pelo OneDrive.");
+  if (!json?.success || !json.file?.url) {
+    console.error("⚠️ Erro no upload via API:", json);
+    throw new Error("Falha no upload do arquivo via API");
   }
 
-  console.log("✅ Arquivo enviado para o OneDrive com sucesso. Link:", urlNF);
+  // Pega somente a URL
+  urlNF = json.file.url;
 
+  console.log("✅ Arquivo enviado para o OneDrive com sucesso. Link:", urlNF);
   alert(`Arquivo enviado com sucesso! Link salvo: ${urlNF}`);
 
 } catch (err) {
   console.error("❌ Erro geral:", err);
   alert("Erro ao enviar ou salvar o arquivo.");
 }
+
 
  
 

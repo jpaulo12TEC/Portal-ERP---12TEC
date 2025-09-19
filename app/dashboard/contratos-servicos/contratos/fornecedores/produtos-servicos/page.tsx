@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '../../../../../../components/Sidebar';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Search, UploadCloud } from 'lucide-react';
-import { getAccessToken } from "@/lib/auth";
 import { uploadFileToOneDrive } from "@/lib/uploadFileToOneDrive";
 import { supabase } from '../../../../../../lib/superbase';
 
@@ -54,111 +53,104 @@ export default function CadastroServicos() {
 
 
 
-  const handleSubmit = async () => {
-    // Validação antes do insert
-if (
-  !descricao ||
-  !categoria ||
-  !areaAtuacao ||
-  !unidadeMedida ||
-  !valorUnitario ||
-  !prazoAtendimento ||
-  !tipoCobranca ||
-  !file
-) {
-  alert("Por favor, preencha todos os campos obrigatórios antes de enviar.");
-  setLoading(false);
-  return; // interrompe a execução
-}
+const handleSubmit = async () => {
+  // Validação antes do insert
+  if (
+    !descricao ||
+    !categoria ||
+    !areaAtuacao ||
+    !unidadeMedida ||
+    !valorUnitario ||
+    !prazoAtendimento ||
+    !tipoCobranca ||
+    !file
+  ) {
+    alert("Por favor, preencha todos os campos obrigatórios antes de enviar.");
+    setLoading(false);
+    return;
+  }
 
+  setLoading(true);
 
-    setLoading(true); // Inicia o loading
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    alert("Usuário não autenticado!");
+    setLoading(false);
+    return;
+  }
 
+  try {
+    let fileUrl: string | null = null;
 
-        const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      alert("Usuário não autenticado!");
-      return;
-    }
+    if (file) {
+      // Pega o fornecedor selecionado
+      const fornecedorSelecionado = fornecedores.find(f => f.id === fornecedorId);
+      const nomeFornecedor = fornecedorSelecionado ? fornecedorSelecionado.razao_social : "sem fornecedor";
 
+      // Extrai extensão do arquivo
+      const extensao = file.name.split('.').pop();
 
-    try {
+      // Cria data no formato YYYYMMDD
+      const hoje = new Date();
+      const dataFormatada = `${hoje.getFullYear()}${String(hoje.getMonth() + 1).padStart(2,'0')}${String(hoje.getDate()).padStart(2,'0')}`;
 
-            const accessToken = await getAccessToken();
+      // Monta o nome do arquivo
+      const nomeArquivo = `${dataFormatada}_orcamento_${descricao.replace(/\s+/g, '_')}.${extensao}`;
 
-          if (!accessToken) {
-  console.error("Token de acesso não encontrado.");
-  alert("Token de acesso não encontrado.");
-  return;
-}
+      // **Upload via rota API**
+      const formDataAPI = new FormData();
+      formDataAPI.append("file", file);
+      formDataAPI.append("fileName", nomeArquivo);
+      formDataAPI.append("dataCompra", hoje.toISOString().slice(0, 10));
+      formDataAPI.append("fornecedor", nomeFornecedor);
+      formDataAPI.append("tipo", "cadastro-fornecedor-servico");
+      formDataAPI.append("caminho", descricao);
 
+      const res = await fetch("/api/onedrive/upload", {
+        method: "POST",
+        body: formDataAPI,
+      });
 
-
-      setLoading(true);
-      let fileUrl = null;
-
-      // Upload do arquivo para OneDrive
-      if (file) {
-       
-// Pega o fornecedor selecionado
-const fornecedorSelecionado = fornecedores.find(f => f.id === fornecedorId);
-
-// Define o nome da pasta (se tiver fornecedor, usa a razão social, senão "sem fornecedor")
-const nomeFornecedor = fornecedorSelecionado ? fornecedorSelecionado.razao_social : "sem fornecedor";
-
-// Extrai extensão do arquivo
-const extensao = file.name.split('.').pop();
-
-// Cria data no formato YYYYMMDD
-const hoje = new Date();
-const dataFormatada = `${hoje.getFullYear()}${String(hoje.getMonth() + 1).padStart(2,'0')}${String(hoje.getDate()).padStart(2,'0')}`;
-
-// Monta o nome do arquivo
-const nomeArquivo = `${dataFormatada}_orcamento_${descricao.replace(/\s+/g, '_')}.${extensao}`;
-
-
-const uploaded = await uploadFileToOneDrive(
-  accessToken,
-  file,
-  nomeArquivo,
-  hoje.toISOString().slice(0, 10), // dataCompra
-  nomeFornecedor,                 // fornecedor
-  "cadastro-fornecedor-servico",
-  descricao
-);
-
-fileUrl = uploaded?.url || null; // pega somente a URL
-
-
-      }
-
-      // Inserir no Supabase
-      const { error } = await supabase.from('servicos_cadastrados').insert([{
-        fornecedor_id: fornecedorId,
-        descricao_servico: descricao,
-        categoria: categoria,
-        area_atuacao: areaAtuacao,
-        unidade_medida: unidadeMedida,
-        valor_unitario: valorUnitario,
-        prazo_atendimento_dias: prazoAtendimento,
-        tipo_cobranca: tipoCobranca,
-        preferencial: preferencial,
-        arquivo_orcamento: fileUrl,
-        user_id:user.id
-      }]);
-
-      if (error) {
-        console.error('Erro ao cadastrar serviço:', error);
+      const data = await res.json();
+      if (!res.ok || !data.file?.url) {
+        console.error("Erro no upload:", data);
+        alert("Erro ao enviar o arquivo para o OneDrive.");
       } else {
-        alert('Serviço cadastrado com sucesso!');
-        router.push('/dashboard/contratos-servicos/contratos/fornecedores');
+        fileUrl = data.file.url;
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // Inserir no Supabase
+    const { error } = await supabase.from('servicos_cadastrados').insert([{
+      fornecedor_id: fornecedorId,
+      descricao_servico: descricao,
+      categoria,
+      area_atuacao: areaAtuacao,
+      unidade_medida: unidadeMedida,
+      valor_unitario: valorUnitario,
+      prazo_atendimento_dias: prazoAtendimento,
+      tipo_cobranca: tipoCobranca,
+      preferencial,
+      arquivo_orcamento: fileUrl,
+      user_id: user.id
+    }]);
+
+    if (error) {
+      console.error('Erro ao cadastrar serviço:', error);
+      alert("Erro ao cadastrar serviço.");
+    } else {
+      alert('Serviço cadastrado com sucesso!');
+      router.push('/dashboard/contratos-servicos/contratos/fornecedores');
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert("Erro inesperado ao cadastrar serviço.");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className={`flex flex-col h-screen ${menuActive ? 'ml-[300px]' : 'ml-[80px]'}`}>

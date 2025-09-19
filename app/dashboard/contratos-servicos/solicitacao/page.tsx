@@ -5,8 +5,7 @@ import Sidebar from '../../../../components/Sidebar';
 import { ArrowLeft, Search, Paperclip, FileText, X } from "lucide-react";
 import { supabase } from '../../../../lib/superbase';
 import { useUser } from '@/components/UserContext';
-import { getAccessToken } from "@/lib/auth"; // ajuste o caminho
-import { uploadFileToOneDrive } from "@/lib/uploadFileToOneDrive";
+
 
 export default function SolicitarContrato() {
     const [loading, setLoading] = useState(false);
@@ -91,7 +90,7 @@ const previsaoConclusaoStr = dataPrevisao.toISOString().slice(0, 10);
 // (Orçamentos) ----------------------------------------------------------------------============-------=========--------------
 
 async function handleEnviarSolicitacao() {
-  // 1. Verifica campos obrigatórios principais
+  // 1️⃣ Verifica campos obrigatórios principais
   if (!apelido?.trim()) {
     alert("O campo 'Título' é obrigatório.");
     return;
@@ -101,123 +100,99 @@ async function handleEnviarSolicitacao() {
     return;
   }
 
-    // 2. Verifica fornecedores dos orçamentos
+  // 2️⃣ Verifica fornecedores dos orçamentos
   for (let i = 0; i < arquivos.length; i++) {
-    const arquivo = arquivos[i];
     const fornecedorAtual = fornecedoresOrcamento[i]?.trim();
-
-    if (arquivo && !fornecedorAtual) {
+    if (arquivos[i] && !fornecedorAtual) {
       alert(`Por favor, informe o fornecedor para o Orçamento ${i + 1}.`);
       return;
     }
   }
 
-
-
-  const accessToken = await getAccessToken();
-  // Pega usuário logado
+  // 3️⃣ Pega usuário logado
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     alert("Usuário não autenticado!");
     return;
   }
 
+  setIsSaving(true);
+  setLoading(true);
 
+  const urls: (string | null)[] = [null, null, null];
 
-  setIsSaving(true); // opcional: indicador de carregamento
-    // INICIALIZAÇÃO --------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-setLoading(true); // Inicia o loading
-
-
-
-
-  let urls: (string | null)[] = [null, null, null];
-
-  if (!accessToken) {
-  console.error("Token de acesso não encontrado.");
-  alert("Token de acesso não encontrado.");
-  return;
-}
-
-// Sanitiza apelido: maiúsculas e sem caracteres proibidos no Windows
-const apelidoSanitizado = apelido
-  .toUpperCase()
-  .replace(/[\\/:*?"<>|]/g, '_'); // substitui por "_"
+  // Sanitiza apelido para nome de arquivo
+  const apelidoSanitizado = apelido
+    .toUpperCase()
+    .replace(/[\\/:*?"<>|]/g, '_');
 
   try {
     // Percorre cada arquivo de orçamento
     for (let i = 0; i < arquivos.length; i++) {
       const arquivo = arquivos[i];
-      if (arquivo) { // só envia se existir
-        // Monta nome do arquivo com apelido no início
-const fileName = `${apelidoSanitizado}_orcamento${i + 1}_${new Date()
-  .toISOString()
-  .replace(/[:.]/g, '-')}${arquivo.name.slice(arquivo.name.lastIndexOf('.'))}`;
-        
+      if (!arquivo) continue;
 
-        // Pega o fornecedor correspondente, ou "sem_fornecedor" se vazio
-        const fornecedorAtual = fornecedoresOrcamento[i]?.trim() || "sem_fornecedor";
-        console.log(`🟡 Enviando Orçamento ${i + 1} para OneDrive...`);
-        
-const uploadedFile = await uploadFileToOneDrive(
-  accessToken,
-  arquivo,
-  fileName,
-  new Date().toISOString().slice(0, 10), // dataCompra
-  fornecedorAtual,
-  "orçamentos-contratos"
-);
+      const fileName = `${apelidoSanitizado}_orcamento${i + 1}_${new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-')}${arquivo.name.slice(arquivo.name.lastIndexOf('.'))}`;
 
-const url = uploadedFile?.url || null; // pega apenas a URL
+      const fornecedorAtual = fornecedoresOrcamento[i]?.trim() || "sem_fornecedor";
 
+      console.log(`🟡 Enviando Orçamento ${i + 1} via API backend...`);
 
-        if (!url) {
-          console.warn(`⚠️ Orçamento ${i + 1} não retornou URL`);
-        } else {
-          console.log(`✅ Orçamento ${i + 1} enviado com sucesso:`, url);
-        }
+      // Chamada à rota backend
+      const formDataAPI = new FormData();
+      formDataAPI.append("file", arquivo);
+      formDataAPI.append("fileName", fileName);
+      formDataAPI.append("dataCompra", new Date().toISOString().slice(0, 10));
+      formDataAPI.append("fornecedor", fornecedorAtual);
+      formDataAPI.append("tipo", "orçamentos-contratos");
 
-        urls[i] = url || null;
+      const res = await fetch("/api/onedrive/upload", { method: "POST", body: formDataAPI });
+      const data = await res.json();
+      const url = data.file?.url || null;
+
+      if (!url) {
+        console.warn(`⚠️ Orçamento ${i + 1} não retornou URL`);
+      } else {
+        console.log(`✅ Orçamento ${i + 1} enviado com sucesso:`, url);
       }
+
+      urls[i] = url;
     }
 
-    // Agora salva no Supabase
+    // Salva a solicitação no Supabase
     const { error } = await supabase
       .from('solicitacoes_contratos')
-      .insert([
-        {
-          id_solicitante: user.id,
-          titulo: apelido,
-          descricao: descricao,
-          fornecedor_sugerido: [
-  ...fornecedoresSelecionados.map(f => f.nome),
-  ...fornecedoresOrcamento.filter(f => f && f.trim() !== "") // só pega os que não estão vazios
-].join(', '),
-orcamento1: urls[0] || "",
-orcamento2: urls[1] || "",
-orcamento3: urls[2] || "",
-status: "Solicitado",
-      previsao_conclusao: previsaoConclusaoStr // adiciona a data aqui
-        }
-      ]);
+      .insert([{
+        id_solicitante: user.id,
+        titulo: apelido,
+        descricao: descricao,
+        fornecedor_sugerido: [
+          ...fornecedoresSelecionados.map(f => f.nome),
+          ...fornecedoresOrcamento.filter(f => f && f.trim() !== "")
+        ].join(', '),
+        orcamento1: urls[0] || "",
+        orcamento2: urls[1] || "",
+        orcamento3: urls[2] || "",
+        status: "Solicitado",
+        previsao_conclusao: previsaoConclusaoStr
+      }]);
 
     if (error) throw error;
 
     alert("Solicitação enviada com sucesso!");
-    
+    router.push('/dashboard/contratos-servicos/acompanhar-solicitacao');
 
   } catch (err) {
     console.error("❌ Erro geral:", err);
     alert("Erro ao enviar solicitação.");
   } finally {
     setIsSaving(false);
-    setLoading(false); // Inicia o loading
-    
-    router.push('/dashboard/contratos-servicos/acompanhar-solicitacao');
-  }}
+    setLoading(false);
+  }
+}
+
 
 
 

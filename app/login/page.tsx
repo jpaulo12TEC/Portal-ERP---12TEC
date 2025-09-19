@@ -1,6 +1,6 @@
 'use client';
 import '../styles.css';
-import msalInstance from "@/lib/msalConfig";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
@@ -95,50 +95,15 @@ const fetchUserPhoto = async (emailInput: string) => {
 
 
 
-  // ✅ Inicializa MSAL e processa redirect
-  useEffect(() => {
-    const initMSAL = async () => {
-      try {
-        if (typeof msalInstance.initialize === "function") {
-          await msalInstance.initialize();
-        }
 
-        const result = await msalInstance.handleRedirectPromise();
-        if (result?.account) {
-          console.log("MSAL login concluído:", result.account);
-          const tokenResponse = await msalInstance.acquireTokenSilent({
-            account: result.account,
-            scopes: ["Files.ReadWrite", "User.Read"],
-          });
-          console.log("Access token obtido:", tokenResponse.accessToken);
-          router.push("/dashboard");
-        }
-      } catch (err) {
-        console.error("Erro ao processar redirect MSAL:", err);
-      }
-    };
-
-    initMSAL();
-  }, [router]);
 
   // 🔐 Função de login MSAL
   const loginMSAL = async () => {
-    try {
-      if (typeof msalInstance.initialize === "function") {
-        await msalInstance.initialize();
-      }
-
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length === 0) {
-        await msalInstance.loginRedirect({
-          scopes: ["Files.ReadWrite", "User.Read"],
-          redirectUri: window.location.origin + "/dashboard",
-        });
-      }
-    } catch (err) {
-      console.error("Erro no login MSAL:", err);
-      throw err;
-    }
+   try {
+    window.location.href = "/api/auth/login"; // rota backend que redireciona para Azure
+  } catch (err) {
+    console.error("Erro ao iniciar login backend:", err);
+  }
   };
 
   // 🔑 Login Supabase

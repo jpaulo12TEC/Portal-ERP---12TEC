@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import Sidebar from '../../../../../../components/Sidebar';
 import { Separator } from '../../../../../../components/ui/separator';
-import { getAccessToken } from "@/lib/auth"; // ajuste o caminho
+
 import { uploadFileToOneDrive } from "@/lib/uploadFileToOneDrive";
 import { supabase } from '../../../../../../lib/superbase';
 
@@ -90,14 +90,13 @@ const handleChange = (e: any) => {
 
 
 const handleSubmit = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    alert("Usuário não autenticado!");
+    return;
+  }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      alert("Usuário não autenticado!");
-      return;
-    }
-
-      // Mapeamento de campos obrigatórios para labels amigáveis
+  // Mapeamento de campos obrigatórios
   const obrigatorios: { campo: string; label: string }[] = [
     { campo: "razaoSocial", label: "Razão Social" },
     { campo: "nomeFantasia", label: "Nome Fantasia" },
@@ -105,7 +104,7 @@ const handleSubmit = async () => {
     { campo: "tipoFornecedor", label: "Tipo de Fornecedor" },
     { campo: "naturezaJuridica", label: "Natureza Jurídica" },
     { campo: "endereco", label: "Endereço" },
-    { campo: "numero", label: "Número" },    
+    { campo: "numero", label: "Número" },
     { campo: "bairro", label: "Bairro" },
     { campo: "cidadeUF", label: "Cidade / UF" },
     { campo: "cep", label: "CEP" },
@@ -118,13 +117,13 @@ const handleSubmit = async () => {
     { campo: "unidadeFornecimento", label: "Unidade de Fornecimento" }
   ];
 
-// Checa campos vazios
-const camposVazios = obrigatorios
-  .filter(item => {
-    const key = item.campo as keyof typeof formData;
-    return !formData[key] || formData[key].toString().trim() === "";
-  })
-  .map(item => item.label);
+  // Checa campos vazios
+  const camposVazios = obrigatorios
+    .filter(item => {
+      const key = item.campo as keyof typeof formData;
+      return !formData[key] || formData[key].toString().trim() === "";
+    })
+    .map(item => item.label);
 
   if (camposVazios.length > 0) {
     alert(
@@ -133,121 +132,117 @@ const camposVazios = obrigatorios
     return;
   }
 
+  setLoading(true);
 
-setLoading(true); // Inicia o loading
+  // Função auxiliar para enviar arquivos para a rota API
+  const uploadDocViaAPI = async (file?: File, key?: string) => {
+    if (!file) return null;
 
+    const label = key && fileFieldLabels[key] ? fileFieldLabels[key] : "Arquivo";
+    const cleanLabel = label
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_ ]/g, "")
+      .replace(/\s+/g, "_");
 
+    const today = new Date();
+    const dateStr = `${String(today.getDate()).padStart(2,"0")}${String(today.getMonth()+1).padStart(2,"0")}${today.getFullYear()}`;
+    const extension = file.name.split('.').pop();
+    const fileName = `${cleanLabel}_${dateStr}.${extension}`;
 
-    try {
-      const accessToken = await getAccessToken();
+    // FormData para rota API
+    const formDataAPI = new FormData();
+    formDataAPI.append("file", file);
+    formDataAPI.append("fileName", fileName);
+    formDataAPI.append("dataCompra", today.toISOString().slice(0, 10));
+    formDataAPI.append("fornecedor", formData.razaoSocial);
+    formDataAPI.append("tipo", "cadastro-fornecedor");
 
-          if (!accessToken) {
-  console.error("Token de acesso não encontrado.");
-  alert("Token de acesso não encontrado.");
-  return;
-}
+    const res = await fetch("/api/onedrive/upload", {
+      method: "POST",
+      body: formDataAPI
+    });
 
+    const data = await res.json();
+    if (!res.ok || !data.file?.url) {
+      console.error("Erro no upload:", data);
+      return null;
+    }
 
-    // Função auxiliar para subir arquivo e retornar a URL ou null
-      // Função para gerar nome do arquivo baseado no label + data
-const uploadDoc = async (file?: File, key?: string) => {
-  if (!file) return null;
-  const label = key && fileFieldLabels[key] ? fileFieldLabels[key] : "Arquivo";
+    return data.file.url;
+  };
 
-  const cleanLabel = label
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9_ ]/g, "")
-    .replace(/\s+/g, "_");
+  try {
+    // Upload de arquivos
+    const fichaCadastralUrl = await uploadDocViaAPI(formData.fichaCadastral?.[0], "fichaCadastral");
+    const comprovantecapacidadetecnicaUrl = await uploadDocViaAPI(formData.comprovantecapacidadetecnica?.[0], "comprovantecapacidadetecnica");
+    const cartaoCnpjUrl = await uploadDocViaAPI(formData.cartaoCnpj?.[0], "cartaoCnpj");
+    const certidaoNegativaUrl = await uploadDocViaAPI(formData.certidaoNegativa?.[0], "certidaoNegativa");
+    const contratoSocialUrl = await uploadDocViaAPI(formData.contratoSocial?.[0], "contratoSocial");
+    const alvaraUrl = await uploadDocViaAPI(formData.alvara?.[0], "alvara");
+    const outrosDocumentosUrl = await uploadDocViaAPI(formData.outrosDocumentos?.[0], "outrosDocumentos");
 
-  const today = new Date();
-  const dateStr = `${String(today.getDate()).padStart(2,"0")}${String(today.getMonth()+1).padStart(2,"0")}${today.getFullYear()}`;
+    // Upload de arquivos de produtos (array)
+    const arquivosProdutosUrls: string[] = [];
+    for (const arquivo of formData.arquivosProdutos || []) {
+      const url = await uploadDocViaAPI(arquivo, "arquivosProdutos");
+      if (url) arquivosProdutosUrls.push(url);
+    }
 
-  const extension = file.name.split('.').pop(); // pega a extensão
-  const fileName = `${cleanLabel}_${dateStr}.${extension}`;
+    // Salvar fornecedor no Supabase
+    const { error } = await supabase.from("fornecedores").insert([{
+      id_cadastrador: user.id,
+      razao_social: formData.razaoSocial,
+      nome_fantasia: formData.nomeFantasia,
+      cnpj: formData.cnpj,
+      inscricao: formData.inscricao,
+      tipo_fornecedor: formData.tipoFornecedor,
+      natureza_juridica: formData.naturezaJuridica,
+      endereco: formData.endereco,
+      numero: formData.numero,
+      complemento: formData.complemento,
+      bairro: formData.bairro,
+      cidade_uf: formData.cidadeUF,
+      cep: formData.cep,
+      pais: formData.pais,
+      telefone_principal: formData.telefonePrincipal,
+      email: formData.email,
+      website: formData.website,
+      responsavel_comercial: formData.responsavelComercial,
+      responsavel_tecnico: formData.responsavelTecnico,
+      responsavel_tecnicocontato: formData.responsavelTecnicocontato,
+      contato1_nome: formData.contato1Nome,
+      contato1_telefone: formData.contato1Telefone,
+      contato2_nome: formData.contato2Nome,
+      contato2_telefone: formData.contato2Telefone,
+      tipo_produto_servico: formData.tipoProdutoServico,
+      categoria: formData.categoria,
+      descricao: formData.descricao,
+      unidade_fornecimento: formData.unidadeFornecimento,
+      preco_estimado: formData.precoEstimado.trim() === "" ? null : parseFloat(formData.precoEstimado),
+      prazo_entrega: formData.prazoEntrega,
 
-  const uploaded = await uploadFileToOneDrive(
-    accessToken,
-    file,
-    fileName,
-    today.toISOString().slice(0, 10),
-    formData.razaoSocial,
-    "cadastro-fornecedor"
-  );
+      arquivos_produtos_url: arquivosProdutosUrls,
+      comprovantecapacidadetecnica_url: comprovantecapacidadetecnicaUrl,
+      ficha_cadastral_url: fichaCadastralUrl,
+      cartao_cnpj_url: cartaoCnpjUrl,
+      certidao_negativa_url: certidaoNegativaUrl,
+      contrato_social_url: contratoSocialUrl,
+      alvara_url: alvaraUrl,
+      outros_documentos_url: outrosDocumentosUrl
+    }]);
 
-  return uploaded?.url || null; // retorna somente a URL
+    if (error) throw error;
+
+    setLoading(false);
+    alert("Fornecedor cadastrado com sucesso!");
+    router.push("/dashboard/contratos-servicos/contratos/fornecedores");
+  } catch (err) {
+    console.error(err);
+    setLoading(false);
+    alert("Erro ao cadastrar fornecedor.");
+  }
 };
 
-
-      // Uploads específicos
-      const fichaCadastralUrl = await uploadDoc(formData.fichaCadastral[0], "fichaCadastral");
-      const comprovantecapacidadetecnicaUrl = await uploadDoc(formData.comprovantecapacidadetecnica[0], "comprovantecapacidadetecnica");
-      const cartaoCnpjUrl = await uploadDoc(formData.cartaoCnpj[0], "cartaoCnpj");
-      const certidaoNegativaUrl = await uploadDoc(formData.certidaoNegativa[0], "certidaoNegativa");
-      const contratoSocialUrl = await uploadDoc(formData.contratoSocial[0], "contratoSocial");
-      const alvaraUrl = await uploadDoc(formData.alvara[0], "alvara");      
-      const outrosDocumentosUrl = await uploadDoc(formData.outrosDocumentos[0],"outrosDocumentos");
-
-
-      // Upload de arquivos de produtos (array de URLs)
-      const arquivosProdutosUrls: string[] = [];
-      for (const arquivo of formData.arquivosProdutos) {
-        const url = await uploadDoc(arquivo, "arquivosProdutos");
-        if (url) arquivosProdutosUrls.push(url);
-      }
-
-      // Salvar fornecedor no Supabase
-      const { error } = await supabase.from("fornecedores").insert([{
-        id_cadastrador: user.id,
-        razao_social: formData.razaoSocial,
-        nome_fantasia: formData.nomeFantasia,
-        cnpj: formData.cnpj,
-        inscricao: formData.inscricao,
-        tipo_fornecedor: formData.tipoFornecedor,
-        natureza_juridica: formData.naturezaJuridica,
-        endereco: formData.endereco,
-        numero: formData.numero,
-        complemento: formData.complemento,
-        bairro: formData.bairro,
-        cidade_uf: formData.cidadeUF,
-        cep: formData.cep,
-        pais: formData.pais,
-        telefone_principal: formData.telefonePrincipal,
-        email: formData.email,
-        website: formData.website,
-        responsavel_comercial: formData.responsavelComercial,
-        responsavel_tecnico: formData.responsavelTecnico,
-        responsavel_tecnicocontato: formData.responsavelTecnicocontato,
-        contato1_nome: formData.contato1Nome,
-        contato1_telefone: formData.contato1Telefone,
-        contato2_nome: formData.contato2Nome,
-        contato2_telefone: formData.contato2Telefone,
-        tipo_produto_servico: formData.tipoProdutoServico,
-        categoria: formData.categoria,
-        descricao: formData.descricao,
-        unidade_fornecimento: formData.unidadeFornecimento,
-        preco_estimado: formData.precoEstimado.trim() === "" ? null : parseFloat(formData.precoEstimado),
-        prazo_entrega: formData.prazoEntrega,
-
-        arquivos_produtos_url: arquivosProdutosUrls,
-        comprovantecapacidadetecnica_url: comprovantecapacidadetecnicaUrl,
-        ficha_cadastral_url: fichaCadastralUrl,
-        cartao_cnpj_url: cartaoCnpjUrl,
-        certidao_negativa_url: certidaoNegativaUrl,        
-        contrato_social_url: contratoSocialUrl,  
-        alvara_url: alvaraUrl,        
-        outros_documentos_url: outrosDocumentosUrl
-      }]);
-
-      if (error) throw error;
-      setLoading(false); // Inicia o loading
-      alert("Fornecedor cadastrado com sucesso!");
-      router.push("/dashboard/contratos-servicos/contratos/fornecedores");
-
-    } catch (err) {
-      console.error(err);
-      alert("Erro ao cadastrar fornecedor.");
-    }
-  };
 
 
 

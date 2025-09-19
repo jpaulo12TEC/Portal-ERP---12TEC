@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 import { FileText, Users, ClipboardCheck, FileCheck, CheckSquare, Flag } from 'lucide-react';
 import { uploadFileToOneDrive } from "@/lib/uploadFileToOneDrive";
-import { getAccessToken } from "@/lib/auth"; // ajuste o caminho
 import { useUser } from '@/components/UserContext';
 
 
@@ -546,53 +545,54 @@ const handleUploadOrcamento = async (id: string, numero: number, file: File | nu
     .map((valor, index) => ({ index: index + 1, valor }))
     .filter(o => !o.valor);
 
-  const handleUploadIndividual = async (indice: number, arquivo: File) => {
-    try {
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        alert("Token de acesso não encontrado.");
-        return;
-      }
+const handleUploadIndividual = async (indice: number, arquivo: File) => {
+  try {
+    // Sanitiza nome
+    const fileName = `orcamento${indice}_${new Date()
+      .toISOString()
+      .replace(/[:.]/g, '-')}${arquivo.name.slice(arquivo.name.lastIndexOf('.'))}`;
 
-      // Sanitiza nome
-      const fileName = `orcamento${indice}_${new Date()
-        .toISOString()
-        .replace(/[:.]/g, '-')}${arquivo.name.slice(arquivo.name.lastIndexOf('.'))}`;
+    // Cria FormData para enviar para a rota API
+    const formData = new FormData();
+    formData.append('file', arquivo);
+    formData.append('fileName', fileName);
+    formData.append('dataCompra', new Date().toISOString().slice(0, 10));
+    formData.append('fornecedor', 'sem_fornecedor'); // fornecedor fixo
+    formData.append('tipo', 'orçamentos-contratos');
 
-      // Envia para o OneDrive
-const arquivoEnviado = await uploadFileToOneDrive(
-  accessToken,
-  arquivo,
-  fileName,
-  new Date().toISOString().slice(0, 10),
-  "sem_fornecedor", // fornecedor fixo
-  "orçamentos-contratos"
-);
+    // Envia para a rota API (backend)
+    const res = await fetch('/api/onedrive/upload', {
+      method: 'POST',
+      body: formData,
+    });
 
-const url = arquivoEnviado?.url || null;
+    const data = await res.json();
 
-if (!url) {
-  alert(`Erro ao enviar Orçamento ${indice}`);
-  return;
-}
-
-
-      // Atualiza no Supabase
-      const coluna = `orcamento${indice}`;
-      const { error } = await supabase
-        .from("solicitacoes_contratos")
-        .update({ [coluna]: url })
-        .eq("id", id);
-
-      if (error) throw error;
-
-      alert(`✅ Orçamento ${indice} enviado com sucesso!`);
-      fetchSolicitacoes();
-    } catch (err) {
-      console.error(err);
+    if (!res.ok || !data?.file?.url) {
       alert(`Erro ao enviar Orçamento ${indice}`);
+      console.error('Erro no upload:', data);
+      return;
     }
-  };
+
+    const url = data.file.url;
+
+    // Atualiza no Supabase
+    const coluna = `orcamento${indice}`;
+    const { error } = await supabase
+      .from("solicitacoes_contratos")
+      .update({ [coluna]: url })
+      .eq("id", id);
+
+    if (error) throw error;
+
+    alert(`✅ Orçamento ${indice} enviado com sucesso!`);
+    fetchSolicitacoes();
+  } catch (err) {
+    console.error(err);
+    alert(`Erro ao enviar Orçamento ${indice}`);
+  }
+};
+
 
   
 

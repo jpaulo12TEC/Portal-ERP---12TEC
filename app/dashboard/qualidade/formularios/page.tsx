@@ -6,9 +6,6 @@ import { supabase } from '../../../../lib/superbase';
 import Sidebar from '@/components/Sidebar';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, FilePlus, FileText, Upload } from 'lucide-react';
-import { getAccessToken } from '@/lib/auth';
-import { uploadFileToOneDrive } from '@/lib/uploadFileToOneDrive';
-import { moveFileOnOneDrive } from '@/lib/moveFileOnOneDrive';
 import { useUser } from '@/components/UserContext';
 import { MoreVertical, Download, Edit, RefreshCw } from "lucide-react";
 
@@ -154,14 +151,10 @@ const handleSalvarFormulario = async () => {
   }
 
   try {
-    const accessToken = await getAccessToken();
-    console.log("accessToken obtido?", !!accessToken);
-    if (!accessToken) throw new Error("Token de acesso não encontrado.");
-
     let fileUrl = editingForm?.url || '';
     let fileId = editingForm?.item_id || '';
 
-    // Se enviou arquivo novo → faz upload
+    // Se enviou arquivo novo → faz upload via API
     if (file) {
       console.log("Arquivo recebido para upload:", {
         name: file.name,
@@ -169,24 +162,27 @@ const handleSalvarFormulario = async () => {
         type: file.type
       });
 
-      const extension = file.name.split('.').pop();
+      const extension = file.name.split('.').pop() || '';
       const fileName = `formulario_${Date.now()}.${extension}`;
       console.log("Nome do arquivo gerado:", fileName);
 
-      const newFile = await uploadFileToOneDrive(
-        accessToken,
-        file,
-        fileName,
-        new Date().toISOString().slice(0, 10),
-        "",
-        "formularios"
-      );
+      // FormData para rota API
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("fileName", fileName);
+      formData.append("tipo", "formularios");
+      formData.append("caminho", editingForm?.item_id || "novo");
 
-      console.log("Resposta uploadFileToOneDrive:", newFile);
-      if (!newFile) throw new Error("Falha no upload do arquivo. newFile === null/undefined");
-      // newFile deve conter { url, id } segundo sua implementação recente
-      fileUrl = (newFile as any).url ?? '';
-      fileId = (newFile as any).id ?? '';
+      const res = await fetch("/api/onedrive/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const uploaded = await res.json();
+      if (!uploaded?.success) throw new Error(uploaded?.error || "Erro ao enviar arquivo via API");
+
+      fileUrl = uploaded.file?.url || '';
+      fileId = uploaded.file?.id || '';
 
       console.log("Arquivo novo -> url:", fileUrl, "id:", fileId);
 
@@ -194,8 +190,13 @@ const handleSalvarFormulario = async () => {
       if (editingForm?.item_id) {
         try {
           console.log("Tentando mover arquivo antigo (item_id):", editingForm.item_id);
-          await moveFileOnOneDrive(accessToken, editingForm.item_id, "formularios");
-          console.log("Arquivo antigo movido para Não Vigentes.");
+          const moveRes = await fetch("/api/onedrive/move", {
+            method: "POST",
+            body: JSON.stringify({ itemId: editingForm.item_id, destino: "formularios/nao-vigentes" }),
+            headers: { "Content-Type": "application/json" }
+          });
+          const moveData = await moveRes.json();
+          console.log("Arquivo antigo movido:", moveData);
         } catch (moveErr) {
           console.warn("Falha ao mover arquivo antigo (não fatal):", moveErr);
         }
@@ -204,6 +205,8 @@ const handleSalvarFormulario = async () => {
       console.log("Nenhum arquivo novo enviado - mantendo fileUrl/item_id existentes:", { fileUrl, fileId });
     }
 
+    const now = new Date().toISOString();
+
     if (editingForm) {
       if (updateMode) {
         // 🔄 Atualizar o mesmo registro
@@ -211,7 +214,7 @@ const handleSalvarFormulario = async () => {
           nome_do_formulario: nome,
           sobre,
           tipo,
-          ultima_modificacao: new Date().toISOString(),
+          ultima_modificacao: now,
           url: fileUrl,
           item_id: fileId,
           usuario_id: user.id,
@@ -237,22 +240,16 @@ const handleSalvarFormulario = async () => {
           .limit(1)
           .single();
 
-        if (ultimaErr && (ultimaErr.code !== 'PGRST116' && ultimaErr.code !== 'PGRST117')) {
-          // PGRST116/117 são exemplos; adaptação depende do Supabase — apenas logamos
-          console.warn("Erro ao buscar última versão (pode ser ok se não existir):", ultimaErr);
-        }
-
         const ultimaVersao = (ultimaVersaoData as any)?.versao;
         const novaVersao = (ultimaVersao ?? 0) + 1;
-        console.log("Última versão:", ultimaVersao, "→ novaVersao:", novaVersao);
 
         const insertPayload = {
           nome_do_formulario: nome,
           sobre,
           tipo,
           versao: novaVersao,
-          ultima_modificacao: new Date().toISOString(),
-          created_at: new Date().toISOString(),
+          ultima_modificacao: now,
+          created_at: now,
           url: fileUrl,
           item_id: fileId,
           usuario_id: user.id,
@@ -270,8 +267,8 @@ const handleSalvarFormulario = async () => {
         sobre,
         tipo,
         versao: 1,
-        ultima_modificacao: new Date().toISOString(),
-        created_at: new Date().toISOString(),
+        ultima_modificacao: now,
+        created_at: now,
         url: fileUrl,
         item_id: fileId,
         usuario_id: user.id,
@@ -286,12 +283,14 @@ const handleSalvarFormulario = async () => {
     console.log("✔️ Salvar formulário concluído com sucesso.");
     setModalOpen(false);
     fetchFormularios();
-    setUpdateMode(false); // volta pro normal
+    setUpdateMode(false);
+
   } catch (err: any) {
     console.error("Erro ao salvar formulário:", err);
     alert(`Erro ao salvar formulário: ${err.message ?? err}`);
   }
 };
+
 
 
   return (

@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/superbase'
-import { getAccessToken } from '@/lib/auth';
+
 import { uploadFileToOneDrive } from '@/lib/uploadFileToOneDrive';
 import {
     isAfter,
@@ -532,58 +532,70 @@ const renderTabela = (
     let comprovanteFileName = null;
 
     if (comprovante) {
-      try {
-        const accessToken = await getAccessToken();
-        if (!accessToken) throw new Error("Token de acesso não encontrado.");
+try {
+  // 🔑 Obter token (opcional, se necessário para API interna)
 
-        const timestamp = Date.now();
-        const fileExtension = comprovante.name.split('.').pop();
-        const fileName = `comprovante_${pagamentoSelecionado!.id}_${timestamp}.${fileExtension}`;
 
-        // Upload para o OneDrive
-        const uploaded = await uploadFileToOneDrive(
-          accessToken,
-          comprovante,
-          fileName,
-          new Date().toISOString().slice(0, 10), // data do pagamento,
-          pagamentoSelecionado.empresa,
-          "financeiro", // origem
-          "compras"     // pasta destino no OneDrive
-        );
 
-        if (!uploaded?.url) {
-          throw new Error("Falha no upload do comprovante para o OneDrive.");
-        }
+  const timestamp = Date.now();
+  const fileExtension = comprovante.name.split('.').pop();
+  const fileName = `comprovante_${pagamentoSelecionado!.id}_${timestamp}.${fileExtension}`;
 
-        // Salvar URL do OneDrive no banco
-        const updateData: any = {
-          pagoem: dataPagamento,
-          comprovante_pagamento: uploaded.url,
-        };
+  // 🔥 Preparar FormData para a rota API
+  const formDataUpload = new FormData();
+  formDataUpload.append("file", comprovante);
+  formDataUpload.append("fileName", fileName);
+  formDataUpload.append("data", new Date().toISOString().slice(0, 10)); // data do pagamento
+  formDataUpload.append("fornecedor", pagamentoSelecionado!.empresa);
+  formDataUpload.append("origem", "financeiro");
+  formDataUpload.append("pasta", "compras");
 
-        if (valorpago !== "") {
-          updateData.valor = valorpago;
-        }
+  // 🔥 Enviar para a API
+  const res = await fetch("/api/onedrive/upload", {
+    method: "POST",
+    body: formDataUpload,
+  });
 
-        const { error: updateError } = await supabase
-          .from('provisao_pagamentos')
-          .update(updateData)
-          .eq('id', pagamentoSelecionado!.id);
+  const json = await res.json();
 
-        if (updateError) {
-          console.error('Erro na atualização:', updateError);
-          alert('Erro ao salvar as informações.');
-          return;
-        }
+  if (!json?.success || !json.file?.url) {
+    console.error("Erro no upload via API:", json);
+    throw new Error("Falha no upload do comprovante via API.");
+  }
 
-        alert('Pagamento registrado com sucesso!');
-        setModalAberto(false);
-        fetchPagamentos(); // recarrega os dados
+  // URL retornada pela API
+  const urlComprovante = json.file.url;
 
-      } catch (err) {
-        console.error("Erro ao enviar comprovante para o OneDrive:", err);
-        alert("Erro ao enviar o comprovante.");
-      }
+  // 🔄 Atualizar Supabase
+  const updateData: any = {
+    pagoem: dataPagamento,
+    comprovante_pagamento: urlComprovante,
+  };
+
+  if (valorpago !== "") {
+    updateData.valor = valorpago;
+  }
+
+  const { error: updateError } = await supabase
+    .from("provisao_pagamentos")
+    .update(updateData)
+    .eq("id", pagamentoSelecionado!.id);
+
+  if (updateError) {
+    console.error("Erro na atualização:", updateError);
+    alert("Erro ao salvar as informações.");
+    return;
+  }
+
+  alert("Pagamento registrado com sucesso!");
+  setModalAberto(false);
+  fetchPagamentos(); // recarrega os dados
+
+} catch (err) {
+  console.error("Erro ao enviar comprovante via API:", err);
+  alert("Erro ao enviar o comprovante.");
+}
+
     }
   }}
 >
