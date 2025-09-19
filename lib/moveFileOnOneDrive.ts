@@ -1,9 +1,7 @@
-
-import { getAppToken } from './oneDrive';
 import axios from 'axios';
 
 export async function moveFileOnOneDrive(
-  
+  accessToken: string, // <- agora recebe o token como parâmetro
   fileIdOrUrl: string,
   tipo:
     | "formularios"
@@ -16,7 +14,6 @@ export async function moveFileOnOneDrive(
     | "cadastro-fornecedor-servico" = "formularios"
 ) {
   try {
-    const accessToken = await getAppToken();
     let itemId = fileIdOrUrl;
 
     if (fileIdOrUrl.includes("items/")) {
@@ -44,9 +41,8 @@ export async function moveFileOnOneDrive(
         ? "Fornecedores/Serviços/Orçamentos/Não Vigentes"
         : "Arquivos/Não Vigentes";
 
-    const graphBase = "https://graph.microsoft.com/v1.0/users/compras@12tec.com.br/drive";
+    const graphBase = `https://graph.microsoft.com/v1.0/drives/${process.env.ONEDRIVE_DRIVE_ID}`;
 
-    // Garante que a pasta de destino exista
     async function ensureFolderPath(path: string): Promise<string> {
       const pathParts = path.split("/");
       let parentId = "root";
@@ -79,7 +75,6 @@ export async function moveFileOnOneDrive(
 
     const pastaDestinoId = await ensureFolderPath(destinoPath);
 
-    // Move o arquivo
     await axios.patch(
       `${graphBase}/items/${itemId}`,
       { parentReference: { id: pastaDestinoId } },

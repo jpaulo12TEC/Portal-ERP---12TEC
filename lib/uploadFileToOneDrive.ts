@@ -1,35 +1,19 @@
-// lib/oneDriveUpload.ts
-import { getAppToken } from './oneDrive';
-
 export async function uploadFileToOneDrive(
+  accessToken: string, // <- recebe token por parâmetro
   file: File,
   fileName: string,
   dataCompra: string,
   fornecedor: string,
-  tipo:
-    | "cadastro-fornecedor-servico"
-    | "pedido_de_compra"
-    | "cadastro-fornecedor"
-    | "formularios"
-    | "financeiro"
-    | "financeiroboletos"
-    | "orçamentos-contratos"
-    | "romaneio-itens"
-    | "romaneio"
-    | "compras"
-    | "contratos" = "compras",
+  tipo: string = "compras",
   caminho?: string
 ): Promise<{ id: string; url: string } | null> {
   try {
-    const accessToken = await getAppToken();
-    const graphBase = "https://graph.microsoft.com/v1.0/users/compras@12tec.com.br/drive";
-
+    const graphBase = `https://graph.microsoft.com/v1.0/drives/${process.env.ONEDRIVE_DRIVE_ID}`;
     const [ano, mesStr, dia] = dataCompra.split("-");
     const mes = mesStr.padStart(2, "0");
     const diaSanitizado = dia.replace(/[<>:\"/\\|?*]/g, "").trim();
     const fornecedorSanitizado = fornecedor.replace(/[<>:\"/\\|?*]/g, "").trim();
 
-    // Monta caminho das pastas
     const caminhoPastas =
       tipo === "financeiroboletos"
         ? ["Financeiro", "Compras", "Boletos", `${ano}_${mes}_${diaSanitizado}_${fornecedorSanitizado}`]
@@ -55,7 +39,6 @@ export async function uploadFileToOneDrive(
         ? ["Financeiro", "Orçamentos", "Contratos", ano, mes, fornecedorSanitizado]
         : [];
 
-    // Garante que todas as pastas existem
     async function ensureFolderPath(pathParts: string[]): Promise<string> {
       let parentId = "root";
       for (const folderName of pathParts) {
@@ -64,10 +47,8 @@ export async function uploadFileToOneDrive(
         });
         const checkData = await checkRes.json();
         const existingFolder = checkData.value?.find((item: any) => item.name === folderName && item.folder);
-
-        if (existingFolder) {
-          parentId = existingFolder.id;
-        } else {
+        if (existingFolder) parentId = existingFolder.id;
+        else {
           const createRes = await fetch(`${graphBase}/items/${parentId}/children`, {
             method: "POST",
             headers: {
@@ -89,7 +70,6 @@ export async function uploadFileToOneDrive(
 
     const pastaDestinoId = await ensureFolderPath(caminhoPastas);
 
-    // Upload do arquivo
     const uploadUrl = `${graphBase}/items/${pastaDestinoId}:/${fileName}:/content`;
     const uploadResponse = await fetch(uploadUrl, {
       method: "PUT",
@@ -108,7 +88,6 @@ export async function uploadFileToOneDrive(
     const uploadedFile = await uploadResponse.json();
     const itemId = uploadedFile.id;
 
-    // Gera link público
     const linkResponse = await fetch(`${graphBase}/items/${itemId}/createLink`, {
       method: "POST",
       headers: {
