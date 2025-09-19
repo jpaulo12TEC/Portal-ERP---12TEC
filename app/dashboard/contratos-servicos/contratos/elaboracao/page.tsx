@@ -8,7 +8,7 @@ import { useUser } from '@/components/UserContext';
 import { supabase } from '../../../../../lib/superbase';
 import { Calendar, UploadCloud,Download  } from 'lucide-react';
 import { ExternalLink, Award  } from "lucide-react"
-import { getAccessToken } from "@/lib/auth"; // ajuste o caminho
+
 
 
 type Observacao = {
