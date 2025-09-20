@@ -344,29 +344,32 @@ async function handleSubmit(e: React.FormEvent) {
 
   try {
     // Função auxiliar para upload via rota API
-    const uploadDocAPI = async (file?: File, key?: string) => {
-      if (!file) return null;
+const uploadDocAPI = async (file?: File, key?: string) => {
+  if (!file) return null;
 
-      const cleanLabel = key?.replace(/[^a-zA-Z0-9]/g, "_") || "Arquivo";
-      const today = new Date();
-      const dateStr = `${String(today.getDate()).padStart(2,"0")}${String(today.getMonth()+1).padStart(2,"0")}${today.getFullYear()}`;
-      const extension = file.name.split('.').pop();
-      const fileName = `${cleanLabel}_${dateStr}.${extension}`;
+  const cleanLabel = key?.replace(/[^a-zA-Z0-9]/g, "_") || "Arquivo";
+  const today = new Date();
+  const dateStr = `${String(today.getDate()).padStart(2,"0")}${String(today.getMonth()+1).padStart(2,"0")}${today.getFullYear()}`;
+  const fileName = `${cleanLabel}_${dateStr}.${file.name.split('.').pop()}`;
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("fileName", fileName);
-      formData.append("fornecedor", razaoSocial);
-      formData.append("tipo", "cadastro-fornecedor");
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("fileName", fileName);
+  formData.append("fornecedor", razaoSocial);
+  formData.append("tipo", "cadastro-fornecedor");
 
-      const res = await fetch("/api/onedrive/upload", {
-        method: "POST",
-        body: formData
-      });
-      const uploaded = await res.json();
-      if (!uploaded?.success) throw new Error(uploaded?.error || "Erro ao enviar documento");
-      return uploaded.file.url || null;
-    };
+  // ✅ Adiciona dataCompra para não quebrar backend
+  const dataCompraStr = `${String(today.getDate()).padStart(2,"0")}/${String(today.getMonth()+1).padStart(2,"0")}/${today.getFullYear()}`;
+  formData.append("dataCompra", dataCompraStr);
+
+  const res = await fetch("/api/onedrive/upload", {
+    method: "POST",
+    body: formData
+  });
+  const uploaded = await res.json();
+  if (!uploaded?.success) throw new Error(uploaded?.error || "Erro ao enviar documento");
+  return uploaded.file.url || null;
+};
 
     // Upload dos arquivos
     const fichaCadastralUrl = formData.fichaCadastral ? await uploadDocAPI(formData.fichaCadastral[0], "fichaCadastral") : null;
