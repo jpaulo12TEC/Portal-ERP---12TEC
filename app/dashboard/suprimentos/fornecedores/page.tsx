@@ -434,7 +434,7 @@ async function handleSubmit(e: React.FormEvent) {
 
     setLoading(false);
     alert("Fornecedor cadastrado com sucesso!");
-    router.push("/dashboard/contratos-servicos/contratos/fornecedores");
+    router.push("/dashboard/suprimentos/fornecedores");
   } catch (err) {
     console.error(err);
     setLoading(false);

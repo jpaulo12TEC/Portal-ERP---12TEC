@@ -29,14 +29,16 @@ export async function uploadFileToOneDrive(
         ? ["Logistica", "Romaneios", `${ano}_${mes}_${diaSanitizado}_${fornecedorSanitizado}`, "Fotos dos itens"]
         : tipo === "contratos"
         ? ["Financeiro", "Contratos", fornecedorSanitizado, `${ano}_${mes}_${caminho}`]
+        : tipo === "cadastro-fornecedor-compras"
+        ? ["Suprimentos","Fornecedores", "Materiais e Equipamentos", fornecedorSanitizado, "Dados Cadastrais"]
         : tipo === "cadastro-fornecedor"
-        ? ["Fornecedores", "Serviços", fornecedorSanitizado, "Dados Cadastrais"]
+        ? ["Suprimentos","Fornecedores", "Serviços", fornecedorSanitizado, "Dados Cadastrais"]
         : tipo === "cadastro-fornecedor-servico"
-        ? ["Fornecedores", "Serviços", fornecedorSanitizado, "Orçamentos", caminho ?? ""]
+        ? ["Suprimentos","Fornecedores", "Serviços", fornecedorSanitizado, "Orçamentos", caminho ?? ""]
         : tipo === "pedido_de_compra"
-        ? ["Fornecedores", "Compras", fornecedorSanitizado, "Orçamentos", `${ano}_${mes}_${diaSanitizado}`]
+        ? ["Suprimentos","Fornecedores", "Compras", fornecedorSanitizado, "Orçamentos", `${ano}_${mes}_${diaSanitizado}`]
         : tipo === "orçamentos-contratos"
-        ? ["Financeiro", "Orçamentos", "Contratos", ano, mes, fornecedorSanitizado]
+        ? ["Financeiro", "Orçamentos", "Contratos",  fornecedorSanitizado]
         : [];
 
     async function ensureFolderPath(pathParts: string[]): Promise<string> {
