@@ -4,7 +4,7 @@ export async function uploadFileToOneDrive(
   fileName: string,
   dataCompra: string,
   fornecedor: string,
-  tipo: string = "compras",
+  tipo: string,
   caminho?: string
 ): Promise<{ id: string; url: string } | null> {
   try {
@@ -49,9 +49,8 @@ export async function uploadFileToOneDrive(
         });
         const checkData = await checkRes.json();
         const existingFolder = checkData.value?.find((item: any) => item.name === folderName && item.folder);
-        if (existingFolder) {
-          parentId = existingFolder.id;
-        } else {
+        if (existingFolder) parentId = existingFolder.id;
+        else {
           const createRes = await fetch(`${graphBase}/items/${parentId}/children`, {
             method: "POST",
             headers: {
@@ -73,29 +72,55 @@ export async function uploadFileToOneDrive(
 
     const pastaDestinoId = await ensureFolderPath(caminhoPastas);
 
-    // Upload do arquivo
-    const uploadUrl = `${graphBase}/items/${pastaDestinoId}:/${fileName}:/content`;
-    const uploadResponse = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": file.type,
-      },
-      body: file,
-    });
-
-    if (!uploadResponse.ok) {
-      console.error("Erro ao fazer upload:", await uploadResponse.text());
-      return null;
+    // ✅ Se o arquivo for pequeno (<4MB), usar PUT direto
+    if (file.size < 4 * 1024 * 1024) {
+      const uploadUrl = `${graphBase}/items/${pastaDestinoId}:/${fileName}:/content`;
+      const uploadResponse = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadResponse.ok) throw new Error(await uploadResponse.text());
+      const uploadedFile = await uploadResponse.json();
+      return { id: uploadedFile.id, url: uploadedFile.webUrl };
     }
 
-    const uploadedFile = await uploadResponse.json();
+    // 🔹 Arquivos grandes → criar upload session
+    const sessionRes = await fetch(`${graphBase}/items/${pastaDestinoId}:/${fileName}:/createUploadSession`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ item: { "@microsoft.graph.conflictBehavior": "rename" } }),
+    });
+    if (!sessionRes.ok) throw new Error(await sessionRes.text());
+    const sessionData = await sessionRes.json();
+    const uploadUrl = sessionData.uploadUrl;
 
-    // 🔑 Aqui já temos a URL interna, não precisa de createLink
+    // 🔹 Upload em chunks (ex: 5MB por vez)
+    const chunkSize = 5 * 1024 * 1024;
+    let start = 0;
+    while (start < file.size) {
+      const end = Math.min(start + chunkSize, file.size);
+      const chunk = file.slice(start, end);
+      const chunkRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Range": `bytes ${start}-${end - 1}/${file.size}`,
+        },
+        body: chunk,
+      });
+      if (!chunkRes.ok && chunkRes.status !== 202 && chunkRes.status !== 201) {
+        throw new Error(await chunkRes.text());
+      }
+      start = end;
+    }
+
+    // 🔹 Depois do upload completo, pegar info do arquivo
+    const fileRes = await fetch(uploadUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+    const uploadedFile = await fileRes.json();
     return { id: uploadedFile.id, url: uploadedFile.webUrl };
 
   } catch (err: any) {
-    console.error("Erro inesperado:", err);
+    console.error("Erro ao enviar arquivo:", err);
     return null;
   }
 }
