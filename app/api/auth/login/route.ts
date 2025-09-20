@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
   const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback`;
 
   const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
-
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
@@ -36,8 +35,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/?error=TokenFailed`);
   }
 
-  // Redireciona para o dashboard e salva token em cookie HttpOnly
   const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`);
+
+  // Salva access token
   response.cookies.set('azure_token', data.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -45,8 +45,19 @@ export async function GET(req: NextRequest) {
     maxAge: data.expires_in,
   });
 
-  // Remove o code_verifier
-  response.cookies.delete({ name: 'azure_token', path: '/' });
+  // Salva refresh token (30 dias)
+  if (data.refresh_token) {
+    response.cookies.set('azure_refresh_token', data.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
+
+  // Limpa code_verifier
+  response.cookies.delete({ name: 'code_verifier', path: '/' });
 
   return response;
 }

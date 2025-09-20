@@ -34,18 +34,9 @@ export async function GET(req: NextRequest) {
       token = await refreshAccessToken(refreshToken);
     }
 
-    // ✅ Cria a resposta NextResponse
-    const res = NextResponse.json({}); // Placeholder, vamos preencher depois
-
-    // Atualiza o cookie do access token
-if (token) {
-  res.cookies.set('azure_token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 3600,
-  });
-}
+    if (!token) {
+      return NextResponse.json({ error: 'Não foi possível gerar token' }, { status: 401 });
+    }
 
     // Busca dados do Graph API
     const graphRes = await fetch('https://graph.microsoft.com/v1.0/me', {
@@ -58,12 +49,22 @@ if (token) {
 
     const graphData = await graphRes.json();
 
-    // Retorna os dados + token atualizado
-    return NextResponse.json({
+    // Cria resposta e atualiza cookie
+    const response = NextResponse.json({
       access_token: token,
       name: graphData.displayName,
       email: graphData.mail || graphData.userPrincipalName,
     });
+
+    // Atualiza cookie
+    response.cookies.set('azure_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 3600,
+    });
+
+    return response;
   } catch (err) {
     console.error('Erro em /api/auth/me:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
