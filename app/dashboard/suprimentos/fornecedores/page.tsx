@@ -2,8 +2,7 @@
 
 import { supabase } from '@/lib/superbase';
 
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, ArrowLeft, Users, Plus, Star } from "lucide-react";
 import Sidebar from '@/components/Sidebar';
@@ -11,39 +10,38 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Card, CardContent } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-/* Tipos */
-type Fornecedor = {
+/* Tipos (simplificados para foco no funcionamento) */
+interface FornecedorResumo {
+  id?: number;
   cnpj: string;
-  nome: string;
-  categoria: string;
-  tipo: string;
-  local: string;
-  ultimaCompra: string;
-  avaliacao: number;
-  situacao?: "Iniciado" | "Completo";
-};
+  razao_social: string;
+  nome_fantasia?: string;
+  categoria?: string;
+  tipo_produto_servico?: string;
+  cidade_uf?: string;
+  ultimaCompraData?: string | null;
+  ultimaCompraUrl?: string | null;
+  avaliacao?: number;
+  situacao_cadastro?: 'Iniciado' | 'Completo' | string;
+}
 
-
-interface FornecedorFormData {
-  razaoSocial: string;
-  nomeFantasia: string;
-  cnpj: string;
-  tipoFornecedor: string;
-  naturezaJuridica: string;
-  endereco: string;
-  numero: string;
-  bairro: string;
-  cidadeUF: string;
-  cep: string;
-  pais: string;
-  telefonePrincipal: string;
-  responsavelComercial: string;
-  tipoProdutoServico: string;
-  categoria: string;
-  descricao: string;
-  unidadeFornecimento: string;
-  precoEstimado?: string;
-  prazoEntrega?: string;
+interface SupplierFormData {
+  // campos usados no formulário (pode ser estendido)
+  razaoSocial?: string;
+  nomeFantasia?: string;
+  cnpj?: string;
+  inscricao?: string;
+  tipoFornecedor?: string;
+  naturezaJuridica?: string;
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidadeUF?: string;
+  cep?: string;
+  pais?: string;
+  telefonePrincipal?: string;
+  responsavelComercial?: string;
   email?: string;
   website?: string;
   responsavelTecnico?: string;
@@ -52,64 +50,23 @@ interface FornecedorFormData {
   contato1Telefone?: string;
   contato2Nome?: string;
   contato2Telefone?: string;
-  situacao?: string;
-  avaliacao?: string | number;
-
-  fichaCadastral?: File[];
-  comprovantecapacidadetecnica?: File[];
-  cartaoCnpj?: File[];
-  certidaoNegativa?: File[];
-  contratoSocial?: File[];
-  alvara?: File[];
-  outrosDocumentos?: File[];
-  arquivosProdutos?: FileList | File[];
-}
-
-
-
-
-
-interface SupplierFormData {
-  razaoSocial: string;
-  nomeFantasia: string;
-  cnpj: string;
-  inscricao: string;
-  tipoFornecedor: string;
-  naturezaJuridica: string;
-  endereco: string;
-  numero: string;
-  complemento: string;
-  bairro: string;
-  cidadeUF: string;
-  cep: string;
-  pais: string;
-  telefonePrincipal: string;
-  responsavelComercial: string;
-  email: string;
-  website: string;
-  responsavelTecnico: string;
-  responsavelTecnicocontato: string;
-  contato1Nome: string;
-  contato1Telefone: string;
-  contato2Nome: string;
-  contato2Telefone: string;
-  tipoProdutoServico: string;
-  categoria: string;
-  descricao: string;
-  unidadeFornecimento: string;
-  precoEstimado: string;
-  prazoEntrega: string;
-  arquivosProdutos?: FileList | null;
-  comprovantecapacidadetecnica?: FileList | null;
-  fichaCadastral?: FileList | null;
-  cartaoCnpj?: FileList | null;
-  certidaoNegativa?: FileList | null;
-  contratoSocial?: FileList | null;
-  alvara?: FileList | null;
-  outrosDocumentos?: FileList | null;
-  ultimaCompra?: string;
+  tipoProdutoServico?: string;
+  categoria?: string;
+  descricao?: string;
+  unidadeFornecimento?: string;
+  precoEstimado?: string;
+  prazoEntrega?: string;
+  arquivos_produtos_url?: string[] | null;
+  comprovantecapacidadetecnica_url?: string | null;
+  ficha_cadastral_url?: string | null;
+  cartao_cnpj_url?: string | null;
+  certidao_negativa_url?: string | null;
+  contrato_social_url?: string | null;
+  alvara_url?: string | null;
+  outros_documentos_url?: string | null;
+  ultimaCompra?: string | null;
   avaliacao?: number | string;
-  situacao?: "Iniciado" | "Completo";
+  situacao?: "Iniciado" | "Completo" | string;
   [key: string]: any;
 }
 
@@ -127,14 +84,16 @@ const Input: React.FC<{
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   type?: string;
-}> = ({ name, value = '', onChange, placeholder = '', type = 'text' }) => (
+  readOnly?: boolean;
+}> = ({ name, value = '', onChange, placeholder = '', type = 'text', readOnly = false }) => (
   <input
     name={name}
     value={value}
     onChange={onChange}
     placeholder={placeholder}
     type={type}
-    className="w-full border border-gray-200 rounded px-3 py-2"
+    readOnly={readOnly}
+    className={`w-full border border-gray-200 rounded px-3 py-2 ${readOnly ? 'bg-gray-50' : ''}`}
   />
 );
 
@@ -144,8 +103,9 @@ const Select: React.FC<{
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   label?: string;
   options: string[];
-}> = ({ name, value = '', onChange, label, options }) => (
-  <select name={name} value={value} onChange={onChange} className="w-full border border-gray-200 rounded px-3 py-2">
+  readOnly?: boolean;
+}> = ({ name, value = '', onChange, label, options, readOnly = false }) => (
+  <select name={name} value={value} onChange={onChange} className={`w-full border border-gray-200 rounded px-3 py-2 ${readOnly ? 'bg-gray-50' : ''}`}>
     <option value="">{label ?? 'Selecione'}</option>
     {options.map((o) => (
       <option key={o} value={o}>
@@ -155,31 +115,27 @@ const Select: React.FC<{
   </select>
 );
 
-const FileUpload: React.FC<{
-  label: string;
-  name: string;
-  onFilesChange: (files: FileList | null) => void;
-  multiple?: boolean;
-}> = ({ label, name, onFilesChange, multiple = false }) => (
-  <label className="flex flex-col">
-    <span className="text-sm mb-1">{label}</span>
-    <input
-      name={name}
-      type="file"
-      multiple={multiple}
-      onChange={(e) => onFilesChange(e.target.files)}
-      className="w-full"
-    />
-  </label>
-);
+const FileLink: React.FC<{ url?: string | null; label?: string }> = ({ url, label = 'Download' }) => {
+  if (!url) return <span className="text-sm text-gray-400">—</span>;
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="underline text-sm">
+      {label}
+    </a>
+  );
+};
 
-/* Página principal */
 export default function FornecedoresPage() {
   const router = useRouter();
   const [menuActive, setMenuActive] = useState(false);
-  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [fornecedores, setFornecedores] = useState<FornecedorResumo[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Modal / seleção
+  const [optionsModalOpen, setOptionsModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedFornecedor, setSelectedFornecedor] = useState<FornecedorResumo | null>(null);
+  const [formData, setFormData] = useState<SupplierFormData>({});
 
   const initialForm: SupplierFormData = {
     razaoSocial: '',
@@ -211,23 +167,144 @@ export default function FornecedoresPage() {
     unidadeFornecimento: '',
     precoEstimado: '',
     prazoEntrega: '',
-    arquivosProdutos: null,
-    comprovantecapacidadetecnica: null,
-    fichaCadastral: null,
-    cartaoCnpj: null,
-    certidaoNegativa: null,
-    contratoSocial: null,
-    alvara: null,
-    outrosDocumentos: null,
-    ultimaCompra: '',
+    arquivos_produtos_url: [],
+    comprovantecapacidadetecnica_url: null,
+    ficha_cadastral_url: null,
+    cartao_cnpj_url: null,
+    certidao_negativa_url: null,
+    contrato_social_url: null,
+    alvara_url: null,
+    outros_documentos_url: null,
+    ultimaCompra: null,
     avaliacao: 0,
     situacao: 'Iniciado'
   };
 
-  const [formData, setFormData] = useState<SupplierFormData>(initialForm);
-  // índice do fornecedor sendo editado (null = novo)
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  useEffect(() => {
+    fetchFornecedores();
+  }, []);
 
+  /* ====== Buscar fornecedores + última compra (completo) ====== */
+  async function fetchFornecedores() {
+    try {
+      // pegamos todos os campos da tabela fornecedores
+      const { data: fornecedoresData, error } = await supabase
+        .from('fornecedores')
+        .select('*');
+
+      if (error) throw error;
+      if (!fornecedoresData) return;
+
+      // Para performance, buscamos a última compra por cnpj em paralelo
+      const withUltimaCompra: FornecedorResumo[] = await Promise.all(
+        fornecedoresData.map(async (f: any) => {
+          // busca a última compra (se existir) na tabela de gerenciamento de compras
+          const { data: compra, error: compraErr } = await supabase
+            .from('gerenciamento_compras')
+            .select('nf_url, nf, data')
+            .eq('cnpj', f.cnpj)
+            .order('data', { ascending: false })
+            .limit(1)
+            .single();
+
+          // alguns sistemas salvam o link direto em campo NF ou nf_url. Ajuste conforme sua base.
+          const ultimaUrl = compra?.nf_url ?? compra?.nf ?? null;
+
+          return {
+            id: f.id,
+            cnpj: f.cnpj,
+            razao_social: f.razao_social,
+            nome_fantasia: f.nome_fantasia,
+            categoria: f.categoria,
+            tipo_produto_servico: f.tipo_produto_servico,
+            cidade_uf: f.cidade_uf,
+            ultimaCompraData: compra?.data ?? null,
+            ultimaCompraUrl: ultimaUrl,
+            avaliacao: f.avaliacao ?? 0,
+            situacao_cadastro: f.situacao_cadastro ?? 'Iniciado',
+          };
+        })
+      );
+
+      setFornecedores(withUltimaCompra);
+    } catch (err) {
+      console.error('Erro ao buscar fornecedores:', err);
+    }
+  }
+
+  /* ===== Abrir opções ao clicar na linha: visualizar ou editar ===== */
+  function onRowClick(f: FornecedorResumo) {
+    setSelectedFornecedor(f);
+    setOptionsModalOpen(true);
+  }
+
+  async function openViewSelected() {
+    if (!selectedFornecedor) return;
+    setOptionsModalOpen(false);
+    setLoading(true);
+
+    try {
+      // buscar registro completo do fornecedor
+      const { data: full, error } = await supabase
+        .from('fornecedores')
+        .select('*')
+        .eq('cnpj', selectedFornecedor.cnpj)
+        .single();
+
+      if (error) throw error;
+
+      // também buscar a última compra para exibir informações detalhadas
+      const { data: compra } = await supabase
+        .from('gerenciamento_compras')
+        .select('nf_url, nf, data, valor, observacoes')
+        .eq('cnpj', selectedFornecedor.cnpj)
+        .order('data', { ascending: false })
+        .limit(1)
+        .single();
+
+      const ultimaUrl = compra?.nf_url ?? compra?.nf ?? null;
+
+      // montar formData somente para exibir (readOnly)
+      const viewData: SupplierFormData = {
+        ...full,
+        ultimaCompra: ultimaUrl,
+        ultimaCompraData: compra?.data ?? null,
+      };
+
+      setFormData(viewData);
+      setViewModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao carregar dados do fornecedor. Veja console.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function openEditSelected() {
+    if (!selectedFornecedor) return;
+    setOptionsModalOpen(false);
+    setLoading(true);
+    try {
+      const { data: full, error } = await supabase
+        .from('fornecedores')
+        .select('*')
+        .eq('cnpj', selectedFornecedor.cnpj)
+        .single();
+
+      if (error) throw error;
+
+      setFormData({ ...full });
+      setEditModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao carregar dados para edição.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* ===== Manipulação formulário (edição) ===== */
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
     setFormData((p) => ({ ...p, [name]: value }));
@@ -237,7 +314,7 @@ export default function FornecedoresPage() {
     setFormData((p) => ({ ...p, [name]: files }));
   }
 
-  function formatCnpjCpf(value: string) {
+  function formatCnpjCpf(value: string = '') {
     const digits = value.replace(/\D/g, '');
     if (digits.length <= 11) {
       // CPF
@@ -263,195 +340,76 @@ export default function FornecedoresPage() {
     setFormData((p) => ({ ...p, cnpj: masked }));
   }
 
+  /* ===== Submissão de edição (update) ===== */
+  async function handleUpdate(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    setLoading(true);
+    try {
+      // Preparar objeto para update (apenas os campos que existem no form)
+      const updateObj: any = {
+        razao_social: formData.razaoSocial ?? formData.razao_social ?? null,
+        nome_fantasia: formData.nomeFantasia ?? formData.nome_fantasia ?? null,
+        cnpj: formData.cnpj ?? null,
+        tipo_fornecedor: formData.tipoFornecedor ?? formData.tipo_fornecedor ?? null,
+        natureza_juridica: formData.naturezaJuridica ?? formData.natureza_juridica ?? null,
+        endereco: formData.endereco ?? null,
+        numero: formData.numero ?? null,
+        complemento: formData.complemento ?? null,
+        bairro: formData.bairro ?? null,
+        cidade_uf: formData.cidadeUF ?? formData.cidade_uf ?? null,
+        cep: formData.cep ?? null,
+        pais: formData.pais ?? null,
+        telefone_principal: formData.telefonePrincipal ?? formData.telefone_principal ?? null,
+        email: formData.email ?? null,
+        website: formData.website ?? null,
+        responsavel_comercial: formData.responsavelComercial ?? null,
+        responsavel_tecnico: formData.responsavelTecnico ?? null,
+        responsavel_tecnicocontato: formData.responsavelTecnicocontato ?? null,
+        contato1_nome: formData.contato1Nome ?? null,
+        contato1_telefone: formData.contato1Telefone ?? null,
+        contato2_nome: formData.contato2Nome ?? null,
+        contato2_telefone: formData.contato2Telefone ?? null,
+        tipo_produto_servico: formData.tipoProdutoServico ?? null,
+        categoria: formData.categoria ?? null,
+        descricao: formData.descricao ?? null,
+        unidade_fornecimento: formData.unidadeFornecimento ?? null,
+        preco_estimado: formData.precoEstimado ? Number(formData.precoEstimado) : null,
+        prazo_entrega: formData.prazoEntrega ?? null,
+        situacao_cadastro: formData.situacao ?? formData.situacao_cadastro ?? 'Iniciado',
+        avaliacao: formData.avaliacao ? Number(formData.avaliacao) : 0,
+      };
+
+      // Update no supabase pelo cnpj (pode ser alterado para id se preferir)
+      const { error } = await supabase
+        .from('fornecedores')
+        .update(updateObj)
+        .eq('cnpj', formData.cnpj);
+
+      if (error) throw error;
+
+      setEditModalOpen(false);
+      await fetchFornecedores();
+      alert('Atualização realizada com sucesso.');
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao atualizar fornecedor.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* ====== Novo fornecedor (mantive sua lógica original, mas em um modal separado) ====== */
+  function openNewModal() {
+    setFormData(initialForm);
+    setEditModalOpen(true);
+  }
+
+  /* Dashboard (mantive) */
   const dashboardData = [
     { categoria: "TI", valor: 150000 },
     { categoria: "Construção", valor: 95000 },
     { categoria: "Serviços Gerais", valor: 70000 },
   ];
-
-  // abrir modal para novo fornecedor
-  function openNewModal() {
-    setEditingIndex(null);
-    setFormData(initialForm);
-    setModalOpen(true);
-  }
-
-  // abrir modal para editar fornecedor existente
-  function openEditModal(index: number) {
-    const f = fornecedores[index];
-    setEditingIndex(index);
-    setFormData({
-      ...initialForm,
-      razaoSocial: f.nome,
-      nomeFantasia: f.nome,
-      cnpj: f.cnpj,
-      categoria: f.categoria,
-      tipoProdutoServico: f.tipo,
-      cidadeUF: f.local,
-      ultimaCompra: f.ultimaCompra,
-      avaliacao: f.avaliacao,
-      situacao: f.situacao ?? 'Iniciado'
-    });
-    setModalOpen(true);
-  }
-
-async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    alert("Usuário não autenticado!");
-    return;
-  }
-
-  // Campos obrigatórios
-  const obrigatorios: { campo: string; label: string }[] = [
-    { campo: "razaoSocial", label: "Razão Social" },
-    { campo: "nomeFantasia", label: "Nome Fantasia" },
-    { campo: "cnpj", label: "CNPJ" },
-    { campo: "tipoFornecedor", label: "Tipo de Fornecedor" },
-    { campo: "naturezaJuridica", label: "Natureza Jurídica" },
-    { campo: "endereco", label: "Endereço" },
-    { campo: "numero", label: "Número" },    
-    { campo: "bairro", label: "Bairro" },
-    { campo: "cidadeUF", label: "Cidade / UF" },
-    { campo: "cep", label: "CEP" },
-    { campo: "pais", label: "País" },
-    { campo: "telefonePrincipal", label: "Telefone Principal" },
-    { campo: "responsavelComercial", label: "Responsável Comercial" },
-    { campo: "tipoProdutoServico", label: "Tipo Produto / Serviço" },
-    { campo: "categoria", label: "Categoria" },
-    { campo: "descricao", label: "Descrição" },
-    { campo: "unidadeFornecimento", label: "Unidade de Fornecimento" }
-  ];
-
-  const camposVazios = obrigatorios
-    .filter(item => {
-      const key = item.campo as keyof typeof formData;
-      return !formData[key] || formData[key].toString().trim() === "";
-    })
-    .map(item => item.label);
-
-  if (camposVazios.length > 0) {
-    alert(
-      `Por favor, preencha os seguintes campos obrigatórios:\n- ${camposVazios.join("\n- ")}`
-    );
-    return;
-  }
-
-  setLoading(true);
-  const razaoSocial = formData.razaoSocial
-
-  try {
-    // Função auxiliar para upload via rota API
-const uploadDocAPI = async (file?: File, key?: string) => {
-  if (!file) return null;
-
-  const cleanLabel = key?.replace(/[^a-zA-Z0-9]/g, "_") || "Arquivo";
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const dd = String(today.getDate()).padStart(2, "0");
-
-  const dateStr = `${dd}${mm}${yyyy}`; // para o nome do arquivo
-  const fileName = `${cleanLabel}_${dateStr}.${file.name.split('.').pop()}`;
-
-  // dataCompra no formato que o backend espera: YYYY-MM-DD
-  const dataCompraStr = `${yyyy}-${mm}-${dd}`;
-
-  console.log("[uploadDocAPI] Enviando arquivo:", fileName, "dataCompra:", dataCompraStr, "fornecedor:", razaoSocial);
-
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("fileName", fileName);
-  formData.append("fornecedor", razaoSocial);
-  formData.append("tipo", "cadastro-fornecedor");
-  formData.append("dataCompra", dataCompraStr);
-
-  const res = await fetch("/api/onedrive/upload", { method: "POST", body: formData });
-  const uploaded = await res.json();
-
-  console.log("[uploadDocAPI] Resposta do servidor:", uploaded);
-
-  if (!uploaded?.success) throw new Error(uploaded?.error || "Erro ao enviar documento");
-  return uploaded.file.url || null;
-};
-
-    // Upload dos arquivos
-    const fichaCadastralUrl = formData.fichaCadastral ? await uploadDocAPI(formData.fichaCadastral[0], "fichaCadastral") : null;
-    const comprovantecapacidadetecnicaUrl = formData.comprovantecapacidadetecnica ? await uploadDocAPI(formData.comprovantecapacidadetecnica[0], "comprovantecapacidadetecnica") : null;
-    const cartaoCnpjUrl = formData.cartaoCnpj ? await uploadDocAPI(formData.cartaoCnpj[0], "cartaoCnpj") : null;
-    const certidaoNegativaUrl = formData.certidaoNegativa ? await uploadDocAPI(formData.certidaoNegativa[0], "certidaoNegativa") : null;
-    const contratoSocialUrl = formData.contratoSocial ? await uploadDocAPI(formData.contratoSocial[0], "contratoSocial") : null;
-    const alvaraUrl = formData.alvara ? await uploadDocAPI(formData.alvara[0], "alvara") : null;
-    const outrosDocumentosUrl = formData.outrosDocumentos ? await uploadDocAPI(formData.outrosDocumentos[0], "outrosDocumentos") : null;
-
-    // Upload arquivos de produtos
-    const arquivosProdutosUrls: string[] = [];
-    if (formData.arquivosProdutos) {
-      for (const arquivo of Array.from(formData.arquivosProdutos)) {
-        const url = await uploadDocAPI(arquivo, "arquivosProdutos");
-        if (url) arquivosProdutosUrls.push(url);
-      }
-    }
-
-    // Inserir no Supabase
-    const { error } = await supabase.from("fornecedores").insert([{
-      id_cadastrador: user.id,
-      razao_social: formData.razaoSocial,
-      nome_fantasia: formData.nomeFantasia,
-      cnpj: formData.cnpj,
-      inscricao: formData.inscricao,
-      tipo_fornecedor: formData.tipoFornecedor,
-      natureza_juridica: formData.naturezaJuridica,
-      endereco: formData.endereco,
-      numero: formData.numero,
-      complemento: formData.complemento,
-      bairro: formData.bairro,
-      cidade_uf: formData.cidadeUF,
-      cep: formData.cep,
-      pais: formData.pais,
-      telefone_principal: formData.telefonePrincipal,
-      email: formData.email,
-      website: formData.website,
-      responsavel_comercial: formData.responsavelComercial,
-      responsavel_tecnico: formData.responsavelTecnico,
-      responsavel_tecnicocontato: formData.responsavelTecnicocontato,
-      contato1_nome: formData.contato1Nome,
-      contato1_telefone: formData.contato1Telefone,
-      contato2_nome: formData.contato2Nome,
-      contato2_telefone: formData.contato2Telefone,
-      tipo_produto_servico: formData.tipoProdutoServico,
-      categoria: formData.categoria,
-      descricao: formData.descricao,
-      unidade_fornecimento: formData.unidadeFornecimento,
-      preco_estimado: formData.precoEstimado.trim() === "" ? null : parseFloat(formData.precoEstimado),
-      prazo_entrega: formData.prazoEntrega,
-      arquivos_produtos_url: arquivosProdutosUrls,
-      comprovantecapacidadetecnica_url: comprovantecapacidadetecnicaUrl,
-      ficha_cadastral_url: fichaCadastralUrl,
-      cartao_cnpj_url: cartaoCnpjUrl,
-      certidao_negativa_url: certidaoNegativaUrl,
-      contrato_social_url: contratoSocialUrl,
-      alvara_url: alvaraUrl,
-      outros_documentos_url: outrosDocumentosUrl,
-      situacao_cadastro: formData.situacao || "Iniciado",
-      avaliacao: Number(formData.avaliacao) || 0,
-    }]);
-
-    if (error) throw error;
-
-    setLoading(false);
-    alert("Fornecedor cadastrado com sucesso!");
-    router.push("/dashboard/suprimentos/fornecedores");
-  } catch (err) {
-    console.error(err);
-    setLoading(false);
-    alert("Erro ao cadastrar fornecedor.");
-  }
-}
-
-
 
   return (
     <div className={`flex flex-col h-screen ${menuActive ? "ml-[300px]" : "ml-[80px]"}`}>
@@ -516,7 +474,7 @@ const uploadDocAPI = async (file?: File, key?: string) => {
                         <XAxis dataKey="categoria" />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="valor" fill="#374151" />
+                        <Bar dataKey="valor" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -534,7 +492,6 @@ const uploadDocAPI = async (file?: File, key?: string) => {
                       className="flex items-center gap-3 px-4 py-3 border rounded-md hover:shadow-md transition-shadow"
                       aria-label="Novo Fornecedor"
                     >
-                      {/* substitua /novo-cadastro-icon.png por sua imagem */}
                       <img src="/novo-cadastro-icon.png" alt="novo" className="w-8 h-8" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none'}}/>
                       <div className="text-left">
                         <div className="font-medium">Novo Fornecedor</div>
@@ -547,7 +504,7 @@ const uploadDocAPI = async (file?: File, key?: string) => {
             </div>
           </div>
 
-          {/* Tabela de fornecedores (cabeçalho minimalista, sem arredondamento) */}
+          {/* Tabela de fornecedores */}
           <div className="overflow-x-auto border shadow">
             <table className="min-w-full table-auto border-collapse">
               <thead className="bg-gray-100 text-gray-700">
@@ -567,27 +524,29 @@ const uploadDocAPI = async (file?: File, key?: string) => {
                   <tr
                     key={i}
                     className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 cursor-pointer`}
-                    onClick={() => openEditModal(i)}
-                    title="Clique para editar"
+                    onClick={() => onRowClick(f)}
+                    title="Clique para opções"
                   >
                     <td className="px-4 py-3">{f.cnpj}</td>
-                    <td className="px-4 py-3">{f.nome}</td>
+                    <td className="px-4 py-3">{f.razao_social}</td>
                     <td className="px-4 py-3">{f.categoria}</td>
-                    <td className="px-4 py-3">{f.tipo}</td>
-                    <td className="px-4 py-3">{f.local}</td>
+                    <td className="px-4 py-3">{f.tipo_produto_servico}</td>
+                    <td className="px-4 py-3">{f.cidade_uf}</td>
                     <td className="px-4 py-3">
-                      <a href={f.ultimaCompra} target="_blank" rel="noreferrer" className="text-gray-600 hover:underline">
-                        Ver Compra
-                      </a>
+                      {f.ultimaCompraUrl ? (
+                        <a href={f.ultimaCompraUrl} target="_blank" rel="noreferrer" className="text-gray-600 hover:underline">Ver Compra</a>
+                      ) : (
+                        <span className="text-sm text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs rounded ${f.situacao === 'Completo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {f.situacao ?? 'Iniciado'}
+                      <span className={`px-2 py-1 text-xs rounded ${f.situacao_cadastro === 'Completo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {f.situacao_cadastro ?? 'Iniciado'}
                       </span>
                     </td>
                     <td className="px-4 py-3 flex gap-1">
                       {[...Array(5)].map((_, idx) => (
-                        <Star key={idx} className={`w-4 h-4 ${idx < f.avaliacao ? "text-yellow-400" : "text-gray-300"}`} />
+                        <Star key={idx} className={`w-4 h-4 ${idx < (f.avaliacao ?? 0) ? "text-yellow-400" : "text-gray-300"}`} />
                       ))}
                     </td>
                   </tr>
@@ -605,27 +564,100 @@ const uploadDocAPI = async (file?: File, key?: string) => {
         </div>
       </div>
 
-      {/* Modal de Cadastro (mantive estrutura, adicionei Situacao e suporte edição) */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+      {/* Modal: opções (Visualizar / Editar) */}
+      <Dialog open={optionsModalOpen} onOpenChange={setOptionsModalOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingIndex !== null ? 'Editar Cadastro de Fornecedor' : 'Novo Cadastro de Fornecedor'}</DialogTitle>
+            <DialogTitle>Opções</DialogTitle>
+          </DialogHeader>
+          <div className="p-4">
+            <p className="mb-4">O que deseja fazer com o fornecedor <strong>{selectedFornecedor?.razao_social ?? selectedFornecedor?.cnpj}</strong>?</p>
+            <div className="flex gap-3">
+              <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={openViewSelected}>Visualizar</button>
+              <button className="px-4 py-2 bg-green-600 text-white rounded" onClick={openEditSelected}>Editar</button>
+              <button className="px-4 py-2 border rounded" onClick={() => setOptionsModalOpen(false)}>Fechar</button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Visualizar (read-only) */}
+      <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Visualizar Fornecedor</DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-6 p-6">
+          <div className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Section title="Dados Gerais">
+                <div className="grid grid-cols-1 gap-3">
+                  <div><strong>Razão Social:</strong> {formData.razao_social ?? formData.razaoSocial}</div>
+                  <div><strong>Nome Fantasia:</strong> {formData.nome_fantasia ?? formData.nomeFantasia}</div>
+                  <div><strong>CNPJ:</strong> {formData.cnpj}</div>
+                  <div><strong>Tipo / Categoria:</strong> {formData.tipo_produto_servico ?? formData.tipoProdutoServico} — {formData.categoria}</div>
+                </div>
+              </Section>
+
+              <Section title="Contatos">
+                <div className="grid grid-cols-1 gap-3">
+                  <div><strong>Telefone:</strong> {formData.telefone_principal ?? formData.telefonePrincipal}</div>
+                  <div><strong>E-mail:</strong> {formData.email}</div>
+                  <div><strong>Responsável Comercial:</strong> {formData.responsavel_comercial ?? formData.responsavelComercial}</div>
+                </div>
+              </Section>
+
+              <Section title="Última Compra / Nota Fiscal">
+                <div className="grid grid-cols-1 gap-3">
+                  <div><strong>Data:</strong> {formData.ultimaCompraData ?? formData.ultimaCompra_date ?? '—'}</div>
+                  <div><strong>Arquivo / URL:</strong> <FileLink url={formData.ultimaCompra ?? formData.ultimaCompraUrl ?? null} label={formData.ultimaCompra ?? 'Abrir Nota'} /></div>
+                </div>
+              </Section>
+
+              <Section title="Documentos (download)">
+                <div className="grid grid-cols-1 gap-2">
+                  <div><strong>Ficha cadastral:</strong> <FileLink url={formData.ficha_cadastral_url ?? formData.fichaCadastralUrl ?? null} /></div>
+                  <div><strong>Comprovante capacidade técnica:</strong> <FileLink url={formData.comprovantecapacidadetecnica_url ?? null} /></div>
+                  <div><strong>Cartão CNPJ:</strong> <FileLink url={formData.cartao_cnpj_url ?? null} /></div>
+                  <div><strong>Certidões:</strong> <FileLink url={formData.certidao_negativa_url ?? null} /></div>
+                  <div><strong>Contrato social:</strong> <FileLink url={formData.contrato_social_url ?? null} /></div>
+                  <div><strong>Alvará:</strong> <FileLink url={formData.alvara_url ?? null} /></div>
+                  <div><strong>Outros:</strong> <FileLink url={formData.outros_documentos_url ?? null} /></div>
+                </div>
+              </Section>
+
+            </div>
+
+            <div className="flex justify-end">
+              <button className="px-4 py-2 border rounded" onClick={() => setViewModalOpen(false)}>Fechar</button>
+              <button className="px-4 py-2 bg-green-600 text-white rounded ml-3" onClick={() => { setViewModalOpen(false); setEditModalOpen(true); }}>Editar</button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Editar / Novo (reaproveita o mesmo formulário) */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{formData?.cnpj ? 'Editar Fornecedor' : 'Novo Fornecedor'}</DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdate} className="space-y-6 p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Section title="Dados Gerais do Fornecedor">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input name="razaoSocial" value={formData.razaoSocial} onChange={handleChange} placeholder="Razão Social" />
-                  <Input name="nomeFantasia" value={formData.nomeFantasia} onChange={handleChange} placeholder="Nome Fantasia" />
-                  <Input name="inscricao" value={formData.inscricao} onChange={handleChange} placeholder="Inscrição Estadual / Municipal" />
-                  <Select name="tipoFornecedor" value={formData.tipoFornecedor} onChange={handleChange} label="Tipo de Fornecedor" options={['Pessoa Jurídica', 'Pessoa Física']} />
-                  <Select name="naturezaJuridica" value={formData.naturezaJuridica} onChange={handleChange} label="Natureza Jurídica" options={['MEI', 'LTDA', 'EIRELI', 'ME']} />
-                  <Input name="cnpj" value={formData.cnpj} onChange={handleChangecnpj} placeholder="CPF ou CNPJ" />
-                  <Input name="ultimaCompra" value={formData.ultimaCompra} onChange={handleChange} placeholder="URL da Última Compra (opcional)" type="url" />
+                  <Input name="razaoSocial" value={formData.razao_social ?? formData.razaoSocial ?? ''} onChange={handleChange as any} placeholder="Razão Social" />
+                  <Input name="nomeFantasia" value={formData.nome_fantasia ?? formData.nomeFantasia ?? ''} onChange={handleChange as any} placeholder="Nome Fantasia" />
+                  <Input name="inscricao" value={formData.inscricao ?? ''} onChange={handleChange as any} placeholder="Inscrição Estadual / Municipal" />
+                  <Select name="tipoFornecedor" value={formData.tipo_fornecedor ?? formData.tipoFornecedor ?? ''} onChange={handleChange as any} label="Tipo de Fornecedor" options={['Pessoa Jurídica', 'Pessoa Física']} />
+                  <Select name="naturezaJuridica" value={formData.natureza_juridica ?? formData.naturezaJuridica ?? ''} onChange={handleChange as any} label="Natureza Jurídica" options={['MEI', 'LTDA', 'EIRELI', 'ME']} />
+                  <Input name="cnpj" value={formData.cnpj ?? ''} onChange={handleChangecnpj as any} placeholder="CPF ou CNPJ" />
+                  <Input name="ultimaCompra" value={formData.ultimaCompra ?? ''} onChange={handleChange as any} placeholder="URL da Última Compra (opcional)" type="url" />
+
                   <label className="flex flex-col">
                     <span className="text-sm mb-1">Avaliação (0-5)</span>
-                    <select name="avaliacao" value={String(formData.avaliacao)} onChange={handleChange} className="border rounded px-3 py-2">
+                    <select name="avaliacao" value={String(formData.avaliacao ?? 0)} onChange={handleChange as any} className="border rounded px-3 py-2">
                       <option value="0">0</option>
                       <option value="1">1</option>
                       <option value="2">2</option>
@@ -637,7 +669,7 @@ const uploadDocAPI = async (file?: File, key?: string) => {
 
                   <label className="flex flex-col">
                     <span className="text-sm mb-1">Situação do Cadastro</span>
-                    <select name="situacao" value={formData.situacao} onChange={handleChange} className="border rounded px-3 py-2">
+                    <select name="situacao" value={formData.situacao ?? formData.situacao_cadastro ?? 'Iniciado'} onChange={handleChange as any} className="border rounded px-3 py-2">
                       <option value="Iniciado">Iniciado</option>
                       <option value="Completo">Completo</option>
                     </select>
@@ -647,52 +679,68 @@ const uploadDocAPI = async (file?: File, key?: string) => {
 
               <Section title="Endereço e Localização">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input name="endereco" value={formData.endereco} onChange={handleChange} placeholder="Endereço" />
-                  <Input name="numero" value={formData.numero} onChange={handleChange} placeholder="Número" />
-                  <Input name="complemento" value={formData.complemento} onChange={handleChange} placeholder="Complemento" />
-                  <Input name="bairro" value={formData.bairro} onChange={handleChange} placeholder="Bairro" />
-                  <Input name="cidadeUF" value={formData.cidadeUF} onChange={handleChange} placeholder="Cidade / UF" />
-                  <Input name="cep" value={formData.cep} onChange={handleChange} placeholder="CEP" />
-                  <Input name="pais" value={formData.pais} onChange={handleChange} placeholder="País" />
+                  <Input name="endereco" value={formData.endereco ?? formData.endereco} onChange={handleChange as any} placeholder="Endereço" />
+                  <Input name="numero" value={formData.numero ?? formData.numero} onChange={handleChange as any} placeholder="Número" />
+                  <Input name="complemento" value={formData.complemento ?? formData.complemento} onChange={handleChange as any} placeholder="Complemento" />
+                  <Input name="bairro" value={formData.bairro ?? formData.bairro} onChange={handleChange as any} placeholder="Bairro" />
+                  <Input name="cidadeUF" value={formData.cidade_uf ?? formData.cidadeUF ?? ''} onChange={handleChange as any} placeholder="Cidade / UF" />
+                  <Input name="cep" value={formData.cep ?? ''} onChange={handleChange as any} placeholder="CEP" />
+                  <Input name="pais" value={formData.pais ?? ''} onChange={handleChange as any} placeholder="País" />
                 </div>
               </Section>
 
               <Section title="Contatos">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input name="telefonePrincipal" value={formData.telefonePrincipal} onChange={handleChange} placeholder="Telefone Fixo / Celular" />
-                  <Input name="responsavelComercial" value={formData.responsavelComercial} onChange={handleChange} placeholder="Responsável Comercial" />
-                  <Input name="email" value={formData.email} onChange={handleChange} type="email" placeholder="E-mail" />
-                  <Input name="website" value={formData.website} onChange={handleChange} placeholder="Website" />
-                  <Input name="responsavelTecnico" value={formData.responsavelTecnico} onChange={handleChange} placeholder="Responsável Técnico (se aplicável)" />
-                  <Input name="responsavelTecnicocontato" value={formData.responsavelTecnicocontato} onChange={handleChange} placeholder="Contato Responsável (Telefone)" />
-                  <Input name="contato1Nome" value={formData.contato1Nome} onChange={handleChange} placeholder="Contato 1 - Nome" />
-                  <Input name="contato1Telefone" value={formData.contato1Telefone} onChange={handleChange} placeholder="Contato 1 - Telefone" />
-                  <Input name="contato2Nome" value={formData.contato2Nome} onChange={handleChange} placeholder="Contato 2 - Nome" />
-                  <Input name="contato2Telefone" value={formData.contato2Telefone} onChange={handleChange} placeholder="Contato 2 - Telefone" />
+                  <Input name="telefonePrincipal" value={formData.telefone_principal ?? formData.telefonePrincipal ?? ''} onChange={handleChange as any} placeholder="Telefone Fixo / Celular" />
+                  <Input name="responsavelComercial" value={formData.responsavel_comercial ?? formData.responsavelComercial ?? ''} onChange={handleChange as any} placeholder="Responsável Comercial" />
+                  <Input name="email" value={formData.email ?? ''} onChange={handleChange as any} type="email" placeholder="E-mail" />
+                  <Input name="website" value={formData.website ?? ''} onChange={handleChange as any} placeholder="Website" />
+                  <Input name="responsavelTecnico" value={formData.responsavel_tecnico ?? formData.responsavelTecnico ?? ''} onChange={handleChange as any} placeholder="Responsável Técnico (se aplicável)" />
+                  <Input name="responsavelTecnicocontato" value={formData.responsavel_tecnicocontato ?? formData.responsavelTecnicocontato ?? ''} onChange={handleChange as any} placeholder="Contato Responsável (Telefone)" />
+                  <Input name="contato1Nome" value={formData.contato1_nome ?? formData.contato1Nome ?? ''} onChange={handleChange as any} placeholder="Contato 1 - Nome" />
+                  <Input name="contato1Telefone" value={formData.contato1_telefone ?? formData.contato1Telefone ?? ''} onChange={handleChange as any} placeholder="Contato 1 - Telefone" />
+                  <Input name="contato2Nome" value={formData.contato2_nome ?? formData.contato2Nome ?? ''} onChange={handleChange as any} placeholder="Contato 2 - Nome" />
+                  <Input name="contato2Telefone" value={formData.contato2_telefone ?? formData.contato2Telefone ?? ''} onChange={handleChange as any} placeholder="Contato 2 - Telefone" />
                 </div>
               </Section>
 
               <Section title="Produtos / Serviços Ofertados">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Select name="tipoProdutoServico" value={formData.tipoProdutoServico} onChange={handleChange} label="Tipo" options={['Produto', 'Serviço']} />
-                  <Input name="categoria" value={formData.categoria} onChange={handleChange} placeholder="Categoria" />
-                  <Input name="descricao" value={formData.descricao} onChange={handleChange} placeholder="Descrição" />
-                  <Input name="unidadeFornecimento" value={formData.unidadeFornecimento} onChange={handleChange} placeholder="Unidade de fornecimento" />
-                  <Input name="precoEstimado" value={formData.precoEstimado} onChange={handleChange} placeholder="Preço estimado (opcional)" />
-                  <Input name="prazoEntrega" value={formData.prazoEntrega} onChange={handleChange} placeholder="Prazo médio de entrega" />
-                  <FileUpload label="Catálogo ou Ficha Técnica (opcional)" name="arquivosProdutos" onFilesChange={(files) => handleFileChange('arquivosProdutos', files)} multiple />
+                  <Select name="tipoProdutoServico" value={formData.tipo_produto_servico ?? formData.tipoProdutoServico ?? ''} onChange={handleChange as any} label="Tipo" options={['Produto', 'Serviço']} />
+                  <Input name="categoria" value={formData.categoria ?? ''} onChange={handleChange as any} placeholder="Categoria" />
+                  <Input name="descricao" value={formData.descricao ?? ''} onChange={handleChange as any} placeholder="Descrição" />
+                  <Input name="unidadeFornecimento" value={formData.unidade_fornecimento ?? formData.unidadeFornecimento ?? ''} onChange={handleChange as any} placeholder="Unidade de fornecimento" />
+                  <Input name="precoEstimado" value={formData.preco_estimado ?? formData.precoEstimado ?? ''} onChange={handleChange as any} placeholder="Preço estimado (opcional)" />
+                  <Input name="prazoEntrega" value={formData.prazo_entrega ?? formData.prazoEntrega ?? ''} onChange={handleChange as any} placeholder="Prazo médio de entrega" />
                 </div>
               </Section>
 
               <Section title="Documentação">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FileUpload label="Comprovante de Capacidade Técnica" name="comprovantecapacidadetecnica" onFilesChange={(files) => handleFileChange('comprovantecapacidadetecnica', files)} />
-                  <FileUpload label="Ficha Cadastral do Fornecedor" name="fichaCadastral" onFilesChange={(files) => handleFileChange('fichaCadastral', files)} />
-                  <FileUpload label="Cartão CNPJ" name="cartaoCnpj" onFilesChange={(files) => handleFileChange('cartaoCnpj', files)} />
-                  <FileUpload label="Certidões Negativas" name="certidaoNegativa" onFilesChange={(files) => handleFileChange('certidaoNegativa', files)} />
-                  <FileUpload label="Contrato Social / Estatuto" name="contratoSocial" onFilesChange={(files) => handleFileChange('contratoSocial', files)} />
-                  <FileUpload label="Alvará de Funcionamento" name="alvara" onFilesChange={(files) => handleFileChange('alvara', files)} />
-                  <FileUpload label="Outros Documentos" name="outrosDocumentos" onFilesChange={(files) => handleFileChange('outrosDocumentos', files)} />
+                  <div>
+                    <label className="text-sm">Ficha Cadastral atual</label>
+                    <div><FileLink url={formData.ficha_cadastral_url ?? null} /></div>
+                  </div>
+                  <div>
+                    <label className="text-sm">Comprovante capacidade técnica</label>
+                    <div><FileLink url={formData.comprovantecapacidadetecnica_url ?? null} /></div>
+                  </div>
+                  <div>
+                    <label className="text-sm">Cartão CNPJ</label>
+                    <div><FileLink url={formData.cartao_cnpj_url ?? null} /></div>
+                  </div>
+                  <div>
+                    <label className="text-sm">Certidões negativas</label>
+                    <div><FileLink url={formData.certidao_negativa_url ?? null} /></div>
+                  </div>
+                  <div>
+                    <label className="text-sm">Contrato social</label>
+                    <div><FileLink url={formData.contrato_social_url ?? null} /></div>
+                  </div>
+                  <div>
+                    <label className="text-sm">Alvará</label>
+                    <div><FileLink url={formData.alvara_url ?? null} /></div>
+                  </div>
                 </div>
               </Section>
             </div>
@@ -701,8 +749,7 @@ const uploadDocAPI = async (file?: File, key?: string) => {
               <button
                 type="button"
                 onClick={() => {
-                  setModalOpen(false);
-                  setEditingIndex(null);
+                  setEditModalOpen(false);
                 }}
                 className="mr-3 px-4 py-2 rounded border"
               >
@@ -713,7 +760,7 @@ const uploadDocAPI = async (file?: File, key?: string) => {
                 disabled={loading}
                 className={`px-6 py-3 rounded font-medium transition-all ${loading ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700 text-white'}`}
               >
-                {loading ? 'Enviando...' : (editingIndex !== null ? 'Atualizar Cadastro' : 'Salvar Cadastro')}
+                {loading ? 'Enviando...' : (formData?.cnpj ? 'Atualizar Cadastro' : 'Salvar Cadastro')}
               </button>
             </div>
           </form>
