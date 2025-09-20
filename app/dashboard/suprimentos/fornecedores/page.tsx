@@ -349,24 +349,30 @@ const uploadDocAPI = async (file?: File, key?: string) => {
 
   const cleanLabel = key?.replace(/[^a-zA-Z0-9]/g, "_") || "Arquivo";
   const today = new Date();
-  const dateStr = `${String(today.getDate()).padStart(2,"0")}${String(today.getMonth()+1).padStart(2,"0")}${today.getFullYear()}`;
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+
+  const dateStr = `${dd}${mm}${yyyy}`; // para o nome do arquivo
   const fileName = `${cleanLabel}_${dateStr}.${file.name.split('.').pop()}`;
+
+  // dataCompra no formato que o backend espera: YYYY-MM-DD
+  const dataCompraStr = `${yyyy}-${mm}-${dd}`;
+
+  console.log("[uploadDocAPI] Enviando arquivo:", fileName, "dataCompra:", dataCompraStr, "fornecedor:", razaoSocial);
 
   const formData = new FormData();
   formData.append("file", file);
   formData.append("fileName", fileName);
   formData.append("fornecedor", razaoSocial);
   formData.append("tipo", "cadastro-fornecedor");
-
-  // ✅ Adiciona dataCompra para não quebrar backend
-  const dataCompraStr = `${String(today.getDate()).padStart(2,"0")}/${String(today.getMonth()+1).padStart(2,"0")}/${today.getFullYear()}`;
   formData.append("dataCompra", dataCompraStr);
 
-  const res = await fetch("/api/onedrive/upload", {
-    method: "POST",
-    body: formData
-  });
+  const res = await fetch("/api/onedrive/upload", { method: "POST", body: formData });
   const uploaded = await res.json();
+
+  console.log("[uploadDocAPI] Resposta do servidor:", uploaded);
+
   if (!uploaded?.success) throw new Error(uploaded?.error || "Erro ao enviar documento");
   return uploaded.file.url || null;
 };
