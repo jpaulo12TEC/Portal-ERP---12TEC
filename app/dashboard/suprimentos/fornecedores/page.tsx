@@ -96,7 +96,23 @@ const Input: React.FC<{
     className={`w-full border border-gray-200 rounded px-3 py-2 ${readOnly ? 'bg-gray-50' : ''}`}
   />
 );
-
+const FileUpload: React.FC<{
+  label: string;
+  name: string;
+  onFilesChange: (files: FileList | null) => void;
+  multiple?: boolean;
+}> = ({ label, name, onFilesChange, multiple = false }) => (
+  <label className="flex flex-col">
+    <span className="text-sm mb-1">{label}</span>
+    <input
+      name={name}
+      type="file"
+      multiple={multiple}
+      onChange={(e) => onFilesChange(e.target.files)}
+      className="w-full"
+    />
+  </label>
+);
 const Select: React.FC<{
   name: string;
   value?: any;
@@ -399,10 +415,19 @@ export default function FornecedoresPage() {
   }
 
   /* ====== Novo fornecedor (mantive sua lógica original, mas em um modal separado) ====== */
+
+
+
+
   function openNewModal() {
     setFormData(initialForm);
     setEditModalOpen(true);
   }
+
+
+
+
+
 
   /* Dashboard (mantive) */
   const dashboardData = [
@@ -712,37 +737,115 @@ export default function FornecedoresPage() {
                   <Input name="unidadeFornecimento" value={formData.unidade_fornecimento ?? formData.unidadeFornecimento ?? ''} onChange={handleChange as any} placeholder="Unidade de fornecimento" />
                   <Input name="precoEstimado" value={formData.preco_estimado ?? formData.precoEstimado ?? ''} onChange={handleChange as any} placeholder="Preço estimado (opcional)" />
                   <Input name="prazoEntrega" value={formData.prazo_entrega ?? formData.prazoEntrega ?? ''} onChange={handleChange as any} placeholder="Prazo médio de entrega" />
+                {/* Catálogo ou Ficha Técnica (opcional) */}
+<div className="flex flex-col gap-2">
+  <FileUpload
+    label="Catálogo ou Ficha Técnica (opcional)"
+    name="arquivosProdutos"
+    multiple
+    onFilesChange={(files) => handleFileChange('arquivosProdutos', files)}
+  />
+
+  {/* Visualização dos arquivos já salvos (se houver) */}
+  {Array.isArray(formData.arquivos_produtos_url) &&
+    formData.arquivos_produtos_url.length > 0 && (
+      <div className="flex flex-col gap-1">
+        {formData.arquivos_produtos_url.map((url: string, idx: number) => (
+          <FileLink key={idx} url={url} />
+        ))}
+      </div>
+  )}
+</div>
                 </div>
               </Section>
 
-              <Section title="Documentação">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm">Ficha Cadastral atual</label>
-                    <div><FileLink url={formData.ficha_cadastral_url ?? null} /></div>
-                  </div>
-                  <div>
-                    <label className="text-sm">Comprovante capacidade técnica</label>
-                    <div><FileLink url={formData.comprovantecapacidadetecnica_url ?? null} /></div>
-                  </div>
-                  <div>
-                    <label className="text-sm">Cartão CNPJ</label>
-                    <div><FileLink url={formData.cartao_cnpj_url ?? null} /></div>
-                  </div>
-                  <div>
-                    <label className="text-sm">Certidões negativas</label>
-                    <div><FileLink url={formData.certidao_negativa_url ?? null} /></div>
-                  </div>
-                  <div>
-                    <label className="text-sm">Contrato social</label>
-                    <div><FileLink url={formData.contrato_social_url ?? null} /></div>
-                  </div>
-                  <div>
-                    <label className="text-sm">Alvará</label>
-                    <div><FileLink url={formData.alvara_url ?? null} /></div>
-                  </div>
-                </div>
-              </Section>
+             <Section title="Documentação">
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {/* Comprovante Capacidade Técnica */}
+    <div className="flex flex-col gap-2">
+      <FileUpload
+        label="Comprovante de Capacidade Técnica"
+        name="comprovantecapacidadetecnica"
+        onFilesChange={(files) => handleFileChange('comprovantecapacidadetecnica', files)}
+      />
+      {formData.comprovantecapacidadetecnica_url && (
+        <FileLink url={formData.comprovantecapacidadetecnica_url} />
+      )}
+    </div>
+
+    {/* Ficha Cadastral */}
+    <div className="flex flex-col gap-2">
+      <FileUpload
+        label="Ficha Cadastral do Fornecedor"
+        name="fichaCadastral"
+        onFilesChange={(files) => handleFileChange('fichaCadastral', files)}
+      />
+      {formData.ficha_cadastral_url && (
+        <FileLink url={formData.ficha_cadastral_url} />
+      )}
+    </div>
+
+    {/* Cartão CNPJ */}
+    <div className="flex flex-col gap-2">
+      <FileUpload
+        label="Cartão CNPJ"
+        name="cartaoCnpj"
+        onFilesChange={(files) => handleFileChange('cartaoCnpj', files)}
+      />
+      {formData.cartao_cnpj_url && (
+        <FileLink url={formData.cartao_cnpj_url} />
+      )}
+    </div>
+
+    {/* Certidões Negativas */}
+    <div className="flex flex-col gap-2">
+      <FileUpload
+        label="Certidões Negativas"
+        name="certidaoNegativa"
+        onFilesChange={(files) => handleFileChange('certidaoNegativa', files)}
+      />
+      {formData.certidao_negativa_url && (
+        <FileLink url={formData.certidao_negativa_url} />
+      )}
+    </div>
+
+    {/* Contrato Social */}
+    <div className="flex flex-col gap-2">
+      <FileUpload
+        label="Contrato Social / Estatuto"
+        name="contratoSocial"
+        onFilesChange={(files) => handleFileChange('contratoSocial', files)}
+      />
+      {formData.contrato_social_url && (
+        <FileLink url={formData.contrato_social_url} />
+      )}
+    </div>
+
+    {/* Alvará */}
+    <div className="flex flex-col gap-2">
+      <FileUpload
+        label="Alvará de Funcionamento"
+        name="alvara"
+        onFilesChange={(files) => handleFileChange('alvara', files)}
+      />
+      {formData.alvara_url && (
+        <FileLink url={formData.alvara_url} />
+      )}
+    </div>
+
+    {/* Outros Documentos */}
+    <div className="flex flex-col gap-2">
+      <FileUpload
+        label="Outros Documentos"
+        name="outrosDocumentos"
+        onFilesChange={(files) => handleFileChange('outrosDocumentos', files)}
+      />
+      {formData.outros_documentos_url && (
+        <FileLink url={formData.outros_documentos_url} />
+      )}
+    </div>
+  </div>
+</Section>
             </div>
 
             <div className="flex justify-end pt-2">
