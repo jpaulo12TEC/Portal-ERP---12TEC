@@ -6,7 +6,7 @@ import { moveFileOnOneDrive } from '@/lib/moveFileOnOneDrive';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { fileIdOrUrl, tipo } = body;
+    const { fileIdOrUrl, subFolderName } = body;
 
     if (!fileIdOrUrl) {
       return NextResponse.json({ error: 'fileIdOrUrl é obrigatório' }, { status: 400 });
@@ -18,11 +18,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Não foi possível obter o token do OneDrive' }, { status: 401 });
     }
 
-    // Valida ou define tipo padrão
-    const folderTipo = tipo || 'compras';
-
-    // Chama função de mover arquivo passando o token
-    await moveFileOnOneDrive(fileIdOrUrl, folderTipo, accessToken);
+    // Chama função de mover arquivo para subpasta dentro da pasta atual
+    await moveFileOnOneDrive(accessToken, fileIdOrUrl, subFolderName || "Nao Vigentes");
 
     return NextResponse.json({ message: 'Arquivo movido com sucesso!' });
   } catch (err: any) {

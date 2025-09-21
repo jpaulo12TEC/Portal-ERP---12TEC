@@ -132,6 +132,22 @@ const handleUpdate = (form: Formulario) => {
 
 
 
+// Função auxiliar para mover arquivo antigo via API
+const moverArquivoAntigo = async (itemId: string, destino: string) => {
+  if (!itemId) return;
+  try {
+    const res = await fetch("/api/onedrive/move", {
+      method: "POST",
+      body: JSON.stringify({ fileIdOrUrl: itemId, subFolderName: destino }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    console.log(`Arquivo antigo ${itemId} movido para ${destino}:`, data);
+  } catch (err) {
+    console.warn("Falha ao mover arquivo antigo (não fatal):", err);
+  }
+};
+
 const handleSalvarFormulario = async () => {
   console.log(">> handleSalvarFormulario INICIADO", {
     editingForm,
@@ -143,7 +159,6 @@ const handleSalvarFormulario = async () => {
   });
 
   const { data: { user } } = await supabase.auth.getUser();
-
   if (!user) {
     console.warn("⚠️ Usuário não autenticado!");
     alert("Usuário não autenticado!");
@@ -156,50 +171,28 @@ const handleSalvarFormulario = async () => {
 
     // Se enviou arquivo novo → faz upload via API
     if (file) {
-      console.log("Arquivo recebido para upload:", {
-        name: file.name,
-        size: file.size,
-        type: file.type
-      });
+      console.log("Arquivo recebido para upload:", file);
 
       const extension = file.name.split('.').pop() || '';
       const fileName = `formulario_${Date.now()}.${extension}`;
-      console.log("Nome do arquivo gerado:", fileName);
 
-      // FormData para rota API
       const formData = new FormData();
       formData.append("file", file);
       formData.append("fileName", fileName);
       formData.append("tipo", "formularios");
       formData.append("caminho", editingForm?.item_id || "novo");
 
-      const res = await fetch("/api/onedrive/upload", {
-        method: "POST",
-        body: formData,
-      });
-
+      const res = await fetch("/api/onedrive/upload", { method: "POST", body: formData });
       const uploaded = await res.json();
       if (!uploaded?.success) throw new Error(uploaded?.error || "Erro ao enviar arquivo via API");
 
       fileUrl = uploaded.file?.url || '';
       fileId = uploaded.file?.id || '';
-
       console.log("Arquivo novo -> url:", fileUrl, "id:", fileId);
 
-      // Opcional: mover arquivo antigo para "Não Vigentes"
+      // ⚡ Mover arquivo antigo usando API
       if (editingForm?.item_id) {
-        try {
-          console.log("Tentando mover arquivo antigo (item_id):", editingForm.item_id);
-          const moveRes = await fetch("/api/onedrive/move", {
-            method: "POST",
-            body: JSON.stringify({ itemId: editingForm.item_id, destino: "formularios/nao-vigentes" }),
-            headers: { "Content-Type": "application/json" }
-          });
-          const moveData = await moveRes.json();
-          console.log("Arquivo antigo movido:", moveData);
-        } catch (moveErr) {
-          console.warn("Falha ao mover arquivo antigo (não fatal):", moveErr);
-        }
+        await moverArquivoAntigo(editingForm.item_id, "Não vigentes");
       }
     } else {
       console.log("Nenhum arquivo novo enviado - mantendo fileUrl/item_id existentes:", { fileUrl, fileId });
@@ -209,7 +202,7 @@ const handleSalvarFormulario = async () => {
 
     if (editingForm) {
       if (updateMode) {
-        // 🔄 Atualizar o mesmo registro
+        // Atualizar
         const payload = {
           nome_do_formulario: nome,
           sobre,
@@ -219,20 +212,15 @@ const handleSalvarFormulario = async () => {
           item_id: fileId,
           usuario_id: user.id,
         };
-        console.log("Fazendo UPDATE com payload:", payload, " onde id =", editingForm.id);
-
         const { data, error } = await supabase
           .from("formularios")
           .update(payload)
           .eq("id", editingForm.id)
           .select();
-
-        console.log("Resposta UPDATE Supabase:", { data, error });
         if (error) throw error;
       } else {
-        // ➕ Criar nova versão
-        console.log("Criando nova versão para:", editingForm.nome_do_formulario);
-        const { data: ultimaVersaoData, error: ultimaErr } = await supabase
+        // Criar nova versão
+        const { data: ultimaVersaoData } = await supabase
           .from('formularios')
           .select('versao')
           .eq('nome_do_formulario', editingForm.nome_do_formulario)
@@ -254,14 +242,11 @@ const handleSalvarFormulario = async () => {
           item_id: fileId,
           usuario_id: user.id,
         };
-        console.log("Fazendo INSERT com payload:", insertPayload);
-
         const { data, error } = await supabase.from("formularios").insert([insertPayload]).select();
-        console.log("Resposta INSERT Supabase:", { data, error });
         if (error) throw error;
       }
     } else {
-      // 🆕 Novo formulário
+      // Novo formulário
       const insertPayload = {
         nome_do_formulario: nome,
         sobre,
@@ -273,10 +258,7 @@ const handleSalvarFormulario = async () => {
         item_id: fileId,
         usuario_id: user.id,
       };
-      console.log("Inserindo novo formulário com payload:", insertPayload);
-
       const { data, error } = await supabase.from("formularios").insert([insertPayload]).select();
-      console.log("Resposta INSERT (novo) Supabase:", { data, error });
       if (error) throw error;
     }
 

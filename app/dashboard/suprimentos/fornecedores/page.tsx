@@ -1,14 +1,25 @@
 'use client';
 
 import { supabase } from '@/lib/superbase';
+import $ from "jquery"
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, ArrowLeft, Users, Plus, Star } from "lucide-react";
 import Sidebar from '@/components/Sidebar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Card, CardContent } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Card, CardContent,  } from "@/components/ui/card";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+
+
+interface DashboardItem {
+  fornecedor: string;
+  compras: number;
+  valor: number;
+  quantidade: number;
+}
+
+type Metric = "valor" | "quantidade" | "compras";
 
 /* Tipos (simplificados para foco no funcionamento) */
 interface FornecedorResumo {
@@ -141,6 +152,12 @@ const FileLink: React.FC<{ url?: string | null; label?: string }> = ({ url, labe
 };
 
 export default function FornecedoresPage() {
+   const [dashboardData, setDashboardData] = useState<DashboardItem[]>([]);
+  const [dataInicio, setDataInicio] = useState<string>("");
+  const [dataFim, setDataFim] = useState<string>("");
+  const [selectedMetric, setSelectedMetric] = useState<Metric>("valor");
+
+
   const router = useRouter();
   const [menuActive, setMenuActive] = useState(false);
   const [fornecedores, setFornecedores] = useState<FornecedorResumo[]>([]);
@@ -357,66 +374,166 @@ export default function FornecedoresPage() {
   }
 
   /* ===== Submissão de edição (update) ===== */
-  async function handleUpdate(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    setLoading(true);
-    try {
-      // Preparar objeto para update (apenas os campos que existem no form)
-      const updateObj: any = {
-        razao_social: formData.razaoSocial ?? formData.razao_social ?? null,
-        nome_fantasia: formData.nomeFantasia ?? formData.nome_fantasia ?? null,
-        cnpj: formData.cnpj ?? null,
-        tipo_fornecedor: formData.tipoFornecedor ?? formData.tipo_fornecedor ?? null,
-        natureza_juridica: formData.naturezaJuridica ?? formData.natureza_juridica ?? null,
-        endereco: formData.endereco ?? null,
-        numero: formData.numero ?? null,
-        complemento: formData.complemento ?? null,
-        bairro: formData.bairro ?? null,
-        cidade_uf: formData.cidadeUF ?? formData.cidade_uf ?? null,
-        cep: formData.cep ?? null,
-        pais: formData.pais ?? null,
-        telefone_principal: formData.telefonePrincipal ?? formData.telefone_principal ?? null,
-        email: formData.email ?? null,
-        website: formData.website ?? null,
-        responsavel_comercial: formData.responsavelComercial ?? null,
-        responsavel_tecnico: formData.responsavelTecnico ?? null,
-        responsavel_tecnicocontato: formData.responsavelTecnicocontato ?? null,
-        contato1_nome: formData.contato1Nome ?? null,
-        contato1_telefone: formData.contato1Telefone ?? null,
-        contato2_nome: formData.contato2Nome ?? null,
-        contato2_telefone: formData.contato2Telefone ?? null,
-        tipo_produto_servico: formData.tipoProdutoServico ?? null,
-        categoria: formData.categoria ?? null,
-        descricao: formData.descricao ?? null,
-        unidade_fornecimento: formData.unidadeFornecimento ?? null,
-        preco_estimado: formData.precoEstimado ? Number(formData.precoEstimado) : null,
-        prazo_entrega: formData.prazoEntrega ?? null,
-        situacao_cadastro: formData.situacao ?? formData.situacao_cadastro ?? 'Iniciado',
-        avaliacao: formData.avaliacao ? Number(formData.avaliacao) : 0,
-      };
+async function handleUpdate(e?: React.FormEvent) {
+  if (e) e.preventDefault();
+  setLoading(true);
 
-      // Update no supabase pelo cnpj (pode ser alterado para id se preferir)
-      const { error } = await supabase
-        .from('fornecedores')
-        .update(updateObj)
-        .eq('cnpj', formData.cnpj);
-
-      if (error) throw error;
-
-      setEditModalOpen(false);
-      await fetchFornecedores();
-      alert('Atualização realizada com sucesso.');
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao atualizar fornecedor.');
-    } finally {
-      setLoading(false);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert("Usuário não autenticado!");
+      return;
     }
+
+    const razaoSocial = formData.razaoSocial ?? formData.razao_social ?? "";
+    const cnpj = formData.cnpj;
+
+    // ===== Função auxiliar para upload de arquivos =====
+    const uploadDocAPI = async (file?: File, key?: string) => {
+      if (!file) return null;
+
+      const cleanLabel = key?.replace(/[^a-zA-Z0-9]/g, "_") || "Arquivo";
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      const dateStr = `${dd}${mm}${yyyy}`;
+      const fileName = `${cleanLabel}_${dateStr}.${file.name.split(".").pop()}`;
+      const dataCompraStr = `${yyyy}-${mm}-${dd}`;
+
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("fileName", fileName);
+      fd.append("fornecedor", razaoSocial);
+      fd.append("tipo", "cadastro-fornecedor");
+      fd.append("dataCompra", dataCompraStr);
+
+      const res = await fetch("/api/onedrive/upload", { method: "POST", body: fd });
+      const uploaded = await res.json();
+      if (!uploaded?.success) throw new Error(uploaded?.error || "Erro ao enviar documento");
+
+      return uploaded.file;
+    };
+
+    // ===== Upload de arquivos =====
+    const fichaCadastral = formData.fichaCadastral?.[0] ? await uploadDocAPI(formData.fichaCadastral[0], "fichaCadastral") : null;
+    const comprovantecapacidadetecnica = formData.comprovantecapacidadetecnica?.[0] ? await uploadDocAPI(formData.comprovantecapacidadetecnica[0], "comprovantecapacidadetecnica") : null;
+    const cartaoCnpj = formData.cartaoCnpj?.[0] ? await uploadDocAPI(formData.cartaoCnpj[0], "cartaoCnpj") : null;
+    const certidaoNegativa = formData.certidaoNegativa?.[0] ? await uploadDocAPI(formData.certidaoNegativa[0], "certidaoNegativa") : null;
+    const contratoSocial = formData.contratoSocial?.[0] ? await uploadDocAPI(formData.contratoSocial[0], "contratoSocial") : null;
+    const alvara = formData.alvara?.[0] ? await uploadDocAPI(formData.alvara[0], "alvara") : null;
+    const outrosDocumentos = formData.outrosDocumentos?.[0] ? await uploadDocAPI(formData.outrosDocumentos[0], "outrosDocumentos") : null;
+
+const arquivosProdutosUrls: string[] = [];
+
+if (formData.arquivosProdutos) {
+  const arquivos = Array.from(formData.arquivosProdutos) as File[];
+  for (const arquivo of arquivos) {
+    const up = await uploadDocAPI(arquivo, "arquivosProdutos");
+    if (up?.url) arquivosProdutosUrls.push(up.url);
   }
+}
 
-  /* ====== Novo fornecedor (mantive sua lógica original, mas em um modal separado) ====== */
 
+    // ===== Buscar fornecedor atual =====
+    const { data: fornecedorAtual, error: fetchErr } = await supabase
+      .from("fornecedores")
+      .select("*")
+      .eq("cnpj", cnpj)
+      .single();
+    if (fetchErr) throw fetchErr;
 
+    // ===== Mover arquivos antigos via API, se existirem =====
+    const moverAntigoAPI = async (itemId?: string) => {
+      if (!itemId) return; // não existe, nada a mover
+      try {
+        await fetch("/api/onedrive/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileIdOrUrl: itemId,
+            subFolderName: "Nao Vigentes",
+          }),
+        });
+      } catch (err) {
+        console.warn("Falha ao mover arquivo antigo (não fatal):", err);
+      }
+    };
+
+    // Só move se tiver um novo arquivo sendo enviado
+    if (fichaCadastral) await moverAntigoAPI(fornecedorAtual?.ficha_cadastral_item_id);
+    if (comprovantecapacidadetecnica) await moverAntigoAPI(fornecedorAtual?.comprovantecapacidadetecnica_item_id);
+    if (cartaoCnpj) await moverAntigoAPI(fornecedorAtual?.cartao_cnpj_item_id);
+    if (certidaoNegativa) await moverAntigoAPI(fornecedorAtual?.certidao_negativa_item_id);
+    if (contratoSocial) await moverAntigoAPI(fornecedorAtual?.contrato_social_item_id);
+    if (alvara) await moverAntigoAPI(fornecedorAtual?.alvara_item_id);
+    if (outrosDocumentos) await moverAntigoAPI(fornecedorAtual?.outros_documentos_item_id);
+
+    // ===== Objeto de atualização =====
+    const updateObj: any = {
+      razao_social: razaoSocial,
+      nome_fantasia: formData.nomeFantasia ?? formData.nome_fantasia ?? null,
+      cnpj,
+      inscricao: formData.inscricao ?? null,
+      tipo_fornecedor: formData.tipoFornecedor ?? formData.tipo_fornecedor ?? null,
+      natureza_juridica: formData.naturezaJuridica ?? formData.natureza_juridica ?? null,
+      endereco: formData.endereco ?? null,
+      numero: formData.numero ?? null,
+      complemento: formData.complemento ?? null,
+      bairro: formData.bairro ?? null,
+      cidade_uf: formData.cidadeUF ?? formData.cidade_uf ?? null,
+      cep: formData.cep ?? null,
+      pais: formData.pais ?? null,
+      telefone_principal: formData.telefonePrincipal ?? formData.telefone_principal ?? null,
+      email: formData.email ?? null,
+      website: formData.website ?? null,
+      responsavel_comercial: formData.responsavelComercial ?? null,
+      responsavel_tecnico: formData.responsavelTecnico ?? null,
+      responsavel_tecnicocontato: formData.responsavelTecnicocontato ?? null,
+      contato1_nome: formData.contato1Nome ?? null,
+      contato1_telefone: formData.contato1Telefone ?? null,
+      contato2_nome: formData.contato2Nome ?? null,
+      contato2_telefone: formData.contato2Telefone ?? null,
+      tipo_produto_servico: formData.tipoProdutoServico ?? null,
+      categoria: formData.categoria ?? null,
+      descricao: formData.descricao ?? null,
+      unidade_fornecimento: formData.unidadeFornecimento ?? null,
+      preco_estimado: formData.precoEstimado ? Number(formData.precoEstimado) : null,
+      prazo_entrega: formData.prazoEntrega ?? null,
+      arquivos_produtos_url: arquivosProdutosUrls.length ? arquivosProdutosUrls : fornecedorAtual?.arquivos_produtos_url,
+      ficha_cadastral_url: fichaCadastral?.url ?? fornecedorAtual?.ficha_cadastral_url,
+      ficha_cadastral_item_id: fichaCadastral?.id ?? fornecedorAtual?.ficha_cadastral_item_id,
+      comprovantecapacidadetecnica_url: comprovantecapacidadetecnica?.url ?? fornecedorAtual?.comprovantecapacidadetecnica_url,
+      comprovantecapacidadetecnica_item_id: comprovantecapacidadetecnica?.id ?? fornecedorAtual?.comprovantecapacidadetecnica_item_id,
+      cartao_cnpj_url: cartaoCnpj?.url ?? fornecedorAtual?.cartao_cnpj_url,
+      cartao_cnpj_item_id: cartaoCnpj?.id ?? fornecedorAtual?.cartao_cnpj_item_id,
+      certidao_negativa_url: certidaoNegativa?.url ?? fornecedorAtual?.certidao_negativa_url,
+      certidao_negativa_item_id: certidaoNegativa?.id ?? fornecedorAtual?.certidao_negativa_item_id,
+      contrato_social_url: contratoSocial?.url ?? fornecedorAtual?.contrato_social_url,
+      contrato_social_item_id: contratoSocial?.id ?? fornecedorAtual?.contrato_social_item_id,
+      alvara_url: alvara?.url ?? fornecedorAtual?.alvara_url,
+      alvara_item_id: alvara?.id ?? fornecedorAtual?.alvara_item_id,
+      outros_documentos_url: outrosDocumentos?.url ?? fornecedorAtual?.outros_documentos_url,
+      outros_documentos_item_id: outrosDocumentos?.id ?? fornecedorAtual?.outros_documentos_item_id,
+      situacao_cadastro: formData.situacao ?? formData.situacao_cadastro ?? "Iniciado",
+      avaliacao: formData.avaliacao ? Number(formData.avaliacao) : fornecedorAtual?.avaliacao ?? 0,
+    };
+
+    const { error } = await supabase.from("fornecedores").update(updateObj).eq("cnpj", cnpj);
+    if (error) throw error;
+
+    setEditModalOpen(false);
+    await fetchFornecedores();
+    alert("Atualização realizada com sucesso.");
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao atualizar fornecedor.");
+  } finally {
+    setLoading(false);
+  }
+}
+
+ 
 
 
   function openNewModal() {
@@ -429,37 +546,93 @@ export default function FornecedoresPage() {
 
 
 
-  /* Dashboard (mantive) */
-  const dashboardData = [
-    { categoria: "TI", valor: 150000 },
-    { categoria: "Construção", valor: 95000 },
-    { categoria: "Serviços Gerais", valor: 70000 },
-  ];
+
+
+
+ const fetchDashboardData = async () => {
+    const inicio = dataInicio ? new Date(dataInicio).toISOString() : undefined;
+    const fim = dataFim ? new Date(dataFim).toISOString() : undefined;
+
+    let query = supabase
+      .from("gerenciamento_compras")
+      .select("cnpj_cpf, fornecedor, quantidade_produtos, valor_liquido, data_compra");
+
+    if (inicio) query = query.gte("data_compra", inicio);
+    if (fim) query = query.lte("data_compra", fim);
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Erro ao buscar dados do dashboard:", error);
+      return;
+    }
+
+    // Agrupar por fornecedor
+    const agrupado: Record<string, DashboardItem> = {};
+    data?.forEach((item: any) => {
+      const key = item.fornecedor || item.cnpj_cpf;
+      if (!agrupado[key]) {
+        agrupado[key] = {
+          fornecedor: key,
+          compras: 0,
+          valor: 0,
+          quantidade: 0,
+        };
+      }
+      agrupado[key].compras += 1;
+      agrupado[key].valor += Number(item.valor_liquido ?? 0);
+      agrupado[key].quantidade += Number(item.quantidade_produtos ?? 0);
+    });
+
+    const finalData = Object.values(agrupado)
+      .sort((a, b) => b[selectedMetric] - a[selectedMetric])
+      .slice(0, 7); // pegar apenas top 7
+
+    setDashboardData(finalData);
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [dataInicio, dataFim, selectedMetric]);
+
+  const getBarColor = (metric: Metric) => {
+    switch (metric) {
+      case "valor":
+        return "#3b82f6"; // azul
+      case "quantidade":
+        return "#10b981"; // verde
+      case "compras":
+        return "#f59e0b"; // laranja
+    }
+  };
+
+
 
   return (
     <div className={`flex flex-col h-screen ${menuActive ? "ml-[300px]" : "ml-[80px]"}`}>
       {/* Topbar */}
-      <div className="flex items-center justify-between bg-[#111827] p-0 text-white shadow-md">
+      <div className="flex items-center justify-between bg-[#200101] p-0 text-white shadow-md">
         <div className="flex space-x-4 w-full h-[40px] items-center">
           <button
-            onClick={() => window.history.back()}
-            className="ml-2 flex items-center gap-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-full transition-all duration-300 shadow-sm"
+            onClick={() => router.back()}
+            className="ml-2 flex items-center gap-2 px-3 py-1.5 bg-[#5a0d0d] hover:bg-[#7a1a1a] text-white rounded-full transition-all duration-300 shadow-sm"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
             <span className="text-sm font-medium">Voltar</span>
           </button>
+
           <div className="px-3 py-3 h-[50px]">
-            <button className="w-full text-left hover:text-gray-200">
-              Departamento de Compras
+            <button className="w-full text-left hover:text-gray-300">
+              Catálogo de Produtos
             </button>
           </div>
         </div>
 
-        <div className="relative w-full max-w-[420px] ml-6 mr-6">
+        <div className="relative w-full max-w-[400px] ml-6 mr-70">
           <input
             type="text"
             placeholder="Buscar..."
-            className="pl-10 pr-4 py-2 rounded-full h-[36px] w-full bg-white border-none focus:ring-2 focus:ring-gray-300 text-black"
+            className="pl-10 pr-4 py-2 rounded-full h-[30px] w-full bg-white border-none focus:ring-2 focus:ring-blue-400 text-black"
           />
           <Search className="absolute left-3 top-2.5 text-gray-500" size={17} />
         </div>
@@ -486,26 +659,98 @@ export default function FornecedoresPage() {
 
           {/* Dashboard + Ação */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 items-start">
-            <div className="md:col-span-2">
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start">
-                    <h4 className="font-semibold text-sm mb-2">Top Fornecedores por Valor</h4>
-                    <div className="text-xs text-gray-500">Últimos 12 meses</div>
-                  </div>
-                  <div style={{ width: '100%', height: 180 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={dashboardData}>
-                        <XAxis dataKey="categoria" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="valor" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+ {/* Filtros */}
+      <div className="flex gap-4 items-end">
+        <div className="flex flex-col">
+          <label className="text-xs text-gray-500 mb-1">Data Início</label>
+          <Input name="dataInicio" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+        </div>
+        <div className="flex flex-col">
+          <label className="text-xs text-gray-500 mb-1">Data Fim</label>
+          <Input name="dataFim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
+        </div>
+        <button
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+          onClick={fetchDashboardData}
+        >
+          Filtrar
+        </button>
+
+        {/* Alternar Métrica */}
+        <div className="flex gap-2">
+          {(["valor", "quantidade", "compras"] as Metric[]).map((metric) => (
+            <button
+              key={metric}
+              onClick={() => setSelectedMetric(metric)}
+              className={`px-3 py-1 rounded text-white ${
+                selectedMetric === metric
+                  ? "bg-gray-800"
+                  : "bg-gray-400 hover:bg-gray-500"
+              }`}
+            >
+              {metric === "valor" ? "Valor Líquido" : metric === "quantidade" ? "Qtd Produtos" : "Compras"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="font-semibold text-sm">
+                  Top Fornecedores por{" "}
+                  {selectedMetric === "valor"
+                    ? "Valor Líquido"
+                    : selectedMetric === "quantidade"
+                    ? "Quantidade Produtos"
+                    : "Compras"}
+                </h4>
+                <div className="text-xs text-gray-500">
+                  {dataInicio && dataFim ? `${dataInicio} → ${dataFim}` : "Últimos 12 meses"}
+                </div>
+              </div>
+              <div style={{ width: "100%", height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dashboardData} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="fornecedor" tick={{ fontSize: 12 }} />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey={selectedMetric} name={selectedMetric} fill={getBarColor(selectedMetric)} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Cards resumidos */}
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardContent>
+              <h5 className="text-xs text-gray-500">Total Compras</h5>
+              <p className="text-xl font-semibold">{dashboardData.reduce((acc, cur) => acc + cur.compras, 0)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <h5 className="text-xs text-gray-500">Total Produtos</h5>
+              <p className="text-xl font-semibold">{dashboardData.reduce((acc, cur) => acc + cur.quantidade, 0)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <h5 className="text-xs text-gray-500">Valor Total</h5>
+              <p className="text-xl font-semibold">
+                R$ {dashboardData.reduce((acc, cur) => acc + cur.valor, 0).toFixed(2)}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
             <div className="flex items-center justify-center">
               {/* Botão com imagem + label */}
