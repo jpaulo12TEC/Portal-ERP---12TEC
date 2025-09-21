@@ -22,8 +22,7 @@ export default function Compras() {
     { label: 'Pedido de Compra', path: '/dashboard/suprimentos/pedidos', icon: ShoppingCart },
     { label: 'Catálogo de Produtos', path: '/dashboard/suprimentos/catalogo', icon: Box },
     { label: 'Fornecedores', path: '/dashboard/suprimentos/fornecedores', icon: Users, section: 'fornecedores' }, // nova aba
-    { label: 'Estoque', path: '/dashboard/compras/estoque', icon: ClipboardList },
-    { label: 'Inventário', path: '/dashboard/compras/inventario', icon: CalendarCheck },
+       { label: 'Inventário', path: '/dashboard/suprimentos/inventario', icon: CalendarCheck },
    
     { label: 'Documentos de Compra', path: '/dashboard/compras/documentos', icon: FileText },
   ];

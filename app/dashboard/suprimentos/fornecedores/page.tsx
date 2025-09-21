@@ -17,6 +17,7 @@ interface DashboardItem {
   compras: number;
   valor: number;
   quantidade: number;
+  origem: string;
 }
 
 type Metric = "valor" | "quantidade" | "compras";
@@ -153,9 +154,15 @@ const FileLink: React.FC<{ url?: string | null; label?: string }> = ({ url, labe
 
 export default function FornecedoresPage() {
    const [dashboardData, setDashboardData] = useState<DashboardItem[]>([]);
-  const [dataInicio, setDataInicio] = useState<string>("");
-  const [dataFim, setDataFim] = useState<string>("");
+const hoje = new Date();
+const umMesAtras = new Date();
+umMesAtras.setMonth(hoje.getMonth() - 1);
+
+const [dataInicio, setDataInicio] = useState<string>(umMesAtras.toISOString().slice(0, 10));
+const [dataFim, setDataFim] = useState<string>(hoje.toISOString().slice(0, 10));
   const [selectedMetric, setSelectedMetric] = useState<Metric>("valor");
+  const [selectedOrigem, setSelectedOrigem] = useState<string>("Todos");
+  const [origensDisponiveis, setOrigensDisponiveis] = useState<string[]>([]);
 
 
   const router = useRouter();
@@ -543,53 +550,67 @@ if (formData.arquivosProdutos) {
 
 
 
+const fetchDashboardData = async () => {
+  const inicio = dataInicio ? new Date(dataInicio).toISOString() : undefined;
+  const fim = dataFim ? new Date(dataFim).toISOString() : undefined;
 
+  // 1️⃣ Compras e quantidade
+  let comprasQuery = supabase
+    .from("gerenciamento_compras")
+    .select("cnpj_cpf, fornecedor, quantidade_produtos, data_compra");
+  if (inicio) comprasQuery = comprasQuery.gte("data_compra", inicio);
+  if (fim) comprasQuery = comprasQuery.lte("data_compra", fim);
+  const { data: comprasData, error: comprasErr } = await comprasQuery;
+  if (comprasErr) return console.error("Erro compras:", comprasErr);
 
+  // 2️⃣ Valores e origem
+  let valorQuery = supabase
+    .from("provisao_pagamentos")
+    .select("empresa, valor, origem, data_compra");
+  if (inicio) valorQuery = valorQuery.gte("data_compra", inicio);
+  if (fim) valorQuery = valorQuery.lte("data_compra", fim);
+  const { data: valorData, error: valorErr } = await valorQuery;
+  if (valorErr) return console.error("Erro valores:", valorErr);
 
+  // Preencher dropdown de origens
+  const origens = Array.from(new Set(valorData?.map((v: any) => v.origem).filter(Boolean)));
+  setOrigensDisponiveis(["Todos", ...origens]);
 
+  // Agrupamento por fornecedor
+  const agrupado: Record<string, DashboardItem> = {};
 
+  // Combinar compras e quantidade
+  comprasData?.forEach((item: any) => {
+    // Definir chave legível para gráfico
+    const key = item.fornecedor || item.cnpj_cpf || "Sem Nome";
 
- const fetchDashboardData = async () => {
-    const inicio = dataInicio ? new Date(dataInicio).toISOString() : undefined;
-    const fim = dataFim ? new Date(dataFim).toISOString() : undefined;
+    if (!agrupado[key])
+      agrupado[key] = { fornecedor: key, compras: 0, valor: 0, quantidade: 0, origem: "" };
 
-    let query = supabase
-      .from("gerenciamento_compras")
-      .select("cnpj_cpf, fornecedor, quantidade_produtos, valor_liquido, data_compra");
+    agrupado[key].compras += 1;
+    agrupado[key].quantidade += Number(item.quantidade_produtos ?? 0);
+  });
 
-    if (inicio) query = query.gte("data_compra", inicio);
-    if (fim) query = query.lte("data_compra", fim);
+  // Combinar valores
+  valorData?.forEach((item: any) => {
+    const key = item.fornecedor || item.empresa || "Sem Nome";
 
-    const { data, error } = await query;
+    if (selectedOrigem !== "Todos" && item.origem !== selectedOrigem) return;
 
-    if (error) {
-      console.error("Erro ao buscar dados do dashboard:", error);
-      return;
-    }
+    if (!agrupado[key])
+      agrupado[key] = { fornecedor: key, compras: 0, valor: 0, quantidade: 0, origem: "" };
 
-    // Agrupar por fornecedor
-    const agrupado: Record<string, DashboardItem> = {};
-    data?.forEach((item: any) => {
-      const key = item.fornecedor || item.cnpj_cpf;
-      if (!agrupado[key]) {
-        agrupado[key] = {
-          fornecedor: key,
-          compras: 0,
-          valor: 0,
-          quantidade: 0,
-        };
-      }
-      agrupado[key].compras += 1;
-      agrupado[key].valor += Number(item.valor_liquido ?? 0);
-      agrupado[key].quantidade += Number(item.quantidade_produtos ?? 0);
-    });
+    agrupado[key].valor += Number(item.valor ?? 0);
+    agrupado[key].origem = item.origem ?? agrupado[key].origem;
+  });
 
-    const finalData = Object.values(agrupado)
-      .sort((a, b) => b[selectedMetric] - a[selectedMetric])
-      .slice(0, 7); // pegar apenas top 7
+  // Ordenar pelo selectedMetric e pegar top 7
+  const finalData = Object.values(agrupado)
+    .sort((a, b) => b[selectedMetric] - a[selectedMetric])
+    .slice(0, 7);
 
-    setDashboardData(finalData);
-  };
+  setDashboardData(finalData);
+};
 
   useEffect(() => {
     fetchDashboardData();
@@ -658,121 +679,184 @@ if (formData.arquivosProdutos) {
           </h3>
 
           {/* Dashboard + Ação */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 items-start">
- {/* Filtros */}
-      <div className="flex gap-4 items-end">
-        <div className="flex flex-col">
-          <label className="text-xs text-gray-500 mb-1">Data Início</label>
-          <Input name="dataInicio" type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
-        </div>
-        <div className="flex flex-col">
-          <label className="text-xs text-gray-500 mb-1">Data Fim</label>
-          <Input name="dataFim" type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
-        </div>
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-          onClick={fetchDashboardData}
+{/* Dashboard + Ação */}
+{/* Dashboard + Ação */}
+<div className="flex flex-col gap-6 w-full p-6 bg-gray-50">
+
+  {/* Barra superior: filtros + botão Novo Fornecedor */}
+  <div className="flex flex-col md:flex-row md:justify-between gap-6 items-end w-full">
+
+    {/* Filtros */}
+    <div className="flex flex-wrap gap-4 items-end">
+      <div className="flex flex-col">
+        <label className="text-xs text-gray-500 mb-1">Data Início</label>
+        <Input
+          name="dataInicio"
+          type="date"
+          value={dataInicio}
+          onChange={(e) => setDataInicio(e.target.value)}
+          
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="text-xs text-gray-500 mb-1">Data Fim</label>
+        <Input
+          name="dataFim"
+          type="date"
+          value={dataFim}
+          onChange={(e) => setDataFim(e.target.value)}
+          
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="text-xs text-gray-500 mb-1">Origem</label>
+        <select
+          value={selectedOrigem}
+          onChange={(e) => setSelectedOrigem(e.target.value)}
+          className="px-3 py-2 border rounded-md shadow-sm focus:ring-2 focus:ring-blue-400"
         >
-          Filtrar
-        </button>
-
-        {/* Alternar Métrica */}
-        <div className="flex gap-2">
-          {(["valor", "quantidade", "compras"] as Metric[]).map((metric) => (
-            <button
-              key={metric}
-              onClick={() => setSelectedMetric(metric)}
-              className={`px-3 py-1 rounded text-white ${
-                selectedMetric === metric
-                  ? "bg-gray-800"
-                  : "bg-gray-400 hover:bg-gray-500"
-              }`}
-            >
-              {metric === "valor" ? "Valor Líquido" : metric === "quantidade" ? "Qtd Produtos" : "Compras"}
-            </button>
+          {origensDisponiveis.map((o) => (
+            <option key={o} value={o}>{o}</option>
           ))}
-        </div>
+        </select>
       </div>
+      <button
+        className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-shadow shadow-md"
+        onClick={fetchDashboardData}
+      >
+        Filtrar
+      </button>
+    </div>
 
-      {/* Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <h4 className="font-semibold text-sm">
-                  Top Fornecedores por{" "}
-                  {selectedMetric === "valor"
-                    ? "Valor Líquido"
-                    : selectedMetric === "quantidade"
-                    ? "Quantidade Produtos"
-                    : "Compras"}
-                </h4>
-                <div className="text-xs text-gray-500">
-                  {dataInicio && dataFim ? `${dataInicio} → ${dataFim}` : "Últimos 12 meses"}
-                </div>
-              </div>
-              <div style={{ width: "100%", height: 300 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dashboardData} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="fornecedor" tick={{ fontSize: 12 }} />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey={selectedMetric} name={selectedMetric} fill={getBarColor(selectedMetric)} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+    {/* Botão Novo Fornecedor isolado */}
+    <div className="flex justify-end md:ml-auto">
+      <button
+        onClick={openNewModal}
+        className="flex items-center gap-3 px-6 py-3 border rounded-lg hover:shadow-xl transition-shadow bg-white shadow-md font-semibold text-gray-700"
+        aria-label="Novo Fornecedor"
+      >
+        <img
+          src="/novo-cadastro-icon.png"
+          alt="novo"
+          className="w-6 h-6"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+        />
+        Novo Fornecedor
+      </button>
+    </div>
+  </div>
 
-        {/* Cards resumidos */}
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardContent>
-              <h5 className="text-xs text-gray-500">Total Compras</h5>
-              <p className="text-xl font-semibold">{dashboardData.reduce((acc, cur) => acc + cur.compras, 0)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent>
-              <h5 className="text-xs text-gray-500">Total Produtos</h5>
-              <p className="text-xl font-semibold">{dashboardData.reduce((acc, cur) => acc + cur.quantidade, 0)}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent>
-              <h5 className="text-xs text-gray-500">Valor Total</h5>
-              <p className="text-xl font-semibold">
-                R$ {dashboardData.reduce((acc, cur) => acc + cur.valor, 0).toFixed(2)}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+  {/* Botões de Métrica */}
+  <div className="flex flex-wrap gap-3 mt-2">
+    {(["valor", "quantidade", "compras"] as Metric[]).map((metric) => (
+      <button
+        key={metric}
+        onClick={() => setSelectedMetric(metric)}
+        className={`px-5 py-2 rounded-full text-white font-semibold transition ${
+          selectedMetric === metric
+            ? "bg-gray-900 shadow-lg"
+            : "bg-gray-400 hover:bg-gray-500"
+        }`}
+      >
+        {metric === "valor"
+          ? "Valor Líquido"
+          : metric === "quantidade"
+          ? "Qtd Produtos"
+          : "Compras"}
+      </button>
+    ))}
+  </div>
 
-            <div className="flex items-center justify-center">
-              {/* Botão com imagem + label */}
-              <div className="w-full">
-                <Card>
-                  <CardContent className="p-6 flex items-center justify-center">
-                    <button
-                      onClick={openNewModal}
-                      className="flex items-center gap-3 px-4 py-3 border rounded-md hover:shadow-md transition-shadow"
-                      aria-label="Novo Fornecedor"
-                    >
-                      <img src="/novo-cadastro-icon.png" alt="novo" className="w-8 h-8" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none'}}/>
-                      <div className="text-left">
-                        <div className="font-medium">Novo Fornecedor</div>
-                        <div className="text-xs text-gray-500">Adicionar cadastro</div>
-                      </div>
-                    </button>
-                  </CardContent>
-                </Card>
-              </div>
+  {/* Dashboard */}
+  <div className="flex flex-col md:flex-row gap-6 w-full">
+
+    {/* Gráfico */}
+    <div className="flex-1">
+      <Card className="w-full shadow-lg rounded-xl">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="font-semibold text-lg text-gray-800">
+              Top Fornecedores por{" "}
+              {selectedMetric === "valor"
+                ? "Valor Líquido"
+                : selectedMetric === "quantidade"
+                ? "Quantidade Produtos"
+                : "Compras"}
+            </h4>
+            <div className="text-sm text-gray-500">
+              {dataInicio && dataFim ? `${dataInicio} → ${dataFim}` : "Últimos 12 meses"}
             </div>
           </div>
+          <div style={{ width: "100%", height: 400 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={dashboardData}
+                margin={{ top: 20, right: 20, left: 0, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis dataKey="fornecedor" tick={{ fontSize: 12 }} />
+                <YAxis
+                  tickFormatter={(value) =>
+                    selectedMetric === "valor"
+                      ? value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                      : value
+                  }
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) => {
+                    if (name === "valor") {
+                      return [value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }), "Valor"];
+                    }
+                    return [value, name === "quantidade" ? "Qtd Produtos" : "Compras"];
+                  }}
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: "none",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                  }}
+                />
+                <Bar
+                  dataKey={selectedMetric}
+                  name={selectedMetric}
+                  fill={getBarColor(selectedMetric)}
+                  radius={[8, 8, 0, 0]}
+                  barSize={40}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+
+    {/* Cards resumidos */}
+    <div className="flex flex-col gap-4 w-full md:w-1/3">
+      <Card className="shadow-lg rounded-xl">
+        <CardContent className="p-5">
+          <h5 className="text-xs text-gray-500">Total Compras</h5>
+          <p className="text-2xl font-bold">{dashboardData.reduce((acc, cur) => acc + cur.compras, 0)}</p>
+        </CardContent>
+      </Card>
+      <Card className="shadow-lg rounded-xl">
+        <CardContent className="p-5">
+          <h5 className="text-xs text-gray-500">Total Produtos</h5>
+          <p className="text-2xl font-bold">{dashboardData.reduce((acc, cur) => acc + cur.quantidade, 0)}</p>
+        </CardContent>
+      </Card>
+      <Card className="shadow-lg rounded-xl">
+        <CardContent className="p-5">
+          <h5 className="text-xs text-gray-500">Valor Total</h5>
+          <p className="text-2xl font-bold text-green-600">
+            {dashboardData
+              .reduce((acc, cur) => acc + cur.valor, 0)
+              .toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+
+  </div>
+</div>
 
           {/* Tabela de fornecedores */}
           <div className="overflow-x-auto border shadow">
