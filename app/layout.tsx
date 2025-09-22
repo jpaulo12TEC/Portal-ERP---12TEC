@@ -5,8 +5,11 @@ import SessionWrapper from '@/components/SessionWrapper';
 import ClientWrapper from '@/components/ClientWrapper'; // <-- novo
 
 export const metadata: Metadata = {
-  title: 'Sua aplicação',
-  description: 'Descrição aqui',
+  title: 'Portal 12 TEC',
+  description: 'Portal coorporativo da 12 TEC Engenharia',
+  icons: {
+    icon: "/12TEC.ico",
+  },
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
