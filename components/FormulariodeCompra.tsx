@@ -919,7 +919,7 @@ const arquivosBoleto = await Promise.all(
       const formPayload = new FormData();
       formPayload.append("file", parcela.boleto);
       formPayload.append("fileName", fileNameBoleto);
-      formPayload.append("data", new Date().toISOString().slice(0, 10)); // data do boleto
+      formPayload.append("dataCompra", new Date().toISOString().slice(0, 10)); // data do boleto
       formPayload.append("fornecedor", fornecedor);
       formPayload.append("tipo", "financeiroboletos");
       formPayload.append("pasta", "boletos");
@@ -971,7 +971,7 @@ try {
   const formPayload = new FormData();
   formPayload.append("file", arquivo);
   formPayload.append("fileName", fileName);
-  formPayload.append("data", dataCompra);
+  formPayload.append("dataCompra", dataCompra);
   formPayload.append("fornecedor", fornecedor);
   formPayload.append("pasta", "compras");
 

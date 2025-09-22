@@ -89,7 +89,7 @@ try {
   const formDataUpload = new FormData();
   formDataUpload.append("file", comprovanteFile);
   formDataUpload.append("fileName", fileName);
-  formDataUpload.append("dataPagamento", new Date().toISOString().slice(0, 10));
+  formDataUpload.append("dataCompra", new Date().toISOString().slice(0, 10));
   formDataUpload.append("fornecedor", selectedRow.empresa);
   formDataUpload.append("origem", "financeiro");
   formDataUpload.append("pasta", "compras");
@@ -243,7 +243,7 @@ try {
   const formDataUpload = new FormData();
   formDataUpload.append("file", selectedBoletoFile);
   formDataUpload.append("fileName", fileName);
-  formDataUpload.append("dataPagamento", new Date().toISOString().slice(0, 10));
+  formDataUpload.append("dataCompra", new Date().toISOString().slice(0, 10));
   formDataUpload.append("fornecedor", selectedRow.empresa);
   formDataUpload.append("origem", "financeiroboletos");
   formDataUpload.append("pasta", "boletos");
@@ -311,7 +311,7 @@ try {
     const formDataUpload = new FormData();
     formDataUpload.append("file", comprovanteFile);
     formDataUpload.append("fileName", fileName);
-    formDataUpload.append("dataPagamento", new Date().toISOString().slice(0, 10));
+    formDataUpload.append("dataCompra", new Date().toISOString().slice(0, 10));
     formDataUpload.append("fornecedor", selectedRow.empresa);
     formDataUpload.append("origem", "financeiro");
     formDataUpload.append("pasta", "compras");

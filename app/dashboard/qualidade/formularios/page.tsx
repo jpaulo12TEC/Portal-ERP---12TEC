@@ -147,7 +147,7 @@ const moverArquivoAntigo = async (itemId: string, destino: string) => {
     console.warn("Falha ao mover arquivo antigo (não fatal):", err);
   }
 };
-
+const now = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 const handleSalvarFormulario = async () => {
   console.log(">> handleSalvarFormulario INICIADO", {
     editingForm,
@@ -176,11 +176,12 @@ const handleSalvarFormulario = async () => {
       const extension = file.name.split('.').pop() || '';
       const fileName = `formulario_${Date.now()}.${extension}`;
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("fileName", fileName);
-      formData.append("tipo", "formularios");
-      formData.append("caminho", editingForm?.item_id || "novo");
+const formData = new FormData();
+formData.append("file", file);
+formData.append("fileName", fileName);
+formData.append("tipo", "formularios");
+formData.append("caminho", editingForm?.item_id || "novo");
+formData.append("dataCompra", new Date().toISOString()); // ✅ Adicionado
 
       const res = await fetch("/api/onedrive/upload", { method: "POST", body: formData });
       const uploaded = await res.json();

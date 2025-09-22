@@ -545,7 +545,7 @@ try {
   const formDataUpload = new FormData();
   formDataUpload.append("file", comprovante);
   formDataUpload.append("fileName", fileName);
-  formDataUpload.append("data", new Date().toISOString().slice(0, 10)); // data do pagamento
+  formDataUpload.append("dataCompra", new Date().toISOString().slice(0, 10)); // data do pagamento
   formDataUpload.append("fornecedor", pagamentoSelecionado!.empresa);
   formDataUpload.append("origem", "financeiro");
   formDataUpload.append("pasta", "compras");
