@@ -164,7 +164,7 @@ useEffect(() => {
                 </li>
 
                 <li className={activeTab === 'Financeiro' ? 'active' : ''}>
-                  <a href="/dashboard/financeiro" onClick={(e) => { e.preventDefault(); navigateTo('Financeiro', '/dashboard/financeiro'); }}>
+                  <a href="/dashboard/Financeiro" onClick={(e) => { e.preventDefault(); navigateTo('Financeiro', '/dashboard/Financeiro'); }}>
                     <div className="icon"><FaChartBar /></div>
                     <div className={`text ${menuActive ? '' : 'collapsed'}`}>Financeiro</div>
                   </a>
