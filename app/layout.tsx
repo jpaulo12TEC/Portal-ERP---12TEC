@@ -8,8 +8,12 @@ export const metadata: Metadata = {
   title: 'Portal 12 TEC',
   description: 'Portal coorporativo da 12 TEC Engenharia',
    icons: {
-    icon: "/12TEC.ico",      // favicon principal
-    shortcut: "/12TEC.ico",  // favicon para navegadores que usam shortcut
+    icon: '/12TEC.ico?v=2', // força o navegador a buscar a versão nova
+apple: '/12TEC.ico',     // Para iOS/Apple
+    other: {
+      rel: 'icon',
+      url: '/12TEC.ico',
+    },
   },
 };
 
