@@ -7,13 +7,13 @@ import ClientWrapper from '@/components/ClientWrapper'; // <-- novo
 export const metadata: Metadata = {
   title: 'Portal 12 TEC',
   description: 'Portal coorporativo da 12 TEC Engenharia',
-   icons: {
-    icon: '/12TEC.ico?v=2', // força o navegador a buscar a versão nova
-apple: '/12TEC.ico',     // Para iOS/Apple
-    other: {
-      rel: 'icon',
-      url: '/12TEC.ico',
-    },
+    icons: {
+    icon: [
+      { url: '/favicon.ico?v=3', type: 'image/x-icon' },   // principal
+      { url: '/12TEC.ico?v=3', type: 'image/x-icon' }      // alternativo (opcional)
+    ],
+    shortcut: '/favicon.ico?v=3',
+    apple: '/favicon.ico?v=3',
   },
 };
 
