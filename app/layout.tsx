@@ -7,8 +7,9 @@ import ClientWrapper from '@/components/ClientWrapper'; // <-- novo
 export const metadata: Metadata = {
   title: 'Portal 12 TEC',
   description: 'Portal coorporativo da 12 TEC Engenharia',
-  icons: {
-    icon: "/12TEC.ico",
+   icons: {
+    icon: "/12TEC.ico",      // favicon principal
+    shortcut: "/12TEC.ico",  // favicon para navegadores que usam shortcut
   },
 };
 
