@@ -1,9 +1,12 @@
+// app/layout.tsx
 import './globals.css';
 import type { Metadata } from 'next';
 import { UserProvider } from '@/components/UserContext';
 import SessionWrapper from '@/components/SessionWrapper';
 import ClientWrapper from '@/components/ClientWrapper';
-import { getFaviconUrl } from '@/utils/getFaviconUrl';
+
+// Função para quebrar cache da CDN e navegador
+const getFaviconUrl = (fileName: string) => `${fileName}?v=${Date.now()}`;
 
 export const metadata: Metadata = {
   title: 'Portal 12 TEC',
@@ -11,7 +14,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: getFaviconUrl('/favicon.ico'), type: 'image/x-icon' },
-      { url: getFaviconUrl('/12TEC.ico'), type: 'image/x-icon' }
+      { url: getFaviconUrl('/12TEC.ico'), type: 'image/x-icon' }, // alternativo (opcional)
     ],
     shortcut: getFaviconUrl('/favicon.ico'),
     apple: getFaviconUrl('/favicon.ico'),
@@ -25,6 +28,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
       <head>
+        {/* Serve favicon como arquivo estático, evitando .rsc */}
         <link rel="icon" href={faviconUrl} type="image/x-icon" />
         <link rel="shortcut icon" href={faviconUrl} />
         <link rel="apple-touch-icon" href={appleIconUrl} />
