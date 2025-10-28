@@ -161,12 +161,8 @@ const handleCheckboxChange = (docId: string, isChecked: boolean, aba: string) =>
 const handleDownloadSelectedDocs = async () => {
   if (!funcionario || selectedDocs.size === 0) return;
 
-  type DocumentoEnviar = {
-    id: string;
-    nome_arquivo: string; // já é a URL do SharePoint
-  };
+  type DocumentoEnviar = { id: string; nome_arquivo: string }; // URL do SharePoint
 
-  // Funções PKCE
   const generateCodeVerifier = (length = 64) => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
     let result = '';
@@ -178,13 +174,11 @@ const handleDownloadSelectedDocs = async () => {
 
   const generateCodeChallenge = async (codeVerifier: string) => {
     const encoder = new TextEncoder();
-    const data = encoder.encode(codeVerifier);
-    const digest = await crypto.subtle.digest('SHA-256', data);
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(digest)))
+    const digest = await crypto.subtle.digest('SHA-256', encoder.encode(codeVerifier));
+    return btoa(String.fromCharCode(...new Uint8Array(digest)))
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '');
-    return base64;
   };
 
   try {
@@ -200,53 +194,113 @@ const handleDownloadSelectedDocs = async () => {
     if (error) throw error;
     const docs = data as DocumentoEnviar[];
 
-    for (const doc of docs) {
-      try {
-        const apiUrl = `/api/onedrive/download?url=${encodeURIComponent(doc.nome_arquivo)}`;
-        const response = await fetch(apiUrl);
+    // Salva pendentes e página atual
+    localStorage.setItem('pendingDownloads', JSON.stringify(docs.map(d => d.nome_arquivo)));
+    localStorage.setItem('currentPage', window.location.pathname + window.location.search);
 
-        if (response.status === 401) {
-          // Gera PKCE dinamicamente
-          const codeVerifier = generateCodeVerifier();
-          const codeChallenge = await generateCodeChallenge(codeVerifier);
+    const downloadWithToken = async (url: string) => {
+      const apiUrl = `/api/onedrive/download?url=${encodeURIComponent(url)}`;
+      const response = await fetch(apiUrl);
 
-          // Salva code_verifier em cookie
-          document.cookie = `code_verifier=${codeVerifier}; path=/; SameSite=Strict; ${location.protocol === 'https:' ? 'secure' : ''}`;
+      if (response.status === 401) {
+        // Token ausente → redireciona pro login
+        const codeVerifier = generateCodeVerifier();
+        const codeChallenge = await generateCodeChallenge(codeVerifier);
+        document.cookie = `code_verifier=${codeVerifier}; path=/; SameSite=Strict; ${location.protocol === 'https:' ? 'secure' : ''}`;
 
-
-          // Redireciona pro login Microsoft
-          const loginUrl = `https://login.microsoftonline.com/${process.env.NEXT_PUBLIC_AZURE_TENANT_ID}/oauth2/v2.0/authorize?client_id=${process.env.NEXT_PUBLIC_AZURE_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_BASE_URL + '/api/auth/callback')}&response_mode=query&scope=User.Read Files.ReadWrite.All offline_access&code_challenge=${codeChallenge}&code_challenge_method=S256`;
-          window.location.href = loginUrl;
-          return; // interrompe o loop
-        }
-
-        if (!response.ok) throw new Error(`Falha ao baixar ${doc.nome_arquivo}`);
-
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        const parts = doc.nome_arquivo.split("/");
-        a.download = decodeURIComponent(parts[parts.length - 1]) || "documento.pdf";
-
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        console.log(`Baixado via API: ${doc.nome_arquivo}`);
-      } catch (err) {
-        console.error(`Erro ao baixar ${doc.nome_arquivo}:`, err);
+        const loginUrl = `https://login.microsoftonline.com/${process.env.NEXT_PUBLIC_AZURE_TENANT_ID}/oauth2/v2.0/authorize?client_id=${process.env.NEXT_PUBLIC_AZURE_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_BASE_URL + '/api/auth/callback')}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}&response_mode=query&scope=User.Read Files.ReadWrite.All offline_access&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+        window.location.href = loginUrl;
+        return false; // interrompe
       }
+
+      if (!response.ok) throw new Error(`Falha ao baixar ${url}`);
+
+      const blob = await response.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const parts = url.split('/');
+      a.download = decodeURIComponent(parts[parts.length - 1]) || 'documento.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return true;
+    };
+
+    for (const url of docs.map(d => d.nome_arquivo)) {
+      const ok = await downloadWithToken(url);
+      if (!ok) break;
     }
 
-    console.log("Download finalizado para todos os documentos selecionados.");
   } catch (err) {
-    console.error("Erro ao buscar ou baixar documentos:", err);
+    console.error(err);
     alert("Erro ao baixar os documentos.");
   }
 };
+
+// **No load da página, tenta baixar pendentes automaticamente**
+window.addEventListener('load', async () => {
+  const pendingDownloads = JSON.parse(localStorage.getItem('pendingDownloads') || '[]') as string[];
+  if (pendingDownloads.length > 0) {
+    const currentPage = localStorage.getItem('currentPage') || '/';
+    // limpa antes de começar
+    localStorage.removeItem('pendingDownloads');
+    localStorage.removeItem('currentPage');
+
+    for (const url of pendingDownloads) {
+      try {
+        const res = await fetch(`/api/onedrive/download?url=${encodeURIComponent(url)}`);
+        if (!res.ok) throw new Error(`Falha ao baixar ${url}`);
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const parts = url.split('/');
+        a.download = decodeURIComponent(parts[parts.length - 1]) || 'documento.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // volta para página original (opcional, mas já deve estar na mesma)
+    if (window.location.pathname + window.location.search !== currentPage) {
+      window.history.replaceState(null, '', currentPage);
+    }
+  }
+});
+
+
+// Após login bem-sucedido, usar isso na página carregada:
+const processPendingDownloads = async () => {
+  const pending = localStorage.getItem('pendingDownloads');
+  if (!pending) return;
+
+  const urls: string[] = JSON.parse(pending);
+  localStorage.removeItem('pendingDownloads');
+
+  for (const url of urls) {
+    try {
+      const apiUrl = `/api/onedrive/download?url=${encodeURIComponent(url)}`;
+      const res = await fetch(apiUrl);
+      if (!res.ok) continue;
+
+      const blob = await res.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      const parts = url.split('/');
+      a.download = decodeURIComponent(parts[parts.length - 1]) || 'documento.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Erro no download pós-login:", err);
+    }
+  }
+};
+
 
 
 

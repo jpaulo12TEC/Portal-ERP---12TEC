@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
-  const code = req.nextUrl.searchParams.get('code');
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL!;
+  const code = req.nextUrl.searchParams.get('code');
+  const redirectPath = req.nextUrl.searchParams.get('redirect') || '/';
+
   if (!code) return NextResponse.redirect(`${baseUrl}/?error=no_code`);
 
   const clientId = process.env.AZURE_CLIENT_ID!;
@@ -29,15 +31,12 @@ export async function GET(req: NextRequest) {
 
   if (!res.ok) {
     console.error('Erro ao obter token:', data);
-    return NextResponse.redirect(
-      `${baseUrl}/?error=${encodeURIComponent(data.error_description || 'token_failed')}`
-    );
+    return NextResponse.redirect(`${baseUrl}/?error=${encodeURIComponent(data.error_description || 'token_failed')}`);
   }
 
-  const response = NextResponse.redirect(`${baseUrl}/dashboard`);
+  const response = NextResponse.redirect(`${baseUrl}${redirectPath}`);
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Access token
   response.cookies.set('azure_token', data.access_token, {
     httpOnly: true,
     secure: isProduction,
@@ -46,7 +45,6 @@ export async function GET(req: NextRequest) {
     maxAge: data.expires_in,
   });
 
-  // Refresh token
   if (data.refresh_token) {
     response.cookies.set('azure_refresh_token', data.refresh_token, {
       httpOnly: true,
@@ -57,9 +55,8 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Deleta code_verifier de forma compatível
-response.cookies.delete({ name: 'code_verifier', path: '/' });
-
+  // Limpa code_verifier
+  response.cookies.set('code_verifier', '', { path: '/', maxAge: 0 });
 
   return response;
 }
