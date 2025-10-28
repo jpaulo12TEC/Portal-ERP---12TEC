@@ -166,6 +166,27 @@ const handleDownloadSelectedDocs = async () => {
     nome_arquivo: string; // já é a URL do SharePoint
   };
 
+  // Funções PKCE
+  const generateCodeVerifier = (length = 64) => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  const generateCodeChallenge = async (codeVerifier: string) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(codeVerifier);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(digest)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    return base64;
+  };
+
   try {
     const tabela = abaAtivaPorSelecao === "documentacaogeral"
       ? "documentoscolaboradores"
@@ -181,9 +202,23 @@ const handleDownloadSelectedDocs = async () => {
 
     for (const doc of docs) {
       try {
-        // Chama a API do Next.js que faz o fetch do SharePoint
         const apiUrl = `/api/onedrive/download?url=${encodeURIComponent(doc.nome_arquivo)}`;
         const response = await fetch(apiUrl);
+
+        if (response.status === 401) {
+          // Gera PKCE dinamicamente
+          const codeVerifier = generateCodeVerifier();
+          const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+          // Salva code_verifier em cookie
+          document.cookie = `code_verifier=${codeVerifier}; path=/; SameSite=Strict; ${location.protocol === 'https:' ? 'secure' : ''}`;
+
+
+          // Redireciona pro login Microsoft
+          const loginUrl = `https://login.microsoftonline.com/${process.env.NEXT_PUBLIC_AZURE_TENANT_ID}/oauth2/v2.0/authorize?client_id=${process.env.NEXT_PUBLIC_AZURE_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_BASE_URL + '/api/auth/callback')}&response_mode=query&scope=User.Read Files.ReadWrite.All offline_access&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+          window.location.href = loginUrl;
+          return; // interrompe o loop
+        }
 
         if (!response.ok) throw new Error(`Falha ao baixar ${doc.nome_arquivo}`);
 
@@ -192,8 +227,6 @@ const handleDownloadSelectedDocs = async () => {
 
         const a = document.createElement("a");
         a.href = url;
-
-        // Extrai nome do arquivo da URL do SharePoint
         const parts = doc.nome_arquivo.split("/");
         a.download = decodeURIComponent(parts[parts.length - 1]) || "documento.pdf";
 
@@ -214,6 +247,8 @@ const handleDownloadSelectedDocs = async () => {
     alert("Erro ao baixar os documentos.");
   }
 };
+
+
 
 
 
