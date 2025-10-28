@@ -163,19 +163,16 @@ const handleDownloadSelectedDocs = async () => {
 
   type Documentosenviar = {
     id: string;
-    nome_arquivo: string; // sempre a URL agora
+    nome_arquivo: string; // já é a URL do SharePoint
   };
 
   let docs: Documentosenviar[] = [];
 
   try {
-    // Definir tabela
-    const tabela =
-      abaAtivaPorSelecao === "documentacaogeral"
-        ? "documentoscolaboradores"
-        : "comprovantesfuncionarios"; // contracheques e demais comprovantes
+    const tabela = abaAtivaPorSelecao === "documentacaogeral"
+      ? "documentoscolaboradores"
+      : "comprovantesfuncionarios";
 
-    // Buscar documentos selecionados
     const { data, error } = await supabase
       .from(tabela)
       .select("id, nome_arquivo")
@@ -186,23 +183,27 @@ const handleDownloadSelectedDocs = async () => {
 
     for (const doc of docs) {
       try {
-        // Download via proxy do Next.js
-        const downloadUrl = `/api/onedrive/download?url=${encodeURIComponent(doc.nome_arquivo)}`;
-        const response = await fetch(downloadUrl);
+        // Chama a API do Next.js para baixar do SharePoint
+        const apiUrl = `/api/onedrive/download?url=${encodeURIComponent(doc.nome_arquivo)}`;
+        const response = await fetch(apiUrl);
+
         if (!response.ok) throw new Error(`Falha ao baixar ${doc.nome_arquivo}`);
 
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
-
         const a = document.createElement("a");
         a.href = url;
-        a.download = doc.nome_arquivo.split("/").pop() || "documento.pdf";
+
+        // Extrai nome do arquivo da URL do SharePoint
+        const parts = doc.nome_arquivo.split("/");
+        a.download = parts[parts.length - 1] || "documento.pdf";
+
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        console.log(`Baixado via proxy: ${doc.nome_arquivo}`);
+        console.log(`Baixado via API: ${doc.nome_arquivo}`);
       } catch (err) {
         console.error(`Erro ao baixar ${doc.nome_arquivo}:`, err);
       }
@@ -214,6 +215,7 @@ const handleDownloadSelectedDocs = async () => {
     alert("Erro ao baixar os documentos.");
   }
 };
+
 
 
 

@@ -1,19 +1,15 @@
-// pages/api/download.ts
-import { NextApiRequest, NextApiResponse } from "next";
+// app/api/onedrive/download/route.ts
+import { NextRequest, NextResponse } from "next/server";
 import { getAppToken } from "@/lib/oneDrive";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export async function GET(req: NextRequest) {
   try {
-    const { url } = req.query;
+    const url = req.nextUrl.searchParams.get("url");
+    if (!url) return NextResponse.json({ error: "URL do arquivo é obrigatória" }, { status: 400 });
 
-    if (!url || typeof url !== "string") {
-      return res.status(400).json({ error: "URL do arquivo é obrigatória" });
-    }
-
-    // Pega token de app do Azure
     const token = await getAppToken();
 
-    // Faz fetch para a URL do SharePoint/OneDrive usando token Bearer
+    // Fetch direto do SharePoint/OneDrive
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -23,21 +19,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!response.ok) {
       const text = await response.text();
       console.error("Erro ao baixar arquivo do SharePoint:", text);
-      return res.status(500).json({ error: "Erro ao baixar arquivo" });
+      return NextResponse.json({ error: "Erro ao baixar arquivo" }, { status: 500 });
     }
 
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Extrai nome do arquivo da URL
     const parts = url.split("/");
-    const filename = parts[parts.length - 1] || "documento";
+    const filename = parts[parts.length - 1] || "documento.pdf";
 
-    res.setHeader("Content-Type", "application/octet-stream");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.send(buffer);
+    return new NextResponse(buffer, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      },
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Erro interno no servidor" });
+    return NextResponse.json({ error: "Erro interno no servidor" }, { status: 500 });
   }
 }
