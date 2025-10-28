@@ -140,6 +140,7 @@ const [documentospersonalizados, setDocumentospersonalizados] = useState<Documen
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const categorias = [
     "Identificação",
+    "RH",
     "Competência",
     "Contratação",
     "Segurança",
@@ -162,105 +163,59 @@ const handleDownloadSelectedDocs = async () => {
 
   type Documentosenviar = {
     id: string;
-    nome_arquivo: string;
+    nome_arquivo: string; // sempre a URL agora
   };
-
-  let bucket = "";
-  let pasta = "";
-  let tabela = "";
 
   let docs: Documentosenviar[] = [];
 
-  console.log("Aba ativa:", abaAtivaPorSelecao);
+  try {
+    // Definir tabela
+    const tabela =
+      abaAtivaPorSelecao === "documentacaogeral"
+        ? "documentoscolaboradores"
+        : "comprovantesfuncionarios"; // contracheques e demais comprovantes
 
-  if (abaAtivaPorSelecao === "documentacaogeral") {
-    bucket = "documentacaocolaboradores";
-    tabela = "documentoscolaboradores";
-    pasta = limparString(`docs/${funcionario.cpf}-${funcionario.nome_completo}`);
-
-    console.log("Bucket:", bucket);
-    console.log("Tabela:", tabela);
-    console.log("Pasta:", pasta);
-
+    // Buscar documentos selecionados
     const { data, error } = await supabase
       .from(tabela)
-      .select('id, nome_arquivo')
-      .in('id', Array.from(selectedDocs));
+      .select("id, nome_arquivo")
+      .in("id", Array.from(selectedDocs));
 
-    if (error) {
-      console.error("Erro ao buscar documentos:", error);
-      return;
+    if (error) throw error;
+    docs = data as Documentosenviar[];
+
+    for (const doc of docs) {
+      try {
+        // Download via proxy do Next.js
+        const downloadUrl = `/api/onedrive/download?url=${encodeURIComponent(doc.nome_arquivo)}`;
+        const response = await fetch(downloadUrl);
+        if (!response.ok) throw new Error(`Falha ao baixar ${doc.nome_arquivo}`);
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = doc.nome_arquivo.split("/").pop() || "documento.pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        console.log(`Baixado via proxy: ${doc.nome_arquivo}`);
+      } catch (err) {
+        console.error(`Erro ao baixar ${doc.nome_arquivo}:`, err);
+      }
     }
 
-    docs = data;
-    console.log("Documentos encontrados:", docs);
-
-  } else if (abaAtivaPorSelecao === "contracheques") {
-    bucket = "comprovantes-funcionarios";
-    tabela = "comprovantesfuncionarios";
-    pasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
-
-    console.log("Bucket:", bucket);
-    console.log("Tabela:", tabela);
-    console.log("Pasta:", pasta);
-
-    const { data, error } = await supabase
-      .from(tabela)
-      .select('id, nome_arquivo')
-      .in('id', Array.from(selectedDocs));
-
-    if (error) {
-      console.error("Erro ao buscar contracheques:", error);
-      return;
-    }
-
-    docs = data;
-    console.log("Contracheques encontrados:", docs);
-
-  } else if (abaAtivaPorSelecao === "demaisComprovantes") {
-    bucket = "comprovantes-funcionarios";
-    tabela = "comprovantesfuncionarios";
-    pasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
-
-    console.log("Bucket:", bucket);
-    console.log("Tabela:", tabela);
-    console.log("Pasta:", pasta);
-
-    const { data, error } = await supabase
-      .from(tabela)
-      .select('id, nome_arquivo')
-      .in('id', Array.from(selectedDocs));
-
-    if (error) {
-      console.error("Erro ao buscar comprovantes:", error);
-      return;
-    }
-
-    docs = data;
-    console.log("Comprovantes encontrados:", docs);
+    console.log("Download finalizado para todos os documentos selecionados.");
+  } catch (err) {
+    console.error("Erro ao buscar ou baixar documentos:", err);
+    alert("Erro ao baixar os documentos.");
   }
-
-  for (const doc of docs) {
-    console.log(`Baixando: ${doc.nome_arquivo} de ${bucket}/${pasta}`);
-    
-    const { data, error: downloadError } = await supabase.storage
-      .from(bucket)
-      .download(`${pasta}/${doc.nome_arquivo}`);
-
-    if (downloadError) {
-      console.error(`Erro ao baixar ${doc.nome_arquivo}:`, downloadError);
-      continue;
-    }
-
-    const fileUrl = URL.createObjectURL(data);
-    const a = document.createElement("a");
-    a.href = fileUrl;
-    a.download = doc.nome_arquivo;
-    a.click();
-  }
-
-  console.log("Download finalizado para todos os documentos selecionados.");
 };
+
+
 
 
 const fetchDocumentos = async () => {
@@ -334,7 +289,7 @@ const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
         <thead>
           <tr className="bg-gray-100 text-left text-gray-600 border-b border-gray-300">
             {modoSelecao && (
-  <th className="py-2 px-0 text-center">Selecionar</th>
+            <th className="py-2 px-0 text-center">Selecionar</th>
 )}
             <th className="py-2 px-4">Nome do documento</th>
             <th className="py-2 px-4 text-center">Disponível</th>
@@ -423,66 +378,84 @@ const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
 };
 
 const handleSalvarInserirSubstituir = async () => {
+  console.log("🚀 Iniciando handleSalvarInserirSubstituir...");
   if (!arquivoinserirsubstituir) {
     alert("Selecione um arquivo antes de continuar.");
     return;
   }
 
+  if (!funcionario) {
+    alert("Dados do funcionário não carregados.");
+    return;
+  }
+
   try {
-    if (!funcionario) {
-      alert("Dados do funcionário não carregados.");
-      return;
-    }
     console.log("Arquivo:", arquivoinserirsubstituir);
     console.log("Vencimento:", vencimentoinserirsubstituir);
-    
+
     const dataAtual = new Date();
     const dataFormatada = `${dataAtual.toLocaleDateString('pt-BR').replace(/\//g, '-')}_${dataAtual.toLocaleTimeString('pt-BR')}`;
     const nomeArquivo = `${docSelecionado?.nome_documento} - ${funcionario.abreviatura} - ${dataFormatada}`;
     const nomeArquivoLimpo = limparString(nomeArquivo);
     const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
-    const caminho = `docs/${nomePasta}/${nomeArquivoLimpo}`;
+    const categoria = docSelecionado?.categoria || activeTabLocal; // pega a categoria do documento ou da aba
+    const caminhoUpload = `Documentos de ${categoria}`;
 
-    // 1. Upload do arquivo no storage
-    const { data: storageData, error: uploadError } = await supabase.storage
-      .from("documentacaocolaboradores") // Nome do bucket
-      .upload(caminho, arquivoinserirsubstituir, { upsert: true });
+    // 🔥 Upload via API OneDrive
+    console.log("🌐 Preparando FormData para upload via API OneDrive...");
+    const formPayload = new FormData();
+    formPayload.append("file", arquivoinserirsubstituir);
+    formPayload.append("fileName", nomeArquivoLimpo);
+    formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
+    formPayload.append("fornecedor", funcionario.nome_completo);
+    formPayload.append("tipo", "funcionarios");
+    formPayload.append("caminho", caminhoUpload);
 
-    if (uploadError) {
-      console.error("Erro ao enviar arquivo:", uploadError.message);
-      alert("Erro ao enviar o arquivo.");
+    console.log("📦 Enviando requisição para /api/onedrive/upload...");
+    const res = await fetch("/api/onedrive/upload", {
+      method: "POST",
+      body: formPayload,
+    });
+
+    const json = await res.json();
+    console.log("📦 JSON retornado do OneDrive:", json);
+
+    if (!json?.success || !json.file?.url) {
+      console.error("❌ Erro no upload da foto via API:", json);
+      alert("Erro ao enviar o arquivo para o OneDrive.");
       return;
     }
 
-   if (docSelecionado && docSelecionado.id) {
-      // 🔄 Atualizar apenas campos específicos
+    const arquivoUrl = json.file.url;
+    console.log("✅ Upload concluído! URL do arquivo:", arquivoUrl);
+
+    if (docSelecionado && docSelecionado.id) {
+      console.log("🧠 Atualizando documento existente...");
       const dadosAtualizacao = {
-        nome_arquivo: nomeArquivoLimpo,
+        nome_arquivo: arquivoUrl,        
         atualizado_por: nome,
         ultima_atualizacao: new Date().toISOString(),
-        vencimento: vencimentoinserirsubstituir || null
+        vencimento: vencimentoinserirsubstituir || null,
       };
-      console.log("docInfo:", docSelecionado.id); // <- Veja se o ID está vindo
 
-     const { data, error: updateError, count } = await supabase
+      const { data, error: updateError } = await supabase
         .from("documentoscolaboradores")
         .update(dadosAtualizacao)
-        .eq("id", String(docSelecionado.id).toLowerCase().trim())
-        .select(); // ⚠️ necessário para retornar dados
-console.log("Retorno do update:", data);
+        .eq("id", docSelecionado.id)
+        .select();
 
-
+      console.log("📊 Resultado do update:", { data, updateError });
       if (updateError) {
-        console.error("Erro ao atualizar documento:", updateError.message);
+        console.error("❌ Erro ao atualizar documento:", updateError);
         alert("Erro ao substituir o documento.");
         return;
       }
 
       alert("Documento substituído com sucesso!");
     } else {
-      // 📥 Inserção com todos os campos
+      console.log("📥 Inserindo novo documento...");
       const dadosDocumento = {
-        funcionario_id: id,
+        funcionario_id: funcionario.id,
         nome_colaborador: funcionario.nome_completo,
         tipo_documento: docSelecionado?.categoria,
         nome_documento: docSelecionado?.nome_documento,
@@ -492,17 +465,19 @@ console.log("Retorno do update:", data);
         created_at: new Date().toISOString(),
         valido: true,
         Visualizar_menu: true,
-        nome_arquivo: nomeArquivoLimpo,
+        nome_arquivo: arquivoUrl,
         atualizado_por: nome,
         ultima_atualizacao: new Date().toISOString(),
       };
 
-      const { error: insertError } = await supabase
+      const { data, error: insertError } = await supabase
         .from("documentoscolaboradores")
-        .insert([dadosDocumento]);
+        .insert([dadosDocumento])
+        .select();
 
+      console.log("📊 Resultado da inserção:", { data, insertError });
       if (insertError) {
-        console.error("Erro ao salvar novo documento:", insertError.message);
+        console.error("❌ Erro ao salvar novo documento:", insertError);
         alert("Erro ao salvar o documento.");
         return;
       }
@@ -514,11 +489,17 @@ console.log("Retorno do update:", data);
     setMostrarModal(false);
     setVencimentoInserirSubstituir("");
     setArquivoInserirSubstituir(null);
+
   } catch (err) {
-    console.error("Erro inesperado:", err);
+    console.error("💥 Erro inesperado:", err);
     alert("Ocorreu um erro inesperado.");
   }
 };
+
+
+
+
+
 
   const handleArquivoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -586,6 +567,8 @@ console.log("Retorno do update:", data);
             {renderDocumentos('Contratação', DOCUMENTOS_OBRIGATORIOS.contratacao(funcionario?.tipo_regime || "CLT"))}
             {renderDocumentos('Identificação', DOCUMENTOS_OBRIGATORIOS.identificacao)}
             {renderDocumentos('Competência', DOCUMENTOS_OBRIGATORIOS.competencia)}
+                  {/* Nova categoria RH */}
+            {renderDocumentos('RH', [])} {/* Nenhum documento obrigatório */}
             {renderDocumentos('Segurança', DOCUMENTOS_OBRIGATORIOS.seguranca)}
 
              {/* Botão */}
@@ -1079,7 +1062,7 @@ const handleSalvarComprovantes = async () => {
   }
 
   const modoSalvamento = updateOrNot ? "update" : "novo"; 
-console.log("Modo de salvamento:", modoSalvamento);
+  console.log("Modo de salvamento:", modoSalvamento);
 
   try {
     const dataAtual = new Date();
@@ -1087,22 +1070,37 @@ console.log("Modo de salvamento:", modoSalvamento);
     const nomeArquivo = `${nomeDocumentoComprovantes} - ${funcionario.abreviatura} - ${dataFormatada}`;
     const nomeArquivoLimpo = limparString(nomeArquivo);
     const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
-    const caminhoArquivo = `${nomePasta}/${nomeArquivoLimpo}`;
-    const caminhoArquivo2 = `${nomePasta}/${nomeArquivos}`;
 
+    // Caminho completo no formato "Documentação de &categoria"
+    const caminhoUpload = `Documentação de Comprovantes/${nomePasta}/${nomeArquivoLimpo}`;
+    console.log("📂 Caminho para upload via API:", caminhoUpload);
+
+    // ✅ UPLOAD VIA API
+    const formPayload = new FormData();
+    formPayload.append("file", arquivocomprovantes);
+    formPayload.append("fileName", nomeArquivoLimpo);
+    formPayload.append("caminho", "Contracheques e Folhas de Ponto");
+    formPayload.append("fornecedor", funcionario.nome_completo || "Funcionário");
+    formPayload.append("tipo", "funcionarios");
+    formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
+
+    const res = await fetch("/api/onedrive/upload", {
+      method: "POST",
+      body: formPayload,
+    });
+
+    const json = await res.json();
+    if (!json?.success || !json.file?.url) {
+      console.error("❌ Erro no upload da API:", json);
+      alert("Erro ao enviar o arquivo.");
+      return;
+    }
+
+    const novaUrl = json.file.url;
+    console.log("✅ Upload realizado com sucesso! URL:", novaUrl);
+
+    // Inserção ou atualização no banco
     if (modoSalvamento === "novo") {
-      // 1. Upload
-      const { error: uploadError } = await supabase.storage
-        .from("comprovantes-funcionarios")
-        .upload(caminhoArquivo, arquivocomprovantes);
-
-      if (uploadError) {
-        console.error("Erro ao enviar arquivo:", uploadError.message);
-        alert("Erro ao enviar o arquivo.");
-        return;
-      }
-
-      // 2. Inserção no banco
       const { error: insertError } = await supabase
         .from("comprovantesfuncionarios")
         .insert([{
@@ -1110,7 +1108,7 @@ console.log("Modo de salvamento:", modoSalvamento);
           nome_documento: nomeDocumentoComprovantes,
           mes_referencia: mesReferencia,
           referente_a: referenteA,
-          nome_arquivo: nomeArquivoLimpo
+          nome_arquivo: novaUrl,          
         }]);
 
       if (insertError) {
@@ -1118,28 +1116,17 @@ console.log("Modo de salvamento:", modoSalvamento);
         alert("Erro ao salvar informações no banco.");
         return;
       }
-
     } else if (modoSalvamento === "update") {
-      // 1. Opcionalmente, reenvio o arquivo (sobrescrevendo)
-      const { error: uploadError } = await supabase.storage
-        .from("comprovantes-funcionarios")
-        .upload(caminhoArquivo2, arquivocomprovantes, { upsert: true });
-
-      if (uploadError) {
-        console.error("Erro ao atualizar arquivo:", uploadError.message);
-        alert("Erro ao atualizar o arquivo.");
-        return;
-      }
-
-      // 2. Atualização no banco
       const { error: updateError } = await supabase
         .from("comprovantesfuncionarios")
         .update({
           nome_documento: nomeDocumentoComprovantes,
           mes_referencia: mesReferencia,
-          referente_a: referenteA,                   
+          referente_a: referenteA,
+          nome_arquivo: novaUrl,
+         
         })
-        .eq("id", idComprovanteSelecionado); // você precisa ter esse ID disponível
+        .eq("id", idComprovanteSelecionado);
 
       if (updateError) {
         console.error("Erro ao atualizar no banco:", updateError.message);
@@ -1172,43 +1159,115 @@ console.log("Modo de salvamento:", modoSalvamento);
 
 
 
-  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    setUploading(true);
-    try {
-      const file = event.target.files?.[0];
-      if (!file) {
-        alert('Nenhum arquivo selecionado.');
-        return;
-      }
 
-      if (!funcionario || !funcionario.foto) {
-        alert('Funcionario nao encontrado ou foto nao disponivel.');
-        return;
-      }
+const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  console.log('🚀 Iniciando handleUpload...');
+  setUploading(true);
 
-      const nomeArquivo = funcionario.foto;
+  try {
+    const file = event.target.files?.[0];
+    console.log('📁 Arquivo selecionado:', file?.name);
 
-      const { error: uploadError } = await supabase.storage
-        .from('fotofuncionarios')
-        .upload(nomeArquivo, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data } = await supabase.storage.from('fotofuncionarios').getPublicUrl(nomeArquivo);
-      const novaUrl = data.publicUrl;
-
-      setFotoUrl(novaUrl);
-      alert('Foto atualizada com sucesso!');
-    } catch (error) {
-      console.error('Erro ao fazer upload da foto:', error instanceof Error ? error.message : error);
-      alert('Erro ao fazer upload da foto.');
-    } finally {
+    if (!file) {
+      console.warn('⚠️ Nenhum arquivo foi selecionado.');
+      alert('Nenhum arquivo selecionado.');
       setUploading(false);
+      return;
     }
-  };
+
+    if (!funcionario) {
+      console.warn('⚠️ Funcionário não definido:', funcionario);
+      alert('Funcionário não encontrado.');
+      setUploading(false);
+      return;
+    }
+
+    console.log('🆔 ID do funcionário antes do upload:', funcionario.id);
+    if (!funcionario.id || typeof funcionario.id !== 'string') {
+      alert('ID do funcionário não está definido ou não é UUID válido!');
+      setUploading(false);
+      return;
+    }
+
+    const timestamp = Date.now();
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `foto_funcionario_${timestamp}.${fileExtension}`;
+    console.log('🧩 Nome do arquivo gerado:', fileName);
+
+    // 🔥 Upload via rota API (OneDrive)
+    console.log('🌐 Preparando FormData para envio...');
+    const formPayload = new FormData();
+    formPayload.append('file', file);
+    formPayload.append('fileName', fileName);
+    formPayload.append('dataCompra', new Date().toISOString().slice(0, 10));
+    formPayload.append('fornecedor', funcionario.nome_completo || 'Funcionário');
+    formPayload.append('tipo', 'funcionarios');
+    formPayload.append('caminho', 'Documentos de Identificação');
+
+    console.log('📦 Enviando requisição para /api/onedrive/upload...');
+    const res = await fetch('/api/onedrive/upload', {
+      method: 'POST',
+      body: formPayload,
+    });
+
+    console.log('📬 Resposta recebida da API:', res.status, res.statusText);
+    const json = await res.json();
+    console.log('📦 JSON retornado:', json);
+
+    if (!json?.success || !json.file?.url) {
+      console.error('❌ Erro no upload da foto via API:', json);
+      alert('Erro ao fazer upload da imagem. Verifique e tente novamente.');
+      setUploading(false);
+      return;
+    }
+
+    const novaUrl = json.file.url;
+    console.log('✅ Upload bem-sucedido! URL recebida:', novaUrl);
+    setFotoUrl(novaUrl);
+
+    console.log('🔍 Testando se o registro do funcionário existe antes do update...');
+    const { data: fetchData, error: fetchError } = await supabase
+      .from('funcionarios')
+      .select('*')
+      .eq('id', funcionario.id);
+
+    console.log('📊 Resultado do fetch:', { fetchData, fetchError });
+    if (fetchError || !fetchData || fetchData.length === 0) {
+      console.error('❌ Funcionário não encontrado no banco com este ID.');
+      alert('Funcionário não encontrado no banco com este ID.');
+      setUploading(false);
+      return;
+    }
+
+    console.log('🧠 Atualizando URL da foto no Supabase...');
+    const { data: updateData, error: updateError } = await supabase
+      .from('funcionarios')
+      .update({ foto: novaUrl })
+      .eq('id', funcionario.id)
+      .select();
+
+    console.log('📊 Resultado da atualização no Supabase:', { updateData, updateError });
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar URL da foto no Supabase:', updateError);
+      alert('Foto enviada, mas houve erro ao atualizar no banco.');
+      setUploading(false);
+      return;
+    }
+
+    console.log('🎉 Foto atualizada com sucesso no banco!');
+    alert('Foto atualizada com sucesso!');
+  } catch (error) {
+    console.error('💥 Erro inesperado ao enviar a foto via API:', error);
+    alert('Erro inesperado no upload da foto.');
+  } finally {
+    console.log('🏁 Finalizando handleUpload...');
+    setUploading(false);
+  }
+};
+
+
+
 
   function limparString(str: string): string {
   return str
@@ -1241,6 +1300,7 @@ useEffect(() => {
 }, [id]);
 
 
+
   useEffect(() => {
     async function fetchDados() {
       const { data: func, error: funcError } = await supabase
@@ -1254,14 +1314,28 @@ useEffect(() => {
         return;
       }
 
-      if (func?.foto) {
-        const { data, error } = await supabase.storage.from('fotofuncionarios').createSignedUrl(func.foto, 60);
-        if (data?.signedUrl) {
-          func.fotoUrl = data.signedUrl;
-        } else {
-          console.error("Erro ao gerar URL da foto:", error);
-        }
-      }
+if (func?.foto) {
+  // Verifica se o valor é uma URL completa (por exemplo, do OneDrive)
+  const isExternalUrl = /^https?:\/\//i.test(func.foto);
+
+  if (isExternalUrl) {
+    // É uma URL externa, usa direto
+    func.fotoUrl = func.foto;
+  } else {
+    // É um arquivo no Supabase Storage, precisa gerar URL assinada
+    const { data, error } = await supabase.storage
+      .from('fotofuncionarios')
+      .createSignedUrl(func.foto, 60);
+
+    if (data?.signedUrl) {
+      func.fotoUrl = data.signedUrl;
+    } else {
+      console.error("Erro ao gerar URL da foto:", error);
+    }
+  }
+}
+
+
 
       const { data: docs, error: docsError } = await supabase
         .from('documentoscolaboradores')
@@ -1311,7 +1385,6 @@ const handleSalvarDocumento = async () => {
       return;
     }
 
-    // Verificação se é apenas um arquivo (suporte futuro a múltiplos arquivos)
     if (Array.isArray(arquivo)) {
       alert("Você deve anexar apenas um documento.");
       return;
@@ -1324,14 +1397,35 @@ const handleSalvarDocumento = async () => {
     const nomeArquivo = `${nomeDocumento} - ${funcionario.abreviatura} - ${dataFormatada}`;
     const nomeArquivoLimpo = limparString(nomeArquivo);
     const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
-    const caminho = `docs/${nomePasta}/${nomeArquivoLimpo}`;
 
-    // UPLOAD DO ARQUIVO
-    const { data, error } = await supabase.storage
-      .from('documentacaocolaboradores') // bucket name
-      .upload(caminho, arquivo);
+    // ✅ Caminho padrão via API
+    const caminhoUpload = `Documentos de ${categoriaSelecionada}`;
+    console.log("📂 Caminho para upload:", caminhoUpload);
 
-    if (error) throw error;
+    // UPLOAD VIA API
+    const formPayload = new FormData();
+    formPayload.append("file", arquivo);
+    formPayload.append("fileName", nomeArquivoLimpo);
+    formPayload.append("caminho", caminhoUpload);
+    formPayload.append("fornecedor", funcionario.nome_completo || "Funcionário");
+    formPayload.append("tipo", "funcionarios");
+    formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
+
+
+    const res = await fetch("/api/onedrive/upload", {
+      method: "POST",
+      body: formPayload,
+    });
+
+    const json = await res.json();
+    if (!json?.success || !json.file?.url) {
+      console.error("❌ Erro no upload da API:", json);
+      alert("Erro ao enviar o arquivo.");
+      return;
+    }
+
+    const novaUrl = json.file.url;
+    console.log("✅ Upload realizado com sucesso! URL:", novaUrl);
 
     // INSERIR NO BANCO
     const { error: insertError } = await supabase
@@ -1348,14 +1442,15 @@ const handleSalvarDocumento = async () => {
           created_at: dataAtual.toISOString(),
           valido: true,
           Visualizar_menu: true,
-          nome_arquivo: nomeArquivoLimpo,
-          atualizado_por: nome
+          nome_arquivo: novaUrl,
+          atualizado_por: nome,
+         
         },
       ]);
 
     if (insertError) throw insertError;
 
-    // ADICIONAR DOCUMENTO PERSONALIZADO SE NECESSÁRIO
+    // LÓGICA DE DOCUMENTO PERSONALIZADO (sem alterações)
     const DOCUMENTOS_OBRIGATORIOS = {
       contratacao: (tipoRegime:string) => {
         if (tipoRegime === 'CLT') {
@@ -1389,47 +1484,46 @@ const handleSalvarDocumento = async () => {
       seguranca: ["Treinamento de Seguranca"],
     };
 
-    // ADICIONAR DOCUMENTO PERSONALIZADO SE NECESSÁRIO
-const ehDocumentoNovo = !documentoSelecionado && nomePersonalizado.trim();
-if (ehDocumentoNovo) {
-  const obrigatorios = [
-    ...DOCUMENTOS_OBRIGATORIOS.identificacao,
-    ...DOCUMENTOS_OBRIGATORIOS.competencia,
-    ...DOCUMENTOS_OBRIGATORIOS.seguranca,
-    ...DOCUMENTOS_OBRIGATORIOS.contratacao(funcionario.tipo_regime),
-  ];
+    const ehDocumentoNovo = !documentoSelecionado && nomePersonalizado.trim();
+    if (ehDocumentoNovo) {
+      const obrigatorios = [
+        ...DOCUMENTOS_OBRIGATORIOS.identificacao,
+        ...DOCUMENTOS_OBRIGATORIOS.competencia,
+        ...DOCUMENTOS_OBRIGATORIOS.seguranca,
+        ...DOCUMENTOS_OBRIGATORIOS.contratacao(funcionario.tipo_regime),
+      ];
 
-  const { data: docsExistentes, error: fetchError } = await supabase
-    .from('documentos_personalizados')
-    .select('nome_documento');
-
-  if (!fetchError && docsExistentes) {
-    const documentosExistentes = docsExistentes.map(doc => doc.nome_documento);
-    const jaExiste = documentosExistentes.includes(nomePersonalizado.trim());
-    const ehObrigatorio = obrigatorios.includes(nomePersonalizado.trim());
-
-    if (!jaExiste && !ehObrigatorio) {
-      const { error: insertPersonalizadoError } = await supabase
+      const { data: docsExistentes, error: fetchError } = await supabase
         .from('documentos_personalizados')
-        .insert([{
-          nome_documento: nomePersonalizado.trim(),
-          categoria: categoriaSelecionada,
-          criado_por: user.id,
-          data_criacao: new Date().toISOString(),
-          atualizado_por: user.id,
-          ultima_atualizacao: new Date().toISOString(),
-        }]);
+        .select('nome_documento');
 
-      if (insertPersonalizadoError) {
-        console.error("Erro ao inserir documento personalizado:", insertPersonalizadoError);
+      if (!fetchError && docsExistentes) {
+        const documentosExistentes = docsExistentes.map(doc => doc.nome_documento);
+        const jaExiste = documentosExistentes.includes(nomePersonalizado.trim());
+        const ehObrigatorio = obrigatorios.includes(nomePersonalizado.trim());
+
+        if (!jaExiste && !ehObrigatorio) {
+          const { error: insertPersonalizadoError } = await supabase
+            .from('documentos_personalizados')
+            .insert([{
+              nome_documento: nomePersonalizado.trim(),
+              categoria: categoriaSelecionada,
+              criado_por: user.id,
+              data_criacao: new Date().toISOString(),
+              atualizado_por: user.id,
+              ultima_atualizacao: new Date().toISOString(),
+            }]);
+
+          if (insertPersonalizadoError) {
+            console.error("Erro ao inserir documento personalizado:", insertPersonalizadoError);
+          } else {
+            console.log("Documento personalizado salvo com sucesso.");
+          }
+        }
       } else {
-        console.log("Documento personalizado salvo com sucesso.");
+        console.error("Erro ao buscar documentos personalizados:", fetchError);
       }
     }
-  } else {
-    console.error("Erro ao buscar documentos personalizados:", fetchError);
-  }
-}
 
     alert('Documento salvo com sucesso!');
     setShowModal(false);
@@ -1438,6 +1532,7 @@ if (ehDocumentoNovo) {
     alert('Erro ao salvar o documento');
   }
 };
+
 
 
 
@@ -1560,8 +1655,8 @@ if (ehDocumentoNovo) {
 
 
 
-      {/* Modal */}
-      <AnimatePresence>
+{/* Modal */}
+<AnimatePresence>
         {showModal && (
           <>
             {/* Overlay com blur */}
@@ -1703,9 +1798,9 @@ if (ehDocumentoNovo) {
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+</AnimatePresence>
 
-    <AnimatePresence>
+<AnimatePresence>
   {mostrarModal && (
     <>
       {/* Overlay com blur e escurecimento */}
@@ -1773,8 +1868,6 @@ if (ehDocumentoNovo) {
     </>
   )}
 </AnimatePresence>
-
-
 
 <AnimatePresence>
   {mostrarModalComprovantes && (

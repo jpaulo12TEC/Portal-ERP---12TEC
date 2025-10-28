@@ -5,16 +5,14 @@ import { Search, ArrowLeft } from "lucide-react";
 import { useUser } from '@/components/UserContext';
 import Sidebar from '../../../components/Sidebar';
 import {
-  FileText,
+  ClipboardList,
   UserPlus,
   LayoutDashboard,
   UserX,
   CalendarCheck,
   PlusCircle,
-  Trash2  
+  Trash2
 } from 'lucide-react';
-
-
 
 export default function AdmissaoColaborador() {
   const { nome } = useUser();
@@ -25,10 +23,6 @@ export default function AdmissaoColaborador() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-
-
-
-  
 
   return (
     <div className={`flex flex-col h-screen ${menuActive ? "ml-[300px]" : "ml-[80px]"}`}>
@@ -73,119 +67,98 @@ export default function AdmissaoColaborador() {
           activeTab={activeTab}
         />
 
-<div className="p-6 w-full max-w-[1100px] mx-auto">
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    
-<div>
-  <h2 className="text-lg font-semibold text-[#5a0d0d] mb-4">Ações Rápidas</h2>
-  <div className="flex flex-wrap gap-4">
-    {[
-      {
-        label: 'Documentação',
-        path: '/dashboard/RH/documentacaodoscolaboradores',
-        icon: FileText,
-      },
-      {
-        label: 'Admissão',
-        path: '/dashboard/RH/admissao',
-        icon: UserPlus,
-      },
-      {
-        label: 'Visão Geral',
-        path: '/visao-geral',
-        icon: LayoutDashboard,
-      },
-      {
-        label: 'Demissão',
-        path: '/demissao',
-        icon: UserX,
-      },
-      {
-        label: 'Férias',
-        path: '/ferias',
-        icon: CalendarCheck,
-      },
-            {
-        label: 'Adicionar Aviso',
-        path: '/novo-aviso',
-        icon: PlusCircle,
-      },
-              {
-    label: 'Remover Aviso',
-    path: '/remover-aviso',
-    icon: Trash2,
-    type: 'delete',
-  },
+        <div className="p-6 w-full max-w-[1100px] mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            {/* Ações Rápidas */}
+            <div>
+              <h2 className="text-lg font-semibold text-[#5a0d0d] mb-4">Ações Rápidas</h2>
+              <div className="flex flex-wrap gap-4">
+                {[
+                  {
+                    label: 'Apontamentos',
+                    path: '/dashboard/RH/apontamentos',
+                    icon: ClipboardList,
+                  },
+                  {
+                    label: 'Admissão',
+                    path: '/dashboard/RH/admissao',
+                    icon: UserPlus,
+                  },
+                  {
+                    label: 'Visão Geral',
+                    path: '/dashboard/RH/documentacaodoscolaboradores',
+                    icon: LayoutDashboard,
+                  },
 
 
-].map(({ label, path, icon: Icon, type }) => (
-  <button
-    key={label}
-    onClick={() => router.push(path)}
-    className={`w-[110px] h-[110px] flex flex-col items-center justify-center text-center border rounded-xl shadow transition-all
-      ${
-        type === 'add'
-          ? 'bg-[#5a0d0d] text-white hover:bg-[#7a1a1a]'
-          : type === 'delete'
-          ? 'bg-red-100 text-red-700 border-red-300 hover:bg-red-600 hover:text-white'
-          : 'bg-white text-[#5a0d0d] border-[#5a0d0d] hover:bg-[#5a0d0d] hover:text-white'
-      }`}
-  >
-    <Icon className="w-6 h-6 mb-2" />
-    <span className="text-xs font-medium">{label}</span>
-  </button>
-))}
-  </div>
-</div>
+                  {
+                    label: 'Adicionar Aviso',
+                    path: '/novo-aviso',
+                    icon: PlusCircle,
+                  },
+                  {
+                    label: 'Remover Aviso',
+                    path: '/remover-aviso',
+                    icon: Trash2,
+                    type: 'delete',
+                  },
+                ].map(({ label, path, icon: Icon, type }) => (
+                  <button
+                    key={label}
+                    onClick={() => router.push(path)}
+                    className={`w-[110px] h-[110px] flex flex-col items-center justify-center text-center border rounded-xl shadow transition-all
+                      ${
+                        type === 'add'
+                          ? 'bg-[#5a0d0d] text-white hover:bg-[#7a1a1a]'
+                          : type === 'delete'
+                          ? 'bg-red-100 text-red-700 border-red-300 hover:bg-red-600 hover:text-white'
+                          : 'bg-white text-[#5a0d0d] border-[#5a0d0d] hover:bg-[#5a0d0d] hover:text-white'
+                      }`}
+                  >
+                    <Icon className="w-6 h-6 mb-2" />
+                    <span className="text-xs font-medium">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-    {/* Avisos e Lembretes (sem ícones) */}
-    <div>
-      <h2 className="text-lg font-semibold text-[#5a0d0d] mb-4">Avisos e Lembretes</h2>
-      <div className="flex flex-col gap-4">
-        {[
-          {
-            title: 'Entrevista agendada',
-            description: 'Hoje às 14h com João Mendes - sala 2B',
-          },
-          {
-            title: 'Documento pendente',
-            description: 'Faltando RG do colaborador Ana P.',
-          },
-          {
-            title: 'Reunião de equipe',
-            description: 'Amanhã às 10h - Alinhar planos de férias',
-          },
-          {
-            title: 'Contrato expirando',
-            description: 'Contrato do colaborador Pedro vence em 5 dias',
-          },
-        ].map(({ title, description }, index) => (
-          <div
-            key={index}
-            className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all"
-          >
-            <h3 className="text-sm font-semibold text-[#5a0d0d]">{title}</h3>
-            <p className="text-xs text-gray-600 mt-1">{description}</p>
+            {/* Avisos e Lembretes */}
+            <div>
+              <h2 className="text-lg font-semibold text-[#5a0d0d] mb-4">Avisos e Lembretes</h2>
+              <div className="flex flex-col gap-4">
+                {[
+                  {
+                    title: 'Entrevista agendada',
+                    description: 'Hoje às 14h com João Mendes - sala 2B',
+                  },
+                  {
+                    title: 'Falta não justificada',
+                    description: 'Colaborador Ana P. - 10/10/2025',
+                  },
+                  {
+                    title: 'Reunião de equipe',
+                    description: 'Amanhã às 10h - Alinhar planos de férias',
+                  },
+                  {
+                    title: 'Contrato expirando',
+                    description: 'Contrato do colaborador Pedro vence em 5 dias',
+                  },
+                ].map(({ title, description }, index) => (
+                  <div
+                    key={index}
+                    className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all"
+                  >
+                    <h3 className="text-sm font-semibold text-[#5a0d0d]">{title}</h3>
+                    <p className="text-xs text-gray-600 mt-1">{description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
-        ))}
+        </div>
       </div>
     </div>
-
-  </div>
-</div>
-
-
-
-
-
-
-
-
-
-</div>
-
-
-      </div>
-    
   );
 }

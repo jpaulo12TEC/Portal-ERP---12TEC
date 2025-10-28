@@ -41,6 +41,8 @@ export async function uploadFileToOneDrive(
         ? ["Suprimentos","Fornecedores", "Compras", fornecedorSanitizado, "Orçamentos", `${ano}_${mes}_${diaSanitizado}`]
         : tipo === "orçamentos-contratos"
         ? ["Financeiro", "Orçamentos", "Contratos", fornecedorSanitizado]
+        : tipo === "funcionarios"
+        ? ["Recursos Humanos", "Documentação de Funcionários", fornecedorSanitizado, caminho ?? ""]
         : [];
 
     console.log("Caminho de pastas no OneDrive:", caminhoPastas);

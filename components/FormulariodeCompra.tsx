@@ -472,8 +472,7 @@ const formatCPF = (cpf:string) => {
 //Moeda
 const formatarMoeda = (valor: number) => {
   if (isNaN(valor)) return "R$ 0,00";
-  
-  // Formatação como moeda
+// Formatação como moeda
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
@@ -922,7 +921,7 @@ const arquivosBoleto = await Promise.all(
       formPayload.append("dataCompra", new Date().toISOString().slice(0, 10)); // data do boleto
       formPayload.append("fornecedor", fornecedor);
       formPayload.append("tipo", "financeiroboletos");
-      formPayload.append("pasta", "boletos");
+      formPayload.append("caminho", "boletos");
 
       const res = await fetch("/api/onedrive/upload", {
         method: "POST",

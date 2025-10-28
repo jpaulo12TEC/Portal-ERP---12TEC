@@ -124,6 +124,18 @@ const handleChange = (
 };
 
 
+
+
+
+
+
+
+
+
+
+
+
+
   const handleSubmit = async () => {
     setLoading(true); // Inicia o loading
     try {
@@ -184,38 +196,55 @@ if (formData.salario_familia && (!formData.qtd_dependentes || formData.qtd_depen
     }
   
       // Upload da foto
-      let fotoUrl = null;
-  
-      if (selectedImage) {
-        const fileName = formatarNomeArquivo(formData.nome_completo, formData.cpf);
-  
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('fotofuncionarios')
-          .upload(fileName, selectedImage, {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: selectedImage.type,
-          });
-  
-        if (uploadError) {
-          console.error('Erro ao fazer upload da imagem:', uploadError.message);
-          alert(`Erro ao fazer upload da imagem: ${uploadError.message}`);
-          setLoading(false);
-          return;
-        }
-  
-        fotoUrl = `${fileName}`;
-      }
-  
-      // Dados a serem inseridos
-      const dadosFuncionario = {
-        ...formData,
-        foto: fotoUrl,
-        feito_por: nome,
-      };
-  
-      console.log('Dados sendo enviados para o Supabase:', dadosFuncionario);
-  
+     // Upload da foto
+let fotoUrl = null;
+
+if (selectedImage) {
+  try {
+    const timestamp = Date.now();
+    const fileExtension = selectedImage.name.split(".").pop();
+    const fileName = `foto_funcionario_${timestamp}.${fileExtension}`;
+
+    // Upload via rota API
+    const formPayload = new FormData();
+    formPayload.append("file", selectedImage);
+    formPayload.append("fileName", fileName);
+    formPayload.append("dataCompra", new Date().toISOString().slice(0, 10)); // só pra manter o padrão da API
+    formPayload.append("fornecedor", formData.nome_completo || "Funcionário");
+    formPayload.append("tipo", "funcionarios");
+    formPayload.append("caminho", "Documentação de Identificação");
+
+    const res = await fetch("/api/onedrive/upload", {
+      method: "POST",
+      body: formPayload,
+    });
+
+    const json = await res.json();
+    if (!json?.success || !json.file?.url) {
+      console.error("Erro no upload da foto via API:", json);
+      alert("Erro ao fazer upload da imagem. Verifique e tente novamente.");
+      setLoading(false);
+      return;
+    }
+
+    fotoUrl = json.file.url;
+  } catch (err) {
+    console.error("Erro inesperado no upload da foto via API:", err);
+    alert("Erro inesperado no upload da foto.");
+    setLoading(false);
+    return;
+  }
+}
+
+// Dados a serem inseridos
+const dadosFuncionario = {
+  ...formData,
+  foto: fotoUrl,
+  feito_por: nome,
+};
+
+console.log("Dados sendo enviados para o Supabase:", dadosFuncionario);
+
       // Inserção no Supabase
       const { error: insertError } = await supabase
         .from('funcionarios')
@@ -241,6 +270,9 @@ if (formData.salario_familia && (!formData.qtd_dependentes || formData.qtd_depen
   };
   
   
+
+
+
 
 
 
