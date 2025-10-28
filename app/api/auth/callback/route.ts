@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     code,
     redirect_uri: redirectUri,
     code_verifier: codeVerifier,
-    scope: 'User.Read Files.ReadWrite.All offline_access', // ✅ Garante refresh_token
+    scope: 'User.Read Files.ReadWrite.All offline_access',
   });
 
   const res = await fetch(tokenUrl, { method: 'POST', body });
@@ -33,31 +33,33 @@ export async function GET(req: NextRequest) {
 
   const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`);
 
-  // ✅ Access Token (expira em ~1h)
+  // Ajuste secure para localhost
+  const isProduction = process.env.NODE_ENV === 'production';
+
   response.cookies.set('azure_token', data.access_token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProduction,
     sameSite: 'strict',
     path: '/',
     maxAge: data.expires_in,
   });
 
-  // ✅ Refresh Token (expira em ~30 dias, pode variar)
   if (data.refresh_token) {
     response.cookies.set('azure_refresh_token', data.refresh_token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'strict',
       path: '/',
-      maxAge: 60 * 60 * 24 * 30, // 30 dias
+      maxAge: 60 * 60 * 24 * 30,
     });
   }
 
-  // 🔄 Limpa o code_verifier (não é mais necessário)
-  response.cookies.delete({
-    name: 'code_verifier',
-    path: '/',
-  });
+  // Limpa code_verifier
+ response.cookies.delete({
+  name: 'code_verifier',
+  path: '/',
+});
+
 
   return response;
 }
