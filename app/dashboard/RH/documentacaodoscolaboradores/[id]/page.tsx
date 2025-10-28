@@ -62,7 +62,21 @@ interface Funcionario {
   filial: string;
   observacoes: string;
   abreviatura: string;
+  matricula:string;
   cpf:string
+  data_nascimento:string;
+  rg:string;
+  pis: string;
+  insalubridade:string;
+  salario_familia:string;
+  situacao:string;
+  email:string;
+  telefone: string
+  endereco:string;
+  estado_civil:string;
+  genero:string;
+  periculosidade:string;
+  qtd_dependentes:string
 }
 
 interface ComprovanteFuncionario {
@@ -161,25 +175,7 @@ const handleCheckboxChange = (docId: string, isChecked: boolean, aba: string) =>
 const handleDownloadSelectedDocs = async () => {
   if (!funcionario || selectedDocs.size === 0) return;
 
-  type DocumentoEnviar = { id: string; nome_arquivo: string }; // URL do SharePoint
-
-  const generateCodeVerifier = (length = 64) => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-
-  const generateCodeChallenge = async (codeVerifier: string) => {
-    const encoder = new TextEncoder();
-    const digest = await crypto.subtle.digest('SHA-256', encoder.encode(codeVerifier));
-    return btoa(String.fromCharCode(...new Uint8Array(digest)))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-  };
+  type DocumentoEnviar = { id: string; nome_arquivo: string };
 
   try {
     const tabela = abaAtivaPorSelecao === "documentacaogeral"
@@ -192,114 +188,28 @@ const handleDownloadSelectedDocs = async () => {
       .in("id", Array.from(selectedDocs));
 
     if (error) throw error;
+
     const docs = data as DocumentoEnviar[];
 
-    // Salva pendentes e página atual
+    // Salva pendentes e página atual (opcional)
     localStorage.setItem('pendingDownloads', JSON.stringify(docs.map(d => d.nome_arquivo)));
     localStorage.setItem('currentPage', window.location.pathname + window.location.search);
 
-    const downloadWithToken = async (url: string) => {
-      const apiUrl = `/api/onedrive/download?url=${encodeURIComponent(url)}`;
-      const response = await fetch(apiUrl);
-
-      if (response.status === 401) {
-        // Token ausente → redireciona pro login
-        const codeVerifier = generateCodeVerifier();
-        const codeChallenge = await generateCodeChallenge(codeVerifier);
-        document.cookie = `code_verifier=${codeVerifier}; path=/; SameSite=Strict; ${location.protocol === 'https:' ? 'secure' : ''}`;
-
-        const loginUrl = `https://login.microsoftonline.com/${process.env.NEXT_PUBLIC_AZURE_TENANT_ID}/oauth2/v2.0/authorize?client_id=${process.env.NEXT_PUBLIC_AZURE_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_BASE_URL + '/api/auth/callback')}&response_mode=query&scope=User.Read Files.ReadWrite.All offline_access&code_challenge=${codeChallenge}&code_challenge_method=S256&state=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-
-        return false; // interrompe
-      }
-
-      if (!response.ok) throw new Error(`Falha ao baixar ${url}`);
-
-      const blob = await response.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      const parts = url.split('/');
-      a.download = decodeURIComponent(parts[parts.length - 1]) || 'documento.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      return true;
-    };
-
-    for (const url of docs.map(d => d.nome_arquivo)) {
-      const ok = await downloadWithToken(url);
-      if (!ok) break;
-    }
+    // Abre cada documento em nova aba
+    docs.forEach(d => {
+      window.open(d.nome_arquivo, '_blank');
+    });
 
   } catch (err) {
     console.error(err);
-    alert("Erro ao baixar os documentos.");
+    alert("Erro ao abrir os documentos.");
   }
 };
 
-// **No load da página, tenta baixar pendentes automaticamente**
-window.addEventListener('load', async () => {
-  const pendingDownloads = JSON.parse(localStorage.getItem('pendingDownloads') || '[]') as string[];
-  if (pendingDownloads.length > 0) {
-    const currentPage = localStorage.getItem('currentPage') || '/';
-    // limpa antes de começar
-    localStorage.removeItem('pendingDownloads');
-    localStorage.removeItem('currentPage');
-
-    for (const url of pendingDownloads) {
-      try {
-        const res = await fetch(`/api/onedrive/download?url=${encodeURIComponent(url)}`);
-        if (!res.ok) throw new Error(`Falha ao baixar ${url}`);
-        const blob = await res.blob();
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        const parts = url.split('/');
-        a.download = decodeURIComponent(parts[parts.length - 1]) || 'documento.pdf';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    // volta para página original (opcional, mas já deve estar na mesma)
-    if (window.location.pathname + window.location.search !== currentPage) {
-      window.history.replaceState(null, '', currentPage);
-    }
-  }
-});
 
 
-// Após login bem-sucedido, usar isso na página carregada:
-const processPendingDownloads = async () => {
-  const pending = localStorage.getItem('pendingDownloads');
-  if (!pending) return;
 
-  const urls: string[] = JSON.parse(pending);
-  localStorage.removeItem('pendingDownloads');
 
-  for (const url of urls) {
-    try {
-      const apiUrl = `/api/onedrive/download?url=${encodeURIComponent(url)}`;
-      const res = await fetch(apiUrl);
-      if (!res.ok) continue;
-
-      const blob = await res.blob();
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      const parts = url.split('/');
-      a.download = decodeURIComponent(parts[parts.length - 1]) || 'documento.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
-    } catch (err) {
-      console.error("Erro no download pós-login:", err);
-    }
-  }
-};
 
 
 
@@ -396,7 +306,15 @@ const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
           {todosNomes.map((nome) => {
             const docInfo = mapaAdicionais.get(nome);
             
-            const disponivel = docInfo ? "Sim" : "Não";
+            const disponivel =
+  categoria === "RH"
+    ? docInfo && docInfo.nome_arquivo
+      ? "Sim"
+      : "Não"
+    : docInfo
+    ? "Sim"
+    : "Não";
+
              const idDocumento = docInfo?.id; // Pega o ID do documento se existir
               const isSelecionado = idDocumento && selectedDocs.has(idDocumento); // 💡
             return (
@@ -455,7 +373,14 @@ const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
                       setMostrarModal(true);
                     }}
                   >
-                    {docInfo ? "Substituir" : "Inserir"}
+                    {categoria === "RH"
+  ? docInfo && docInfo.nome_arquivo
+    ? "Substituir"
+    : "Inserir"
+  : docInfo
+  ? "Substituir"
+  : "Inserir"}
+
                   </button>
                 </td>
 
@@ -480,27 +405,34 @@ const handleSalvarInserirSubstituir = async () => {
     return;
   }
 
-  try {
-    console.log("Arquivo:", arquivoinserirsubstituir);
-    console.log("Vencimento:", vencimentoinserirsubstituir);
+ try {
+  console.log("Arquivo:", arquivoinserirsubstituir);
+  console.log("Vencimento:", vencimentoinserirsubstituir);
 
-    const dataAtual = new Date();
-    const dataFormatada = `${dataAtual.toLocaleDateString('pt-BR').replace(/\//g, '-')}_${dataAtual.toLocaleTimeString('pt-BR')}`;
-    const nomeArquivo = `${docSelecionado?.nome_documento} - ${funcionario.abreviatura} - ${dataFormatada}`;
-    const nomeArquivoLimpo = limparString(nomeArquivo);
-    const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
-    const categoria = docSelecionado?.categoria || activeTabLocal; // pega a categoria do documento ou da aba
-    const caminhoUpload = `Documentos de ${categoria}`;
+  const dataAtual = new Date();
+  const dataFormatada = `${dataAtual.toLocaleDateString('pt-BR').replace(/\//g, '-')}_${dataAtual.toLocaleTimeString('pt-BR')}`;
+  const nomeArquivo = `${docSelecionado?.nome_documento} - ${funcionario.abreviatura} - ${dataFormatada}`;
+  const nomeArquivoLimpo = limparString(nomeArquivo);
 
-    // 🔥 Upload via API OneDrive
-    console.log("🌐 Preparando FormData para upload via API OneDrive...");
-    const formPayload = new FormData();
-    formPayload.append("file", arquivoinserirsubstituir);
-    formPayload.append("fileName", nomeArquivoLimpo);
-    formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
-    formPayload.append("fornecedor", funcionario.nome_completo);
-    formPayload.append("tipo", "funcionarios");
-    formPayload.append("caminho", caminhoUpload);
+  // 🔥 Ajuste para manter a extensão do arquivo original
+  const extensao = arquivoinserirsubstituir?.name?.includes('.') 
+    ? arquivoinserirsubstituir.name.substring(arquivoinserirsubstituir.name.lastIndexOf('.'))
+    : '';
+  const nomeArquivoFinal = `${nomeArquivoLimpo}${extensao}`;
+
+  const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
+  const categoria = docSelecionado?.categoria || activeTabLocal;
+  const caminhoUpload = `Documentos de ${categoria}`;
+
+  // 🔥 Upload via API OneDrive
+  console.log("🌐 Preparando FormData para upload via API OneDrive...");
+  const formPayload = new FormData();
+  formPayload.append("file", arquivoinserirsubstituir);
+  formPayload.append("fileName", nomeArquivoFinal); // agora com extensão
+  formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
+  formPayload.append("fornecedor", funcionario.nome_completo);
+  formPayload.append("tipo", "funcionarios");
+  formPayload.append("caminho", caminhoUpload);
 
     console.log("📦 Enviando requisição para /api/onedrive/upload...");
     const res = await fetch("/api/onedrive/upload", {
@@ -741,8 +673,60 @@ const handleSalvarInserirSubstituir = async () => {
       </div>
     </>
   );
-      case "informacoes":
-        return <p>Conteúdo de informações completas ainda será criado...</p>;
+case "informacoes":
+  return funcionario ? (
+    <div className="p-6 bg-white rounded-md shadow-md mb-5 space-y-6">
+      <h2 className="text-2xl font-semibold text-gray-800 mb-4">Informações Completas do Funcionário</h2>
+
+      {/* Foto e nome */}
+      <div className="flex items-center gap-4 mb-6">
+        {fotoUrl && (
+          <img
+            src={fotoUrl}
+            alt={funcionario.nome_completo}
+            className="w-20 h-20 rounded-full object-cover border border-gray-300"
+          />
+        )}
+        <div>
+          <p className="text-xl font-bold text-gray-900">{funcionario.nome_completo}</p>
+          <p className="text-gray-600">{funcionario.cargo}</p>
+        </div>
+      </div>
+
+      {/* Dados principais em grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <InfoCard label="Abreviatura" value={funcionario.abreviatura} />
+        <InfoCard label="Matrícula" value={funcionario.matricula} />
+        <InfoCard label="Tipo de Regime" value={funcionario.tipo_regime} />
+        <InfoCard label="Data de Nascimento" value={funcionario.data_nascimento} />
+        <InfoCard label="RG" value={funcionario.rg} />
+        <InfoCard label="CPF" value={funcionario.cpf} />
+        <InfoCard label="PIS" value={funcionario.pis} />
+        <InfoCard
+  label="Data de Admissão"
+  value={funcionario.data_admissao ? new Date(funcionario.data_admissao).toLocaleDateString('pt-BR') : null}
+/>
+
+        <InfoCard label="Processo" value={funcionario.processo} />
+        <InfoCard label="Insalubridade" value={funcionario.insalubridade} />
+        <InfoCard label="Salário Família" value={funcionario.salario_familia} />
+        <InfoCard label="Situação" value={funcionario.situacao} />
+        <InfoCard label="Email" value={funcionario.email} />
+        <InfoCard label="Telefone" value={funcionario.telefone} />
+        <InfoCard label="Endereço" value={funcionario.endereco} />
+        <InfoCard label="Departamento" value={funcionario.departamento} />
+        <InfoCard label="Estado Civil" value={funcionario.estado_civil} />
+        <InfoCard label="Gênero" value={funcionario.genero} />
+        <InfoCard label="Filial" value={funcionario.filial} />
+        <InfoCard label="Observações" value={funcionario.observacoes} />
+        <InfoCard label="Periculosidade" value={funcionario.periculosidade} />
+        <InfoCard label="Qtd. Dependentes" value={funcionario.qtd_dependentes} />
+      </div>
+    </div>
+  ) : (
+    <p>Carregando informações...</p>
+  );
+
       case "treinamentos":
         return <p>Conteúdo de treinamentos ainda será criado...</p>;
       default:
@@ -1160,20 +1144,26 @@ const handleSalvarComprovantes = async () => {
     const dataFormatada = `${dataAtual.toLocaleDateString('pt-BR').replace(/\//g, '-')}_${dataAtual.toLocaleTimeString('pt-BR')}`;
     const nomeArquivo = `${nomeDocumentoComprovantes} - ${funcionario.abreviatura} - ${dataFormatada}`;
     const nomeArquivoLimpo = limparString(nomeArquivo);
-    const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
+// 🔥 Mantendo a extensão do arquivo original
+const extensao = arquivocomprovantes?.name?.includes('.') 
+  ? arquivocomprovantes.name.substring(arquivocomprovantes.name.lastIndexOf('.'))
+  : '';
+const nomeArquivoFinal = `${nomeArquivoLimpo}${extensao}`;
 
-    // Caminho completo no formato "Documentação de &categoria"
-    const caminhoUpload = `Documentação de Comprovantes/${nomePasta}/${nomeArquivoLimpo}`;
-    console.log("📂 Caminho para upload via API:", caminhoUpload);
+const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
 
-    // ✅ UPLOAD VIA API
-    const formPayload = new FormData();
-    formPayload.append("file", arquivocomprovantes);
-    formPayload.append("fileName", nomeArquivoLimpo);
-    formPayload.append("caminho", "Contracheques e Folhas de Ponto");
-    formPayload.append("fornecedor", funcionario.nome_completo || "Funcionário");
-    formPayload.append("tipo", "funcionarios");
-    formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
+// Caminho completo no formato "Documentação de &categoria"
+const caminhoUpload = `Documentação de Comprovantes/${nomePasta}/${nomeArquivoFinal}`;
+console.log("📂 Caminho para upload via API:", caminhoUpload);
+
+// ✅ UPLOAD VIA API
+const formPayload = new FormData();
+formPayload.append("file", arquivocomprovantes);
+formPayload.append("fileName", nomeArquivoFinal); // agora com extensão
+formPayload.append("caminho", "Contracheques e Folhas de Ponto");
+formPayload.append("fornecedor", funcionario.nome_completo || "Funcionário");
+formPayload.append("tipo", "funcionarios");
+formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
 
     const res = await fetch("/api/onedrive/upload", {
       method: "POST",
@@ -1446,7 +1436,12 @@ if (func?.foto) {
     fetchDados();
   }, [id]);
 
-
+const InfoCard = ({ label, value }: { label: string; value: string | number | null }) => (
+  <div className="p-3 bg-gray-50 rounded-md border border-gray-200">
+    <p className="text-gray-500 text-sm">{label}</p>
+    <p className="text-gray-800 font-medium">{value || "-"}</p>
+  </div>
+);
 
 const handleSalvarDocumento = async () => {
   try {
@@ -1487,16 +1482,21 @@ const handleSalvarDocumento = async () => {
     const dataFormatada = `${dataAtual.toLocaleDateString('pt-BR').replace(/\//g, '-')}_${dataAtual.toLocaleTimeString('pt-BR')}`;
     const nomeArquivo = `${nomeDocumento} - ${funcionario.abreviatura} - ${dataFormatada}`;
     const nomeArquivoLimpo = limparString(nomeArquivo);
-    const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
 
-    // ✅ Caminho padrão via API
+    // 🔥 Mantendo a extensão original do arquivo
+    const extensao = arquivo?.name?.includes('.') 
+      ? arquivo.name.substring(arquivo.name.lastIndexOf('.'))
+      : '';
+    const nomeArquivoFinal = `${nomeArquivoLimpo}${extensao}`;
+
+    const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
     const caminhoUpload = `Documentos de ${categoriaSelecionada}`;
     console.log("📂 Caminho para upload:", caminhoUpload);
 
     // UPLOAD VIA API
     const formPayload = new FormData();
     formPayload.append("file", arquivo);
-    formPayload.append("fileName", nomeArquivoLimpo);
+    formPayload.append("fileName", nomeArquivoFinal); // agora com extensão
     formPayload.append("caminho", caminhoUpload);
     formPayload.append("fornecedor", funcionario.nome_completo || "Funcionário");
     formPayload.append("tipo", "funcionarios");

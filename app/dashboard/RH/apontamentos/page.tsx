@@ -2,19 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@/components/UserContext';
 import { supabase } from '@/lib/superbase';
-import { ArrowLeft, PlusCircle } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Sidebar from '@/components/Sidebar';
 
-type Funcionario = {
-  id: string;
-  nome_completo: string;
-};
-
-type Apontamento = {
-  funcionario_id: string;
-  tipo_apontamento: string;
-  observacoes: string | null;
-};
+type Funcionario = { id: string; nome_completo: string };
 
 export default function ApontamentosPage() {
   const { nome } = useUser();
@@ -23,219 +15,131 @@ export default function ApontamentosPage() {
   const [funcSelecionado, setFuncSelecionado] = useState<string>('');
   const [tipoApontamento, setTipoApontamento] = useState<string>('Férias');
   const [loading, setLoading] = useState(false);
-  const [apontamentos, setApontamentos] = useState<Apontamento[]>([]);
+  const [menuActive, setMenuActive] = useState(false);
 
-  // Campos dinâmicos
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [diasSuspensao, setDiasSuspensao] = useState<number | ''>('');
   const [dataEncerramento, setDataEncerramento] = useState('');
   const [datasFalta, setDatasFalta] = useState('');
 
-  const tiposApontamento = [
-    'Férias',
-    'Advertência',
-    'Suspensão',
-    'Demissão',
-    'Falta',
-    'Afastamento',
-    'Aviso Prévio'
-  ];
+  const tiposApontamento = ['Férias','Advertência','Suspensão','Demissão','Falta','Afastamento','Aviso Prévio'];
 
   useEffect(() => {
-    async function carregarFuncionarios() {
-      const { data, error } = await supabase
-        .from('funcionarios')
-        .select('id, nome_completo')
-        .eq('situacao', 'Ativo');
-      if (error) console.error(error);
-      else setFuncionarios(data || []);
+    async function carregar() {
+      const { data: funcs } = await supabase.from('funcionarios').select('id, nome_completo').eq('situacao', 'Ativo');
+      if (funcs) setFuncionarios(funcs);
     }
-
-    async function carregarApontamentos() {
-      const { data, error } = await supabase.from('apontamentos').select('*');
-      if (!error) setApontamentos(data || []);
-    }
-
-    carregarFuncionarios();
-    carregarApontamentos();
+    carregar();
   }, []);
 
   const handleAdicionar = async () => {
     if (!funcSelecionado) return alert('Selecione um funcionário');
 
     let observacoes: string | null = null;
-
-    switch (tipoApontamento) {
-      case 'Férias':
-        if (!dataInicio || !dataFim) return alert('Informe o período de férias');
-        observacoes = `Férias de ${dataInicio} a ${dataFim}`;
+    switch(tipoApontamento){
+      case 'Férias': 
+        if(!dataInicio || !dataFim) return alert('Informe o período'); 
+        observacoes = `Férias de ${dataInicio} a ${dataFim}`; 
         break;
-      case 'Suspensão':
-        if (!diasSuspensao) return alert('Informe a quantidade de dias');
-        observacoes = `Suspensão por ${diasSuspensao} dias`;
+      case 'Suspensão': 
+        if(!diasSuspensao) return alert('Informe os dias'); 
+        observacoes = `Suspensão por ${diasSuspensao} dias`; 
         break;
-      case 'Aviso Prévio':
-        if (!dataEncerramento) return alert('Informe a data de encerramento');
-        observacoes = `Aviso prévio até ${dataEncerramento}`;
+      case 'Aviso Prévio': 
+        if(!dataEncerramento) return alert('Informe a data'); 
+        observacoes = `Aviso prévio até ${dataEncerramento}`; 
         break;
-      case 'Falta':
-        if (!datasFalta) return alert('Informe a(s) data(s) da(s) falta(s)');
-        observacoes = `Falta(s) na(s) seguinte(s) data(s): ${datasFalta}`;
+      case 'Falta': 
+        if(!datasFalta) return alert('Informe datas'); 
+        observacoes = `Falta(s) na(s) data(s): ${datasFalta}`; 
         break;
-      default:
-        observacoes = null;
+      default: observacoes = null;
     }
 
     setLoading(true);
-    const { data, error } = await supabase.from('apontamentos').insert([
-      {
-        funcionario_id: funcSelecionado,
-        tipo_apontamento: tipoApontamento,
-        observacoes
-      }
-    ]);
 
-    if (error) {
-      console.error(error);
-      alert('Erro ao salvar apontamento');
-    } else {
-      setApontamentos((prev) => [...prev, ...(data ?? [])]);
-      // Resetar campos
-      setTipoApontamento('Férias');
-      setFuncSelecionado('');
-      setDataInicio('');
-      setDataFim('');
-      setDiasSuspensao('');
-      setDataEncerramento('');
-      setDatasFalta('');
+    const funcionario = funcionarios.find(f => f.id === funcSelecionado);
+    if (funcionario) {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const nomeDoc = `${tipoApontamento} - ${funcionario.nome_completo} - ${today}`;
+
+      const { error: docError } = await supabase.from('documentoscolaboradores').insert([{
+        funcionario_id: funcSelecionado,
+        nome_colaborador: funcionario.nome_completo,
+        tipo_documento: "RH",
+        nome_documento: nomeDoc,
+        vencimento: null,
+        comentario: observacoes,
+        postado_por: nome,
+        created_at: new Date().toISOString(),
+        valido: true,
+        Visualizar_menu: true,
+        nome_arquivo: null,
+        ultima_atualizacao: new Date().toISOString()
+      }]);
+
+      if (docError) console.error('Erro ao criar documento:', docError);
+      else alert('Documento criado com sucesso!');
     }
+
+    // Resetar campos
+    setTipoApontamento('Férias'); 
+    setFuncSelecionado(''); 
+    setDataInicio(''); 
+    setDataFim(''); 
+    setDiasSuspensao(''); 
+    setDataEncerramento(''); 
+    setDatasFalta('');
     setLoading(false);
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-2 mb-6 text-sm text-[#5a0d0d] hover:text-[#7a1a1a]"
-      >
-        <ArrowLeft size={20} />
-        Voltar
-      </button>
-
-      <h1 className="text-2xl font-semibold text-[#5a0d0d] mb-6">Apontamentos de RH</h1>
-
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="font-semibold text-lg mb-4">Adicionar Apontamento</h2>
-
-        <div className="flex flex-col gap-4">
-          <select
-            className="border px-3 py-2 rounded"
-            value={funcSelecionado}
-            onChange={(e) => setFuncSelecionado(e.target.value)}
-          >
-            <option value="">Selecione um funcionário</option>
-            {funcionarios.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.nome_completo}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="border px-3 py-2 rounded"
-            value={tipoApontamento}
-            onChange={(e) => setTipoApontamento(e.target.value)}
-          >
-            {tiposApontamento.map((tipo) => (
-              <option key={tipo} value={tipo}>
-                {tipo}
-              </option>
-            ))}
-          </select>
-
-          {/* Campos dinâmicos */}
-          {tipoApontamento === 'Férias' && (
-            <div className="flex gap-2">
-              <input
-                type="date"
-                className="border px-3 py-2 rounded"
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-              />
-              <input
-                type="date"
-                className="border px-3 py-2 rounded"
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
-              />
-            </div>
-          )}
-
-          {tipoApontamento === 'Suspensão' && (
-            <input
-              type="number"
-              className="border px-3 py-2 rounded"
-              placeholder="Número de dias"
-              value={diasSuspensao}
-              onChange={(e) => setDiasSuspensao(Number(e.target.value))}
-            />
-          )}
-
-          {tipoApontamento === 'Aviso Prévio' && (
-            <input
-              type="date"
-              className="border px-3 py-2 rounded"
-              value={dataEncerramento}
-              onChange={(e) => setDataEncerramento(e.target.value)}
-            />
-          )}
-
-          {tipoApontamento === 'Falta' && (
-            <input
-              type="text"
-              className="border px-3 py-2 rounded"
-              placeholder="Digite as datas das faltas, separadas por vírgula"
-              value={datasFalta}
-              onChange={(e) => setDatasFalta(e.target.value)}
-            />
-          )}
-
-          <button
-            onClick={handleAdicionar}
-            disabled={loading}
-            className="flex items-center gap-2 bg-[#5a0d0d] text-white px-4 py-2 rounded hover:bg-[#7a1a1a]"
-          >
-            <PlusCircle size={16} />
-            Adicionar Apontamento
+    <div className={`flex h-screen ${menuActive ? "ml-[300px]" : "ml-[80px]"}`}>
+      <Sidebar menuActive={menuActive} setMenuActive={setMenuActive} activeTab="" onNavClickAction={()=>{}} />
+      <div className="flex-1 flex flex-col">
+        {/* Topbar */}
+        <div className="flex items-center justify-between bg-[#200101] p-2 text-white shadow-md">
+          <button onClick={() => router.back()} className="flex items-center gap-2 px-3 py-1.5 bg-[#5a0d0d] hover:bg-[#7a1a1a] rounded-full text-sm">
+            <ArrowLeft size={18}/> Voltar
           </button>
+          <div className="relative w-full max-w-xs">
+            <input type="text" placeholder="Buscar..." className="pl-9 pr-3 py-1 rounded-full w-full text-black"/>
+            <Search className="absolute left-2 top-1.5 text-gray-500" size={16}/>
+          </div>
+          <img src="/Logobranca.png" className="h-10 w-auto"/>
         </div>
-      </div>
 
-      {/* Tabela de apontamentos */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="font-semibold text-lg mb-4">Apontamentos Registrados</h2>
-        <table className="w-full table-auto border-collapse">
-          <thead>
-            <tr className="bg-gray-100 text-left">
-              <th className="border px-3 py-2">Funcionário</th>
-              <th className="border px-3 py-2">Tipo</th>
-              <th className="border px-3 py-2">Observações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {apontamentos.map((a, idx) => {
-              const func = funcionarios.find((f) => f.id === a.funcionario_id);
-              return (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="border px-3 py-2">{func?.nome_completo ?? '---'}</td>
-                  <td className="border px-3 py-2">{a.tipo_apontamento}</td>
-                  <td className="border px-3 py-2">{a.observacoes || '-'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        {/* Conteúdo */}
+        <div className="p-6 overflow-y-auto">
+          <h1 className="text-2xl font-semibold text-[#5a0d0d] mb-6">Apontamentos de RH</h1>
+
+          <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 className="font-semibold text-lg mb-4">Adicionar Documento</h2>
+            <div className="flex flex-col gap-4">
+              <select value={funcSelecionado} onChange={(e)=>setFuncSelecionado(e.target.value)} className="border px-3 py-2 rounded">
+                <option value="">Selecione um funcionário</option>
+                {funcionarios.map(f => <option key={f.id} value={f.id}>{f.nome_completo}</option>)}
+              </select>
+
+              <select value={tipoApontamento} onChange={(e)=>setTipoApontamento(e.target.value)} className="border px-3 py-2 rounded">
+                {tiposApontamento.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+              </select>
+
+              {tipoApontamento==='Férias' && <div className="flex gap-2">
+                <input type="date" value={dataInicio} onChange={e=>setDataInicio(e.target.value)} className="border px-3 py-2 rounded"/>
+                <input type="date" value={dataFim} onChange={e=>setDataFim(e.target.value)} className="border px-3 py-2 rounded"/>
+              </div>}
+              {tipoApontamento==='Suspensão' && <input type="number" value={diasSuspensao} onChange={e=>setDiasSuspensao(Number(e.target.value))} className="border px-3 py-2 rounded" placeholder="Número de dias"/>}
+              {tipoApontamento==='Aviso Prévio' && <input type="date" value={dataEncerramento} onChange={e=>setDataEncerramento(e.target.value)} className="border px-3 py-2 rounded"/>}
+              {tipoApontamento==='Falta' && <input type="text" value={datasFalta} onChange={e=>setDatasFalta(e.target.value)} className="border px-3 py-2 rounded" placeholder="Digite as datas separadas por vírgula"/>}
+
+              <button onClick={handleAdicionar} disabled={loading} className="flex items-center gap-2 bg-[#5a0d0d] text-white px-4 py-2 rounded hover:bg-[#7a1a1a]">
+                <PlusCircle size={16}/> Criar Documento
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

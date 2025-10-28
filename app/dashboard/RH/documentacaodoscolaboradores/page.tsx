@@ -2,177 +2,295 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '../../../../components/Sidebar';
-import { Search } from "lucide-react";
+import { Search, ArrowLeft, FileSpreadsheet } from "lucide-react";
 import { useUser } from '@/components/UserContext';
-import { ArrowLeft } from "lucide-react";
 import { supabase } from '../../../../lib/superbase';
+import * as XLSX from 'xlsx';
+
+type Documento = {
+  id: number;
+  funcionario_id: number;
+  nome_documento: string;
+  nome_arquivo?: string | null;
+  comentario?: string;
+  vencimento?: string | null;
+  valido: boolean;
+};
 
 export default function Dashboard() {
-const [showAtivos, setShowAtivos] = useState(true);
-const [showDesligados, setShowDesligados] = useState(false);
-
-
   const { nome } = useUser();
-  const [currentPage, setCurrentPage] = useState('');
-  const [menuActive, setMenuActive] = useState(false);
-  const [activeTab, setActiveTab] = useState('');
   const router = useRouter();
+  const [menuActive, setMenuActive] = useState(false);
   const [colaboradores, setColaboradores] = useState<any[]>([]);
+  const [showAtivos, setShowAtivos] = useState(true);
+  const [showDesligados, setShowDesligados] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
-  const DOCUMENTOS_OBRIGATORIOS = [
-    "RG",
-    "CPF",
-    "Comprovante de residência",
-    "CTPS",
-    "Certificado de Reservista",
-    "Título de eleitor"
-  ];
+  const DOCUMENTOS_OBRIGATORIOS = {
+    contratacao: (tipoRegime: string) =>
+      tipoRegime === 'CLT'
+        ? [
+            "Acordo de Compensacao","Acordo de Prorrogacao","Contrato de Experiencia",
+            "Declaracao Encargos de IR","Ficha de Registro","LGPD",
+            "Opcao de Desistencia de VT","Solicitacao de VT","Termo de Responsabilidade"
+          ]
+        : tipoRegime === 'PJ'
+        ? ["Contrato de Prestacao de Servico"]
+        : [],
+    identificacao: ["RG","CPF","CTPS - Digital","E-Social","Comprovante de Residencia","Certidao de Nascimento ou Casamento","Certidao de Nascimento"],
+    competencia: ["Diploma","Certificado de Curso"],
+    seguranca: ["Treinamento de Seguranca"]
+  };
 
   useEffect(() => {
     async function carregarDados() {
       try {
         const { data: funcionarios } = await supabase.from('funcionarios').select('*');
         const { data: documentos } = await supabase.from('documentoscolaboradores').select('*');
-
         const hoje = new Date();
 
-const resultado = (funcionarios || []).map(func => {
-  const docsFuncionario = (documentos || []).filter(d => d.funcionario_id === func.id && d.valido);
+        const resultado = (funcionarios || []).map(func => {
+          const docsFuncionario = (documentos || []).filter(d => d.funcionario_id === func.id);
+          const nomesDocsValidos = docsFuncionario
+            .filter(d => d.valido && d.nome_arquivo)
+            .map(d => d.nome_documento);
 
-  const comComentario = docsFuncionario.filter(d => d.comentario && d.comentario.trim() !== "").length;
+          const comComentario = docsFuncionario.filter(d => d.comentario?.trim()).length;
+          const vencidos = docsFuncionario.filter(
+            d => d.vencimento && (new Date(d.vencimento).getTime() - hoje.getTime()) / (1000*60*60*24) <= 30
+          ).length;
 
-  const vencidos = docsFuncionario.filter(d => {
-    if (!d.vencimento) return false;
-    const diff = (new Date(d.vencimento).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
-    return diff <= 30;
-  }).length;
+          const docsNulos = docsFuncionario
+            .filter(d => d.nome_arquivo == null || d.nome_arquivo.trim() === "")
+            .map(d => d.nome_documento);
 
-  const documentosPresentes = docsFuncionario.map(d => d.nome_documento);
-  const faltando = DOCUMENTOS_OBRIGATORIOS.filter(doc => !documentosPresentes.includes(doc)).length;
+          const docsObrigatorios = [
+            ...DOCUMENTOS_OBRIGATORIOS.contratacao(func.tipo_regime),
+            ...DOCUMENTOS_OBRIGATORIOS.identificacao,
+            ...DOCUMENTOS_OBRIGATORIOS.competencia,
+            ...DOCUMENTOS_OBRIGATORIOS.seguranca
+          ];
 
-  return {
-    id: func.id,
-    nome: func.nome_completo,
-    cargo: func.cargo,
-    departamento: func.departamento,
-    tipo_regime: func.tipo_regime,
-    situacao: func.situacao,
-    vencidos,
-    comComentario,
-    faltando
-  };
-});
+          const faltando = [...new Set([
+            ...docsObrigatorios,
+            ...docsNulos
+          ])].filter(doc => !nomesDocsValidos.includes(doc));
+
+          return {
+            id: func.id,
+            nome: func.nome_completo,
+            cargo: func.cargo,
+            departamento: func.departamento,
+            tipo_regime: func.tipo_regime,
+            situacao: func.situacao,
+            comComentario,
+            vencidos,
+            faltando: faltando.length,
+            documentosDetalhes: docsFuncionario,
+            faltandoNomes: faltando
+          };
+        });
 
         setColaboradores(resultado);
       } catch (erro) {
         console.error("Erro ao carregar dados:", erro);
       }
     }
-
     carregarDados();
   }, []);
 
-  const handleNavClick = async (tab: string) => {
-    setActiveTab(tab);
-    setCurrentPage(tab);
-    router.push(`/dashboard/${tab}`);
+  const handleExportarPlanilha = () => {
+    const linhas: any[] = [];
+
+    colaboradores.forEach(colab => {
+      // Faltando
+      colab.faltandoNomes.forEach((doc: string) => {
+        linhas.push({ "Colaborador": colab.nome, "Documento": doc, "Situação": "Faltando" });
+      });
+
+      // Vencidos
+      colab.documentosDetalhes
+        .filter((d: Documento) => d.vencimento && (new Date(d.vencimento).getTime() - new Date().getTime()) / (1000*60*60*24) <= 30)
+        .forEach((d: Documento) => {
+          linhas.push({ "Colaborador": colab.nome, "Documento": d.nome_documento, "Situação": "Vencido" });
+        });
+
+      // Com comentário
+      colab.documentosDetalhes
+        .filter((d: Documento) => d.comentario?.trim())
+        .forEach((d: Documento) => {
+          linhas.push({ "Colaborador": colab.nome, "Documento": d.nome_documento, "Situação": "Com Comentário" });
+        });
+    });
+
+    if (linhas.length === 0) {
+      alert("Nenhum dado disponível para exportar.");
+      return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(linhas);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Documentos RH");
+    XLSX.writeFile(workbook, "Documentos_Colaboradores.xlsx");
   };
 
   const ativos = colaboradores.filter(c => c.situacao === "Ativo");
   const desligados = colaboradores.filter(c => c.situacao === "Desligado");
+  const afastados = colaboradores.filter(c => c.situacao === "Afastado");
 
-  const renderTabela = (lista: any[], cor: string) => (
-    <div className="overflow-hidden rounded-lg shadow-md mt-6 border border-gray-200">
+  const resumo = {
+    total: colaboradores.length,
+    ativos: ativos.length,
+    desligados: desligados.length,
+    afastados: afastados.length,
+    clt: colaboradores.filter(c => c.tipo_regime === "CLT").length,
+    pj: colaboradores.filter(c => c.tipo_regime === "PJ").length,
+    docsFaltando: colaboradores.reduce((acc, c) => acc + c.faltando, 0)
+  };
+
+  const handleToggleRow = (id: number) => {
+    setExpandedRow(expandedRow === id ? null : id);
+  };
+
+  const renderTabela = (lista: any[]) => (
+    <div className="overflow-hidden rounded-lg shadow-md mt-3 border border-gray-200">
       <table className="min-w-full divide-y divide-gray-200 bg-white">
         <thead className="bg-gray-100">
           <tr>
             <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Nome</th>
             <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Cargo</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Departamento</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Tipo de regime</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Depto</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Regime</th>
             <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Vencidos</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Com comentário</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Com Comentário</th>
             <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Faltando</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {lista.map((colab, index) => (
-            <tr
-              key={index}
-              onClick={() => router.push(`/dashboard/RH/documentacaodoscolaboradores/${colab.id}`)}
-              className="hover:bg-blue-50 cursor-pointer transition"
-            >
-              <td className="px-6 py-4 text-sm text-gray-800">{colab.nome}</td>
-              <td className="px-6 py-4 text-sm text-gray-800">{colab.cargo}</td>
-              <td className="px-6 py-4 text-sm text-gray-800">{colab.departamento}</td>
-              <td className="px-6 py-4 text-sm text-gray-800">{colab.tipo_regime}</td>
-              <td className={`px-6 py-4 text-sm font-semibold ${cor}-600`}>{colab.vencidos}</td>
-              <td className={`px-6 py-4 text-sm font-semibold ${cor}-500`}>{colab.comComentario}</td>
-              <td className={`px-6 py-4 text-sm font-semibold ${cor}-800`}>{colab.faltando}</td>
-            </tr>
+          {lista.map(colab => (
+            <React.Fragment key={colab.id}>
+              <tr className="hover:bg-blue-50 transition">
+                <td className="px-6 py-4 text-sm text-gray-800 cursor-pointer" onClick={() => handleToggleRow(colab.id)}>
+                  {colab.nome}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-800">{colab.cargo}</td>
+                <td className="px-6 py-4 text-sm text-gray-800">{colab.departamento}</td>
+                <td className="px-6 py-4 text-sm text-gray-800">{colab.tipo_regime}</td>
+                <td className="px-6 py-4 text-sm font-semibold text-red-600">{colab.vencidos}</td>
+                <td className="px-6 py-4 text-sm font-semibold text-blue-600">{colab.comComentario}</td>
+                <td className="px-6 py-4 text-sm font-semibold text-orange-600">{colab.faltando}</td>
+              </tr>
+
+              {expandedRow === colab.id && (
+                <tr className="bg-gray-50">
+                  <td colSpan={7} className="px-6 py-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <p className="font-semibold text-gray-800">Vencidos</p>
+                        <ul className="list-disc ml-5 text-gray-700">
+                          {colab.documentosDetalhes
+                            .filter((d: Documento) => d.vencimento && (new Date(d.vencimento).getTime() - new Date().getTime()) / (1000*60*60*24) <= 30)
+                            .map((d: Documento) => <li key={d.id}>{d.nome_documento} ({d.vencimento})</li>)}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800">Com Comentário</p>
+                        <ul className="list-disc ml-5 text-gray-700">
+                          {colab.documentosDetalhes
+                            .filter((d: Documento) => d.comentario?.trim())
+                            .map((d: Documento) => <li key={d.id}>{d.nome_documento}: {d.comentario}</li>)}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800">Faltando</p>
+                        <ul className="list-disc ml-5 text-gray-700">
+                          {colab.faltandoNomes.map((doc: string, i: number) => (
+                            <li key={i}>{doc}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
           ))}
         </tbody>
       </table>
     </div>
   );
 
-  const renderAccordion = (title: string, lista: any[], cor: string, show: boolean, setShow: (v: boolean) => void) => (
-  <div className="mt-4 border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-    <button
-      onClick={() => setShow(!show)}
-      className={`w-full flex justify-between items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 transition-colors font-semibold text-gray-700`}
-    >
-      <span>{title} ({lista.length})</span>
-      <span className={`transform transition-transform duration-200 ${show ? "rotate-90" : ""}`}>▶</span>
-    </button>
-    {show && renderTabela(lista, cor)}
-  </div>
-);
-
   return (
     <div className={`flex flex-col h-screen ${menuActive ? "ml-[300px]" : "ml-[80px]"}`}>
       {/* Topbar */}
       <div className="flex items-center justify-between bg-[#200101] p-0 text-white shadow-md">
         <div className="flex space-x-4 w-full h-[40px] items-center">
-          <button
-            onClick={() => window.history.back()}
-            className="ml-2 flex items-center gap-2 px-3 py-1.5 bg-[#5a0d0d] hover:bg-[#7a1a1a] text-white rounded-full transition-all duration-300 shadow-sm"
-          >
+          <button onClick={() => window.history.back()} className="ml-2 flex items-center gap-2 px-3 py-1.5 bg-[#5a0d0d] hover:bg-[#7a1a1a] text-white rounded-full transition-all duration-300 shadow-sm">
             <ArrowLeft size={20} />
             <span className="text-sm font-medium">Voltar</span>
           </button>
           <div className="px-3 py-3 h-[50px]">
-            <button className="w-full text-left hover:text-gray-300">
-              Documentação dos colaboradores
-            </button>
+            <button className="w-full text-left hover:text-gray-300">Documentação dos colaboradores</button>
           </div>
         </div>
         <div className="relative w-full max-w-[400px] ml-6 mr-70">
-          <input
-            type="text"
-            placeholder="Buscar..."
-            className="pl-10 pr-4 py-2 rounded-full h-[30px] w-full bg-white border-none focus:ring-2 focus:ring-blue-400 text-black"
-          />
+          <input type="text" placeholder="Buscar..." className="pl-10 pr-4 py-2 rounded-full h-[30px] w-full bg-white border-none focus:ring-2 focus:ring-blue-400 text-black" />
           <Search className="absolute left-3 top-2.5 text-gray-500" size={17} />
         </div>
-        <div className="flex-shrink-0 ml-auto pr-4">
+        <div className="flex-shrink-0 ml-auto pr-4 flex items-center gap-2">
+
           <img src="/Logobranca.png" alt="Logo da Empresa" className="h-[40px] w-auto" />
         </div>
       </div>
 
       <div className="flex flex-1">
-        <Sidebar
-          onNavClickAction={handleNavClick}
-          className="h-full"
-          menuActive={menuActive}
-          setMenuActive={setMenuActive}
-          activeTab={activeTab}
-        />
-<div className="flex-1 p-6">
-  {renderAccordion("Ativos", ativos, "green", showAtivos, setShowAtivos)}
-  {renderAccordion("Desligados", desligados, "red", showDesligados, setShowDesligados)}
+        <Sidebar menuActive={menuActive} setMenuActive={setMenuActive} activeTab="" onNavClickAction={() => {}} />
+        <div className="flex-1 p-6 overflow-y-auto">
+          {/* Resumo geral */}
+{/* Resumo geral + Exportar */}
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4 mb-6">
+  <div className="bg-green-500 text-white rounded-xl p-4 shadow-md flex flex-col items-center justify-center">
+    <p className="text-sm font-medium">Total Colaboradores</p>
+    <p className="text-2xl font-bold">{resumo.total}</p>
+  </div>
+  <div className="bg-blue-500 text-white rounded-xl p-4 shadow-md flex flex-col items-center justify-center">
+    <p className="text-sm font-medium">Ativos</p>
+    <p className="text-2xl font-bold">{resumo.ativos}</p>
+  </div>
+  <div className="bg-red-500 text-white rounded-xl p-4 shadow-md flex flex-col items-center justify-center">
+    <p className="text-sm font-medium">Desligados</p>
+    <p className="text-2xl font-bold">{resumo.desligados}</p>
+  </div>
+  <div className="bg-teal-500 text-white rounded-xl p-4 shadow-md flex flex-col items-center justify-center">
+    <p className="text-sm font-medium">Afastados</p>
+    <p className="text-2xl font-bold">{resumo.afastados}</p>
+  </div>
+  <div className="bg-yellow-500 text-white rounded-xl p-4 shadow-md flex flex-col items-center justify-center">
+    <p className="text-sm font-medium">CLT</p>
+    <p className="text-2xl font-bold">{resumo.clt}</p>
+  </div>
+  <div className="bg-purple-500 text-white rounded-xl p-4 shadow-md flex flex-col items-center justify-center">
+    <p className="text-sm font-medium">PJ</p>
+    <p className="text-2xl font-bold">{resumo.pj}</p>
+  </div>
+  <div className="bg-orange-500 text-white rounded-xl p-4 shadow-md flex flex-col items-center justify-center">
+    <p className="text-sm font-medium">Docs Faltando</p>
+    <p className="text-2xl font-bold">{resumo.docsFaltando}</p>
+  </div>
+
+  {/* Novo card elegante para exportar */}
+  <div
+    onClick={handleExportarPlanilha}
+    className="bg-green-600 text-white rounded-xl p-4 shadow-md flex flex-col items-center justify-center cursor-pointer hover:bg-green-700 transition-all"
+  >
+    <FileSpreadsheet className="w-6 h-6 mb-1" />
+    <p className="text-sm font-medium text-center">Exportar Planilha</p>
+  </div>
 </div>
 
+
+          {renderTabela(ativos)}
+        </div>
       </div>
     </div>
   );
