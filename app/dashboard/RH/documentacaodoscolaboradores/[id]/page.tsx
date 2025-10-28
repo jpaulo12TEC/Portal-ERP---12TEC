@@ -161,12 +161,10 @@ const handleCheckboxChange = (docId: string, isChecked: boolean, aba: string) =>
 const handleDownloadSelectedDocs = async () => {
   if (!funcionario || selectedDocs.size === 0) return;
 
-  type Documentosenviar = {
+  type DocumentoEnviar = {
     id: string;
     nome_arquivo: string; // já é a URL do SharePoint
   };
-
-  let docs: Documentosenviar[] = [];
 
   try {
     const tabela = abaAtivaPorSelecao === "documentacaogeral"
@@ -179,11 +177,11 @@ const handleDownloadSelectedDocs = async () => {
       .in("id", Array.from(selectedDocs));
 
     if (error) throw error;
-    docs = data as Documentosenviar[];
+    const docs = data as DocumentoEnviar[];
 
     for (const doc of docs) {
       try {
-        // Chama a API do Next.js para baixar do SharePoint
+        // Chama a API do Next.js que faz o fetch do SharePoint
         const apiUrl = `/api/onedrive/download?url=${encodeURIComponent(doc.nome_arquivo)}`;
         const response = await fetch(apiUrl);
 
@@ -191,12 +189,13 @@ const handleDownloadSelectedDocs = async () => {
 
         const blob = await response.blob();
         const url = URL.createObjectURL(blob);
+
         const a = document.createElement("a");
         a.href = url;
 
         // Extrai nome do arquivo da URL do SharePoint
         const parts = doc.nome_arquivo.split("/");
-        a.download = parts[parts.length - 1] || "documento.pdf";
+        a.download = decodeURIComponent(parts[parts.length - 1]) || "documento.pdf";
 
         document.body.appendChild(a);
         a.click();
@@ -215,6 +214,7 @@ const handleDownloadSelectedDocs = async () => {
     alert("Erro ao baixar os documentos.");
   }
 };
+
 
 
 
