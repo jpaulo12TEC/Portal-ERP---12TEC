@@ -208,8 +208,8 @@ const handleDownloadSelectedDocs = async () => {
         const codeChallenge = await generateCodeChallenge(codeVerifier);
         document.cookie = `code_verifier=${codeVerifier}; path=/; SameSite=Strict; ${location.protocol === 'https:' ? 'secure' : ''}`;
 
-        const loginUrl = `https://login.microsoftonline.com/${process.env.NEXT_PUBLIC_AZURE_TENANT_ID}/oauth2/v2.0/authorize?client_id=${process.env.NEXT_PUBLIC_AZURE_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_BASE_URL + '/api/auth/callback')}?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}&response_mode=query&scope=User.Read Files.ReadWrite.All offline_access&code_challenge=${codeChallenge}&code_challenge_method=S256`;
-        window.location.href = loginUrl;
+        const loginUrl = `https://login.microsoftonline.com/${process.env.NEXT_PUBLIC_AZURE_TENANT_ID}/oauth2/v2.0/authorize?client_id=${process.env.NEXT_PUBLIC_AZURE_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_BASE_URL + '/api/auth/callback')}&response_mode=query&scope=User.Read Files.ReadWrite.All offline_access&code_challenge=${codeChallenge}&code_challenge_method=S256&state=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+
         return false; // interrompe
       }
 

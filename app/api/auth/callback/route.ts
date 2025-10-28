@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(req: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL!;
   const code = req.nextUrl.searchParams.get('code');
-  const redirectPath = req.nextUrl.searchParams.get('redirect') || '/';
+  const redirectPath = req.nextUrl.searchParams.get('state') || '/';
 
   if (!code) return NextResponse.redirect(`${baseUrl}/?error=no_code`);
 
