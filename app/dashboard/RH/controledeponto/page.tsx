@@ -669,7 +669,7 @@ return (
             Folha de Ponto | {mesSelecionado}/{anoSelecionado}
           </h2>
         </div>
-        <img src="/12tec.png" alt="Logo" className="h-19" />
+        <img src="12tec.png" alt="Logo" className="h-19" />
       </div>
 
       <p className="font-medium mb-4">Colaborador: {colaboradorSelecionado}</p>
