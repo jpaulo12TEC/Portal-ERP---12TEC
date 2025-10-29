@@ -44,21 +44,19 @@ const handleLogout = async () => {
 
 useEffect(() => {
   const fetchUserData = async () => {
-    // Verifica se já tem a foto no localStorage
     const cachedPhoto = localStorage.getItem('fotoCaminho');
     const cachedNome = localStorage.getItem('nomeUsuario');
     const cachedCargo = localStorage.getItem('cargoUsuario');
 
-    if (cachedPhoto || cachedNome || cachedCargo) {
-      if (cachedPhoto) setFotoCaminho(cachedPhoto);
-      if (cachedNome) setNome(cachedNome);
-      if (cachedCargo) setCargo(cachedCargo);
-      return; // sai do fetch
-    }
+    if (cachedNome) setNome(cachedNome);
+    if (cachedCargo) setCargo(cachedCargo);
+    if (cachedPhoto) setFotoCaminho(cachedPhoto);
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError) return console.error('Erro ao obter usuário:', userError.message);
-    if (!user) return;
+    if (userError || !user) {
+      console.error('Erro ao obter usuário:', userError?.message);
+      return;
+    }
 
     const { data, error } = await supabase
       .from('profiles')
@@ -74,15 +72,27 @@ useEffect(() => {
     localStorage.setItem('cargoUsuario', data?.cargo || '');
 
     if (data?.fotocaminho) {
-      const { data: signedUrlData, error: signedUrlError } = await supabase
-        .storage
-        .from('fotoperfil')
-        .createSignedUrl(data.fotocaminho, 60 * 60 * 24 * 1); // expira em 7 dias
-      if (signedUrlError) {
-        setFotoCaminho(null);
-      } else {
+      try {
+        const { data: signedUrlData, error: signedUrlError } = await supabase
+          .storage
+          .from('fotoperfil')
+          .createSignedUrl(data.fotocaminho, 60 * 60 * 24 * 7); // 7 dias
+
+        if (signedUrlError || !signedUrlData) {
+          console.warn('Erro ao gerar URL assinada:', signedUrlError?.message);
+          setFotoCaminho(null);
+          return;
+        }
+
+        // Testa se a URL realmente funciona antes de salvar
+        const testRes = await fetch(signedUrlData.signedUrl, { method: 'HEAD' });
+        if (!testRes.ok) throw new Error('URL da foto inválida ou expirada');
+
         setFotoCaminho(signedUrlData.signedUrl);
         localStorage.setItem('fotoCaminho', signedUrlData.signedUrl);
+      } catch (e) {
+        console.error('Erro ao carregar imagem:', e);
+        setFotoCaminho(null);
       }
     } else {
       setFotoCaminho(null);
@@ -91,6 +101,7 @@ useEffect(() => {
 
   fetchUserData();
 }, [supabase]);
+
 
 
   return (
