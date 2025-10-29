@@ -103,48 +103,69 @@ export async function uploadFileToOneDrive(
       return { id: uploadedFile.id, url: uploadedFile.webUrl };
     }
 
-    console.log("Arquivo grande, criando upload session (>4MB)");
-    const sessionRes = await fetch(`${graphBase}/items/${pastaDestinoId}:/${fileName}:/createUploadSession`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ item: { "@microsoft.graph.conflictBehavior": "rename" } }),
-    });
-    if (!sessionRes.ok) {
-      const text = await sessionRes.text();
-      console.error("Erro criando upload session:", text);
-      throw new Error(text);
-    }
-    const sessionData = await sessionRes.json();
-    const uploadUrl = sessionData.uploadUrl;
-    console.log("Upload session criada:", uploadUrl);
+console.log("Arquivo grande, criando upload session (>4MB)");
+const sessionRes = await fetch(`${graphBase}/items/${pastaDestinoId}:/${fileName}:/createUploadSession`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    item: { "@microsoft.graph.conflictBehavior": "rename" },
+  }),
+});
 
-    const chunkSize = 5 * 1024 * 1024;
-    let start = 0;
-    while (start < file.size) {
-      const end = Math.min(start + chunkSize, file.size);
-      const chunk = file.slice(start, end);
-      console.log(`Enviando chunk bytes ${start}-${end - 1}`);
-      const chunkRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Range": `bytes ${start}-${end - 1}/${file.size}`,
-        },
-        body: chunk,
-      });
-      if (!chunkRes.ok && chunkRes.status !== 202 && chunkRes.status !== 201) {
-        const text = await chunkRes.text();
-        console.error("Erro no upload de chunk:", text);
-        throw new Error(text);
-      }
-      start = end;
-    }
+if (!sessionRes.ok) {
+  const text = await sessionRes.text();
+  console.error("Erro criando upload session:", text);
+  throw new Error(text);
+}
 
-    console.log("Upload completo, buscando info do arquivo...");
-    const fileRes = await fetch(uploadUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-    const uploadedFile = await fileRes.json();
-    console.log("Arquivo final:", uploadedFile);
+const sessionData = await sessionRes.json();
+const uploadUrl = sessionData.uploadUrl;
+console.log("Upload session criada:", uploadUrl);
 
-    return { id: uploadedFile.id, url: uploadedFile.webUrl };
+const chunkSize = 5 * 1024 * 1024; // 5 MB
+let start = 0;
+let uploadedFile = null;
+
+while (start < file.size) {
+  const end = Math.min(start + chunkSize, file.size);
+  const chunk = file.slice(start, end);
+  console.log(`Enviando chunk bytes ${start}-${end - 1}`);
+
+  const chunkRes = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Range": `bytes ${start}-${end - 1}/${file.size}`,
+    },
+    body: chunk,
+  });
+
+  // ⚠️ No último PUT, o OneDrive devolve o JSON do arquivo completo
+  if (chunkRes.status === 201 || chunkRes.status === 200) {
+    uploadedFile = await chunkRes.json();
+    console.log("✅ Upload finalizado:", uploadedFile);
+    break;
+  }
+
+  if (!chunkRes.ok && chunkRes.status !== 202) {
+    const text = await chunkRes.text();
+    console.error("Erro no upload de chunk:", text);
+    throw new Error(text);
+  }
+
+  start = end;
+}
+
+// ✅ Agora `uploadedFile` tem os dados certos
+if (!uploadedFile) {
+  console.error("Upload final não retornou metadados do arquivo.");
+  throw new Error("Falha ao obter informações do arquivo final.");
+}
+
+return { id: uploadedFile.id, url: uploadedFile.webUrl };
+
 
   } catch (err: any) {
     console.error("Erro ao enviar arquivo:", err);

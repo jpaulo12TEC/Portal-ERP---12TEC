@@ -35,21 +35,43 @@ export default function Dashboard() {
 };
 
 
-  const DOCUMENTOS_OBRIGATORIOS = {
-    contratacao: (tipoRegime: string) =>
-      tipoRegime === 'CLT'
-        ? [
-            "Acordo de Compensacao","Acordo de Prorrogacao","Contrato de Experiencia",
-            "Declaracao Encargos de IR","Ficha de Registro","LGPD",
-            "Opcao de Desistencia de VT","Solicitacao de VT","Termo de Responsabilidade"
-          ]
-        : tipoRegime === 'PJ'
-        ? ["Contrato de Prestacao de Servico"]
-        : [],
-    identificacao: ["RG","CPF","CTPS - Digital","E-Social","Comprovante de Residencia","Certidao de Nascimento ou Casamento","Certidao de Nascimento"],
-    competencia: ["Diploma","Certificado de Curso"],
-    seguranca: ["Treinamento de Seguranca"]
-  };
+
+
+
+const DOCUMENTOS_OBRIGATORIOS = {
+  contratacao: (tipoRegime: string) => {
+    if (tipoRegime === 'CLT') {
+      return [
+        "Acordo de Compensacao",
+        "Acordo de Prorrogacao",
+        "Contrato de Experiencia",
+        "Declaracao Encargos de IR",
+        "Ficha de Registro",
+        "LGPD",
+        "Opcao de Desistencia de VT",
+        "Solicitacao de VT",
+        "Termo de Responsabilidade",
+      ];
+    }
+
+    if (tipoRegime === 'PJ') {
+      return ["Contrato de Prestacao de Servico"];
+    }
+
+    return [];
+  },
+  identificacao: [
+    "RG",
+    "CPF",
+    "CTPS - Digital",
+    "E-Social",
+    "Comprovante de Residencia",
+    "Certidao de Nascimento ou Casamento",
+    "Caderneta de Vacinação",
+  ],
+  competencia: ["Certificado de Curso"],
+  seguranca: ["Ficha de EPI", "ASO", "Ordem de Serviço"],
+};
 
   useEffect(() => {
     async function carregarDados() {

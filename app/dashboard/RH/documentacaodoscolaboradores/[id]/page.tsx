@@ -39,10 +39,10 @@ const DOCUMENTOS_OBRIGATORIOS = {
     "E-Social",
     "Comprovante de Residencia",
     "Certidao de Nascimento ou Casamento",
-    "Certidao de Nascimento",
+    "Caderneta de Vacinação",
   ],
-  competencia: ["Diploma", "Certificado de Curso"],
-  seguranca: ["Treinamento de Seguranca"],
+  competencia: ["Certificado de Curso"],
+   seguranca: ["Ficha de EPI", "ASO", "Ordem de Serviço"],
 };
 type DocumentoPersonalizado = {
   nome: string;
