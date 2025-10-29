@@ -6,6 +6,7 @@ import { Search, ArrowLeft, FileSpreadsheet } from "lucide-react";
 import { useUser } from '@/components/UserContext';
 import { supabase } from '../../../../lib/superbase';
 import * as XLSX from 'xlsx';
+import { ChevronDown, ChevronUp, Eye } from "lucide-react";
 
 type Documento = {
   id: number;
@@ -21,10 +22,18 @@ export default function Dashboard() {
   const { nome } = useUser();
   const router = useRouter();
   const [menuActive, setMenuActive] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('Pessoal');
   const [colaboradores, setColaboradores] = useState<any[]>([]);
   const [showAtivos, setShowAtivos] = useState(true);
   const [showDesligados, setShowDesligados] = useState(false);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>('ativos'); // ativos, desligados, afastados
+
+
+  const toggleSection = (section: string) => {
+  setExpandedSection(expandedSection === section ? null : section);
+};
+
 
   const DOCUMENTOS_OBRIGATORIOS = {
     contratacao: (tipoRegime: string) =>
@@ -152,73 +161,93 @@ export default function Dashboard() {
     setExpandedRow(expandedRow === id ? null : id);
   };
 
-  const renderTabela = (lista: any[]) => (
-    <div className="overflow-hidden rounded-lg shadow-md mt-3 border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200 bg-white">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Nome</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Cargo</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Depto</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Regime</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Vencidos</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Com Comentário</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Faltando</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {lista.map(colab => (
-            <React.Fragment key={colab.id}>
-              <tr className="hover:bg-blue-50 transition">
-                <td className="px-6 py-4 text-sm text-gray-800 cursor-pointer" onClick={() => handleToggleRow(colab.id)}>
-                  {colab.nome}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-800">{colab.cargo}</td>
-                <td className="px-6 py-4 text-sm text-gray-800">{colab.departamento}</td>
-                <td className="px-6 py-4 text-sm text-gray-800">{colab.tipo_regime}</td>
-                <td className="px-6 py-4 text-sm font-semibold text-red-600">{colab.vencidos}</td>
-                <td className="px-6 py-4 text-sm font-semibold text-blue-600">{colab.comComentario}</td>
-                <td className="px-6 py-4 text-sm font-semibold text-orange-600">{colab.faltando}</td>
-              </tr>
+const renderTabela = (lista: any[]) => (
+  <div className="overflow-hidden rounded-lg shadow-md mt-3 border border-gray-200">
+    <table className="min-w-full divide-y divide-gray-200 bg-white">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Nome</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Cargo</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Depto</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Regime</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Vencidos</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Com Comentário</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Faltando</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-100">
+        {lista.map(colab => (
+          <React.Fragment key={colab.id}>
+            <tr
+              className="hover:bg-blue-50 transition cursor-pointer"
+              onClick={() => handleToggleRow(colab.id)}
+            >
+              <td className="px-6 py-4 text-sm text-gray-800 flex items-center justify-between">
+                {colab.nome}
+                {expandedRow === colab.id ? (
+                  <ChevronUp className="w-4 h-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                )}
+              </td>
+              <td className="px-6 py-4 text-sm text-gray-800">{colab.cargo}</td>
+              <td className="px-6 py-4 text-sm text-gray-800">{colab.departamento}</td>
+              <td className="px-6 py-4 text-sm text-gray-800">{colab.tipo_regime}</td>
+              <td className="px-6 py-4 text-sm font-semibold text-red-600">{colab.vencidos}</td>
+              <td className="px-6 py-4 text-sm font-semibold text-blue-600">{colab.comComentario}</td>
+              <td className="px-6 py-4 text-sm font-semibold text-orange-600">{colab.faltando}</td>
+            </tr>
 
-              {expandedRow === colab.id && (
-                <tr className="bg-gray-50">
-                  <td colSpan={7} className="px-6 py-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <p className="font-semibold text-gray-800">Vencidos</p>
-                        <ul className="list-disc ml-5 text-gray-700">
-                          {colab.documentosDetalhes
-                            .filter((d: Documento) => d.vencimento && (new Date(d.vencimento).getTime() - new Date().getTime()) / (1000*60*60*24) <= 30)
-                            .map((d: Documento) => <li key={d.id}>{d.nome_documento} ({d.vencimento})</li>)}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-800">Com Comentário</p>
-                        <ul className="list-disc ml-5 text-gray-700">
-                          {colab.documentosDetalhes
-                            .filter((d: Documento) => d.comentario?.trim())
-                            .map((d: Documento) => <li key={d.id}>{d.nome_documento}: {d.comentario}</li>)}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-800">Faltando</p>
-                        <ul className="list-disc ml-5 text-gray-700">
-                          {colab.faltandoNomes.map((doc: string, i: number) => (
-                            <li key={i}>{doc}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+{expandedRow === colab.id && (
+  <tr className="bg-gray-50 transition-all duration-300 relative">
+    <td colSpan={7} className="px-6 py-4 relative">
+      {/* Botão flutuante no canto superior direito */}
+      <button
+        className="absolute top-2 right-2 inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-all"
+        onClick={() => router.push(`/dashboard/RH/documentacaodoscolaboradores/${colab.id}`)}
+      >
+        <Eye className="w-4 h-4" />
+        Ver Detalhes
+      </button>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <p className="font-semibold text-gray-800 mb-1">Vencidos</p>
+          <ul className="list-disc ml-5 text-gray-700">
+            {colab.documentosDetalhes
+              .filter((d: Documento) =>
+                d.vencimento && (new Date(d.vencimento).getTime() - new Date().getTime()) / (1000*60*60*24) <= 30
+              )
+              .map((d: Documento) => <li key={d.id}>{d.nome_documento} ({d.vencimento})</li>)}
+          </ul>
+        </div>
+        <div>
+          <p className="font-semibold text-gray-800 mb-1">Com Comentário</p>
+          <ul className="list-disc ml-5 text-gray-700">
+            {colab.documentosDetalhes
+              .filter((d: Documento) => d.comentario?.trim())
+              .map((d: Documento) => <li key={d.id}>{d.nome_documento}: {d.comentario}</li>)}
+          </ul>
+        </div>
+        <div>
+          <p className="font-semibold text-gray-800 mb-1">Faltando</p>
+          <ul className="list-disc ml-5 text-gray-700">
+            {colab.faltandoNomes.map((doc: string, i: number) => (
+              <li key={i}>{doc}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </td>
+  </tr>
+)}
+
+          </React.Fragment>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
 
   return (
     <div className={`flex flex-col h-screen ${menuActive ? "ml-[300px]" : "ml-[80px]"}`}>
@@ -244,7 +273,7 @@ export default function Dashboard() {
       </div>
 
       <div className="flex flex-1">
-        <Sidebar menuActive={menuActive} setMenuActive={setMenuActive} activeTab="" onNavClickAction={() => {}} />
+        <Sidebar menuActive={menuActive} setMenuActive={setMenuActive} activeTab="Pessoal" onNavClickAction={() => {}} />
         <div className="flex-1 p-6 overflow-y-auto">
           {/* Resumo geral */}
 {/* Resumo geral + Exportar */}
@@ -289,7 +318,43 @@ export default function Dashboard() {
 </div>
 
 
-          {renderTabela(ativos)}
+{/* Tabela de Ativos */}
+<div className="mt-6">
+  <h2
+    className="text-lg font-semibold text-blue-600 mb-2 cursor-pointer select-none"
+    onClick={() => toggleSection('ativos')}
+  >
+    Ativos ({ativos.length})
+  </h2>
+  {expandedSection === 'ativos' && renderTabela(ativos)}
+</div>
+
+{/* Tabela de Desligados */}
+{desligados.length > 0 && (
+  <div className="mt-6">
+    <h2
+      className="text-lg font-semibold text-red-600 mb-2 cursor-pointer select-none"
+      onClick={() => toggleSection('desligados')}
+    >
+      Desligados ({desligados.length})
+    </h2>
+    {expandedSection === 'desligados' && renderTabela(desligados)}
+  </div>
+)}
+
+{/* Tabela de Afastados */}
+{afastados.length > 0 && (
+  <div className="mt-6">
+    <h2
+      className="text-lg font-semibold text-teal-600 mb-2 cursor-pointer select-none"
+      onClick={() => toggleSection('afastados')}
+    >
+      Afastados ({afastados.length})
+    </h2>
+    {expandedSection === 'afastados' && renderTabela(afastados)}
+  </div>
+)}
+
         </div>
       </div>
     </div>

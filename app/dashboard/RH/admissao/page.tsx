@@ -21,10 +21,11 @@ const processos = [
 export default function AdmissaoColaborador() {
   const { nome } = useUser();
   const [menuActive, setMenuActive] = useState(false);
-  const [activeTab, setActiveTab] = useState('');
+ const [activeTab, setActiveTab] = useState<string>('Pessoal');
   const router = useRouter();
   const [foto, setFoto] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -329,7 +330,7 @@ console.log("Dados sendo enviados para o Supabase:", dadosFuncionario);
           className="h-full"
           menuActive={menuActive}
           setMenuActive={setMenuActive}
-          activeTab={activeTab}
+          activeTab="Pessoal"
         />
 
         {/* Formulário */}

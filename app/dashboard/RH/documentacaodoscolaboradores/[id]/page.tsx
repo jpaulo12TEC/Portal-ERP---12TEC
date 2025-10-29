@@ -135,7 +135,7 @@ const [modoSelecao, setModoSelecao] = useState(false);
   const { nome } = useUser();
   const [currentPage, setCurrentPage] = useState('');
   const [menuActive, setMenuActive] = useState(false);
-  const [activeTab, setActiveTab] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('Pessoal');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -1662,7 +1662,7 @@ const handleSalvarDocumento = async () => {
       </div>
 
       <div className="flex flex-1">
-         <Sidebar onNavClickAction={handleNavClick} className="h-full" menuActive={menuActive} setMenuActive={setMenuActive} activeTab={activeTab} />
+         <Sidebar onNavClickAction={handleNavClick} className="h-full" menuActive={menuActive} setMenuActive={setMenuActive} activeTab="Pessoal" />
 
         <div className="p-6 w-full">
           <div className="flex gap-8 p-6 bg-white shadow-md b mt-6 w-full ">

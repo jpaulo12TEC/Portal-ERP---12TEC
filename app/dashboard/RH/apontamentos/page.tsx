@@ -16,6 +16,7 @@ export default function ApontamentosPage() {
   const [tipoApontamento, setTipoApontamento] = useState<string>('Férias');
   const [loading, setLoading] = useState(false);
   const [menuActive, setMenuActive] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('Pessoal');
 
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
@@ -96,7 +97,7 @@ export default function ApontamentosPage() {
 
   return (
     <div className={`flex h-screen ${menuActive ? "ml-[300px]" : "ml-[80px]"}`}>
-      <Sidebar menuActive={menuActive} setMenuActive={setMenuActive} activeTab="" onNavClickAction={()=>{}} />
+      <Sidebar menuActive={menuActive} setMenuActive={setMenuActive} activeTab="Pessoal" onNavClickAction={()=>{}} />
       <div className="flex-1 flex flex-col">
         {/* Topbar */}
         <div className="flex items-center justify-between bg-[#200101] p-2 text-white shadow-md">

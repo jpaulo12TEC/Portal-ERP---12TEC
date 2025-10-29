@@ -19,6 +19,7 @@ type Documento = {
 export default function DocumentacaoColaboradores() {
   const { nome } = useUser();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<string>('Pessoal');
   const [menuActive, setMenuActive] = useState(false);
   const [colaboradores, setColaboradores] = useState<any[]>([]);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
@@ -149,7 +150,7 @@ export default function DocumentacaoColaboradores() {
           className="h-full"
           menuActive={menuActive}
           setMenuActive={setMenuActive}
-          activeTab=""
+          activeTab="Pessoal"
         />
 
         <div className="p-6 w-full max-w-[1100px] mx-auto">
@@ -167,44 +168,50 @@ export default function DocumentacaoColaboradores() {
             <Card icon={FileText} title="Docs Faltando" value={resumo.docsFaltando} color="bg-orange-500" />
           </div>
 
-          {/* Ações Rápidas */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#5a0d0d] mb-4">Ações Rápidas</h2>
-            <div className="flex flex-wrap gap-4">
-              {[
-                {
-                  label: 'Admissão',
-                  path: '/dashboard/RH/admissao',
-                  icon: UserPlus,
-                },
-                {
-                  label: 'Visão Geral',
-                  path: '/dashboard/RH/documentacaodoscolaboradores',
-                  icon: ClipboardList,
-                },
-                {
-                  label: 'Apontamentos',
-                  path: '/dashboard/RH/apontamentos',
-                  icon: Clock,
-                },
-                {
-                  label: 'Folha de Ponto',
-                  path: 'https://rhid.com.br/v2/#/login',
-                  external: true,
-                  icon: FileText,
-                },
-              ].map(({ label, path, icon: Icon, external }) => (
-                <button
-                  key={label}
-                  onClick={() => external ? window.open(path, '_blank') : router.push(path)}
-                  className="w-[110px] h-[110px] flex flex-col items-center justify-center text-center border rounded-xl shadow bg-white text-[#5a0d0d] border-[#5a0d0d] hover:bg-[#5a0d0d] hover:text-white transition-all"
-                >
-                  <Icon className="w-6 h-6 mb-2" />
-                  <span className="text-xs font-medium">{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+{/* Ações Rápidas */}
+<div>
+  <h2 className="text-lg font-semibold text-[#5a0d0d] mb-4">Ações Rápidas</h2>
+  <div className="flex flex-wrap gap-4">
+    {[
+      {
+        label: 'Admissão',
+        path: '/dashboard/RH/admissao',
+        icon: UserPlus,
+      },
+      {
+        label: 'Visão Geral',
+        path: '/dashboard/RH/documentacaodoscolaboradores',
+        icon: ClipboardList,
+      },
+      {
+        label: 'Apontamentos',
+        path: '/dashboard/RH/apontamentos',
+        icon: Clock,
+      },
+      {
+        label: 'Folha de Ponto',
+        path: 'https://rhid.com.br/v2/#/login',
+        external: true,
+        icon: FileText,
+      },
+      {
+        label: 'Análise de Folha de Ponto',
+        path: '/dashboard/RH/controledeponto', // novo botão
+        icon: FileText, // você pode usar outro ícone se quiser diferenciar
+      },
+    ].map(({ label, path, icon: Icon, external }) => (
+      <button
+        key={label}
+        onClick={() => external ? window.open(path, '_blank') : router.push(path)}
+        className="w-[110px] h-[110px] flex flex-col items-center justify-center text-center border rounded-xl shadow bg-white text-[#5a0d0d] border-[#5a0d0d] hover:bg-[#5a0d0d] hover:text-white transition-all"
+      >
+        <Icon className="w-6 h-6 mb-2" />
+        <span className="text-xs font-medium">{label}</span>
+      </button>
+    ))}
+  </div>
+</div>
+
 
           {/* Lista de colaboradores */}
           <div className="mt-8">
