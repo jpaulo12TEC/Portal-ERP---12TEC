@@ -225,19 +225,33 @@ export default function Dashboard() {
         />
 
  {/* Container que irá exibir a imagem de fundo */}
- <div
- ref={containerRef}
-          className={`content flex-1 p-6 min-h-screen  ${showMurals ? 'bg-gray-100' : ''}`}
-          style={{
-            backgroundImage: 'url("/12TEC.png")',
-            
-            backgroundRepeat: 'no-repeat',  // Evita que a imagem se repita
-            backgroundPosition: 'center',
-            transition: 'background 0.5s ease-in-out',
-            height: showMurals ? 'auto' : '100vh', // Mudando a altura ao clicar
-          }}
-          onClick={handleImageClick}
-        >
+<div
+  className={`content flex-1 p-6 min-h-screen ${showMurals ? 'bg-gray-100' : ''}`}
+  style={{
+    height: showMurals ? 'auto' : '100vh',
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: showMurals ? '#f3f4f6' : 'white',
+    transition: "background-color 0.5s ease-in-out",
+  }}
+>
+  {/* Quando o mural ainda não está visível */}
+  {!showMurals && (
+    <motion.img
+      src="/12TEC.png"
+      alt="Logo"
+      initial={{ scale: 1.8, opacity: 0.3, filter: "blur(8px)" }}
+      animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+      transition={{
+        duration: 2,
+        ease: "easeInOut",
+      }}
+      className="max-w-[400px] w-[70%]"
+      onClick={() => setShowMurals(true)}
+      style={{ cursor: "pointer" }}
+    />
+  )}
         
         {showMurals && (
 <div className={`content flex-1 p-6 min-h-screen ${menuActive ? 'ml-[300px]' : 'ml-[80px]'} bg-gray-100`}>
