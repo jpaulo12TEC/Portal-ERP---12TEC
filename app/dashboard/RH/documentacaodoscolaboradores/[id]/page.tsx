@@ -1798,11 +1798,14 @@ const handleSalvarDocumento = async () => {
   className="w-full border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#5a0d0d]"
 >
   <option value="">-- Selecione --</option>
-  {documentospersonalizados.map((doc, index) => (
+ {[...documentospersonalizados]
+  .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }))
+  .map((doc, index) => (
     <option key={index} value={doc.nome}>
       {doc.nome}
     </option>
   ))}
+
 </select>
 
                 </div>
