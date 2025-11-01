@@ -32,18 +32,32 @@ const DOCUMENTOS_OBRIGATORIOS = {
 
     return [];
   },
-  identificacao: [
-    "RG",
-    "CPF",
-    "CTPS - Digital",
-    "E-Social",
-    "Comprovante de Residencia",
-    "Certidao de Nascimento ou Casamento",
-    "Caderneta de Vacinação",
-  ],
+
+  identificacao: (tipoRegime: string) => {
+    const base = [
+      "RG",
+      "CPF",
+      "Comprovante de Residencia",
+      "Certidao de Nascimento ou Casamento",
+      "Caderneta de Vacinação",
+    ];
+
+    if (tipoRegime !== 'PJ') {
+      base.push("CTPS - Digital", "E-Social");
+    }
+
+    return base;
+  },
+
   competencia: ["Certificado de Curso"],
-   seguranca: ["Ficha de EPI", "ASO", "Ordem de Serviço"],
+
+  seguranca: ["Ficha de EPI", "ASO", "Ordem de Serviço"],
 };
+
+
+
+
+
 type DocumentoPersonalizado = {
   nome: string;
   categoria: string;
@@ -588,7 +602,7 @@ const handleSalvarInserirSubstituir = async () => {
   </button>
 </div>
             {renderDocumentos('Contratação', DOCUMENTOS_OBRIGATORIOS.contratacao(funcionario?.tipo_regime || "CLT"))}
-            {renderDocumentos('Identificação', DOCUMENTOS_OBRIGATORIOS.identificacao)}
+            {renderDocumentos('Identificação', DOCUMENTOS_OBRIGATORIOS.identificacao(funcionario?.tipo_regime || "CLT"))}
             {renderDocumentos('Competência', DOCUMENTOS_OBRIGATORIOS.competencia)}
                   {/* Nova categoria RH */}
             {renderDocumentos('RH', [])} {/* Nenhum documento obrigatório */}
