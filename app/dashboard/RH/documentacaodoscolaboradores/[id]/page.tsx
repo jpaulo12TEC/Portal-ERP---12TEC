@@ -3,11 +3,12 @@ import { useParams } from 'next/navigation';
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../../../lib/superbase';
-import { Search, PlusCircle, ArrowLeft } from "lucide-react";
+import { Search, PlusCircle, ArrowLeft,FolderKanban } from "lucide-react";
 import { useUser } from '@/components/UserContext';
 import Sidebar from '../../../../../components/Sidebar';
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Check, X } from "lucide-react";
+import { Download, Check, X, Upload } from "lucide-react";
+
 
 
 const DOCUMENTOS_OBRIGATORIOS = {
@@ -105,7 +106,7 @@ interface ComprovanteFuncionario {
 
 interface Documento {
   nome_documento: string;
-  Visualizar_menu?: string;
+  Visualizar_menu?: boolean;
   postado_por?: string;
   vencimento?: string;
   comentario?: string;
@@ -114,6 +115,7 @@ interface Documento {
   atualizado_por: string
   id: string
   nome_arquivo: string
+  funcionario_id:string
 }
 
 type ModalProps = {
@@ -123,6 +125,9 @@ type ModalProps = {
 
 
 export default function DocumentacaoColaborador() {
+const [mostrarModalComentario, setMostrarModalComentario] = useState(false);
+const [comentarioEditando, setComentarioEditando] = useState(''); // pra armazenar o comentário ao editar
+
 
 const [nomeDocumentoComprovantes, setNomeDocumentoComprovantes] = useState("");
 const [mesReferencia, setMesReferencia] = useState("");
@@ -184,6 +189,21 @@ const handleCheckboxChange = (docId: string, isChecked: boolean, aba: string) =>
   // Aqui você define a constante dinâmica
   setAbaAtivaPorSelecao(aba);
 };
+
+const carregarDocumentos = async () => {
+  if (!funcionario) return;
+  const { data, error } = await supabase
+    .from("documentoscolaboradores")
+    .select("*")
+    .eq("funcionario_id", funcionario.id);
+  if (error) {
+    console.error("Erro ao carregar documentos:", error);
+    return;
+  }
+  setDocumentos(data || []);
+};
+
+
 
 
 const handleDownloadSelectedDocs = async () => {
@@ -269,11 +289,115 @@ const { data: docsSalvos, error: errorSalvos } = await supabase
 };
 
 
+
+
+
+// Retorna "Sim" ou "Não" baseado em DocumentosNDA ou Visualizar_menu
+function getVisualizarValor(docInfo: Documento | null, funcionario: any, nomeDocumento: string) {
+  if (docInfo) {
+    return Boolean(docInfo.Visualizar_menu) ? "Sim" : "Não";
+  }
+
+  const docsNDA: string[] = funcionario?.DocumentosNDA || [];
+  return docsNDA.includes(nomeDocumento) ? "Não" : "Sim";
+}
+
+// Atualiza DocumentosNDA e Visualizar_menu (se existir docInfo)
+async function atualizarDocumento(
+  funcionarioId: string,
+  nomeDocumento: string,
+  docInfo: Documento | null,
+  setDocumentos: React.Dispatch<React.SetStateAction<Documento[]>>,
+  setFuncionario: React.Dispatch<React.SetStateAction<any>>
+) {
+  // Busca DocumentosNDA atuais
+  const { data: funcData, error: erroBusca } = await supabase
+    .from("funcionarios")
+    .select("DocumentosNDA")
+    .eq("id", funcionarioId)
+    .single();
+
+  if (erroBusca) {
+    console.error("Erro ao buscar DocumentosNDA:", erroBusca);
+    return;
+  }
+
+  let documentosNDA: string[] = [];
+  try {
+    documentosNDA = Array.isArray(funcData?.DocumentosNDA)
+      ? funcData.DocumentosNDA
+      : typeof funcData?.DocumentosNDA === "string"
+      ? JSON.parse(funcData.DocumentosNDA)
+      : [];
+  } catch (e) {
+    documentosNDA = [];
+  }
+
+  const jaListado = documentosNDA.includes(nomeDocumento);
+
+  // Atualiza DocumentosNDA corretamente
+  const documentosNDAAtualizado = jaListado
+    ? documentosNDA.filter((n) => n !== nomeDocumento) // já existe → remove
+    : [...documentosNDA, nomeDocumento];               // não existe → adiciona
+
+  // Atualiza tabela funcionarios
+  const { error: erroAtualizaFunc } = await supabase
+    .from("funcionarios")
+    .update({ DocumentosNDA: documentosNDAAtualizado })
+    .eq("id", funcionarioId);
+
+  if (erroAtualizaFunc) {
+    console.error("Erro ao atualizar DocumentosNDA:", erroAtualizaFunc);
+    return;
+  }
+
+  // Atualiza estado do funcionário local para refletir no front
+  setFuncionario((prev: any) => ({
+    ...prev,
+    DocumentosNDA: documentosNDAAtualizado
+  }));
+
+  // Atualiza Visualizar_menu se docInfo existir
+  if (docInfo) {
+    const novoValor = !Boolean(docInfo.Visualizar_menu);
+
+    const { error: erroDoc } = await supabase
+      .from("documentoscolaboradores")
+      .update({ Visualizar_menu: novoValor })
+      .eq("id", docInfo.id);
+
+    if (!erroDoc) {
+      setDocumentos((prev) =>
+        prev.map((d) =>
+          d.id === docInfo.id ? { ...d, Visualizar_menu: novoValor } : d
+        )
+      );
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const handleAbrirModal = (docInfo: Documento | undefined) => {
   if (!docInfo) return;
   setDocSelecionado(docInfo);
   setMostrarModal(true);
 };
+
+
+
 
 
 const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
@@ -330,13 +454,32 @@ const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
     : "Não";
 
              const idDocumento = docInfo?.id; // Pega o ID do documento se existir
-              const isSelecionado = idDocumento && selectedDocs.has(idDocumento); // 💡
+              const isSelecionado = idDocumento && selectedDocs.has(idDocumento); //
+
+
+
+// Formata a data do vencimento
+    const vencimentoFormatado = docInfo?.vencimento
+      ? new Date(docInfo.vencimento).toLocaleDateString("pt-BR")
+      : "-";
+
+    // Determina cor da linha: vermelho se vencido, amarelo se a vencer <= 30 dias
+    let linhaCor = "";
+    if (docInfo?.vencimento) {
+      const diffDias =
+        (new Date(docInfo.vencimento).getTime() - new Date().getTime()) /
+        (1000 * 60 * 60 * 24);
+      if (diffDias <= 0) linhaCor = "bg-red-100"; // vencido
+      else if (diffDias > 0 && diffDias <= 30) linhaCor = "bg-yellow-100"; // a vencer
+    }
+
+
+
+
             return (
                  <tr
       key={nome}
-      className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
-        isSelecionado ? "bg-blue-200" : ""
-      }`}
+      className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${isSelecionado ? "bg-blue-200" : ""} ${linhaCor}`}
     >
                 {modoSelecao && (
   <td className="py-2 px-4 text-center">
@@ -361,16 +504,72 @@ const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
                 >
                   {disponivel}
                 </td>
-                <td className="py-2 px-4 text-center">
-                  {docInfo?.Visualizar_menu != null
-                    ? docInfo.Visualizar_menu
-                      ? "Sim"
-                      : "Não"
-                    : "-"}
-                </td>
+
+
+
+
+<td
+  className="py-2 px-4 text-center cursor-pointer select-none"
+  onClick={async () => {
+    const funcionarioIsd = id; // string | string[] | undefined
+    const funcionarioIdStr = Array.isArray(funcionarioIsd) ? funcionarioIsd[0] : funcionarioIsd;
+
+    const funcionarioId = docInfo?.funcionario_id || funcionarioIdStr;
+    const nomeDocumento = docInfo?.nome_documento || nome;
+
+    if (!funcionarioId || !nomeDocumento) return;
+
+    await atualizarDocumento(
+      funcionarioId,
+      nomeDocumento,
+      docInfo ?? null,
+      setDocumentos,
+      setFuncionario
+    );
+  }}
+>
+  {getVisualizarValor(docInfo ?? null, funcionario, docInfo?.nome_documento ?? nome)}
+</td>
+
+
+
+
+
+
+
+
+
                 <td className="py-2 px-4 text-center">{docInfo?.atualizado_por ?? "-"}</td>
-                <td className="py-2 px-4 text-center">{docInfo?.vencimento ?? "-"}</td>
-                <td className="py-2 px-4 text-center">{docInfo?.comentario ?? "-"}</td>
+                <td className="py-2 px-4 text-center">{vencimentoFormatado}</td>
+<td className="py-2 px-4 text-center max-w-[150px]">
+  {docInfo ? (
+    docInfo.comentario ? (
+      <span
+        className="cursor-pointer truncate block"
+        title="Clique para editar"
+        onClick={() => {
+          setDocSelecionado(docInfo);
+          setMostrarModalComentario(true); // Modal só pra editar/comentar
+        }}
+      >
+        {docInfo.comentario}
+      </span>
+    ) : (
+      <button
+        className="text-sm text-blue-600 hover:underline"
+        onClick={() => {
+          setDocSelecionado(docInfo);
+          setMostrarModalComentario(true);
+        }}
+      >
+        Adicionar
+      </button>
+    )
+  ) : (
+    <span className="text-gray-400">-</span> // ou simplesmente deixa vazio
+  )}
+</td>
+
                 <td className="py-2 px-4 text-center">
                   <button
                     className="text-blue-600 hover:text-blue-800 text-center transition-all"
@@ -407,10 +606,19 @@ const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
   );
 };
 
+const [processando, setProcessando] = useState(false);
+
+
+
 const handleSalvarInserirSubstituir = async () => {
-  console.log("🚀 Iniciando handleSalvarInserirSubstituir...");
+  if (processando) return; // evita múltiplos cliques
   if (!arquivoinserirsubstituir) {
     alert("Selecione um arquivo antes de continuar.");
+    return;
+  }
+
+  if (arquivoinserirsubstituir.size > 3 * 1024 * 1024) {
+    alert("O arquivo é maior que 3MB. Contate o suporte técnico: João Paulo.");
     return;
   }
 
@@ -420,8 +628,7 @@ const handleSalvarInserirSubstituir = async () => {
   }
 
  try {
-  console.log("Arquivo:", arquivoinserirsubstituir);
-  console.log("Vencimento:", vencimentoinserirsubstituir);
+ setProcessando(true); // ativa spinner
 
   const dataAtual = new Date();
   const dataFormatada = `${dataAtual.toLocaleDateString('pt-BR').replace(/\//g, '-')}_${dataAtual.toLocaleTimeString('pt-BR')}`;
@@ -434,7 +641,7 @@ const handleSalvarInserirSubstituir = async () => {
     : '';
   const nomeArquivoFinal = `${nomeArquivoLimpo}${extensao}`;
 
-  const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
+ const nomePasta = limparString(`${funcionario.nome_completo}-${funcionario.cpf}`);
   const categoria = docSelecionado?.categoria || activeTabLocal;
   const caminhoUpload = `Documentos de ${categoria}`;
 
@@ -444,7 +651,7 @@ const handleSalvarInserirSubstituir = async () => {
   formPayload.append("file", arquivoinserirsubstituir);
   formPayload.append("fileName", nomeArquivoFinal); // agora com extensão
   formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
-  formPayload.append("fornecedor", funcionario.nome_completo);
+  formPayload.append("fornecedor", nomePasta);
   formPayload.append("tipo", "funcionarios");
   formPayload.append("caminho", caminhoUpload);
 
@@ -526,10 +733,14 @@ const handleSalvarInserirSubstituir = async () => {
     setMostrarModal(false);
     setVencimentoInserirSubstituir("");
     setArquivoInserirSubstituir(null);
+    // Atualiza toda a lista no front
+await carregarDocumentos()
 
-  } catch (err) {
-    console.error("💥 Erro inesperado:", err);
+ } catch (err) {
+    console.error("Erro inesperado:", err);
     alert("Ocorreu um erro inesperado.");
+  } finally {
+    setProcessando(false); // desativa spinner
   }
 };
 
@@ -1091,6 +1302,35 @@ const demaisDocs = comprovantesFunc.filter(
 };
 
 
+
+const carregarComprovantesFuncionarioAtualizacao = async (funcionarioId: string) => {
+  if (!funcionarioId) return;
+  try {
+    const { data, error } = await supabase
+      .from("comprovantesfuncionarios")
+      .select("*")
+      .eq("funcionario_id", funcionarioId)
+      .order("criado_em", { ascending: false });
+
+    if (error) {
+      console.error("Erro ao carregar comprovantes:", error.message);
+      setContracheques([]); // <-- garante que o state muda
+      setComprovantesFunc([]); // força atualização
+      return;
+    }
+
+    setContracheques(data || []); // <-- atualiza o state
+    setComprovantesFunc(data || []); // atualiza o state → re-render
+  } catch (err) {
+    console.error("Erro inesperado ao carregar comprovantes:", err);
+    setContracheques([]);
+    setComprovantesFunc([]); // força atualização
+  }
+};
+
+
+
+
 const carregarComprovantesFuncionario = async (funcionarioId: string) => {
   try {
     const { data, error } = await supabase
@@ -1144,11 +1384,21 @@ function capitalize(text: string): string {
 
 
 
+// Função principal de salvar ou atualizar comprovantes
 const handleSalvarComprovantes = async () => {
   if (!arquivocomprovantes || !funcionario?.id) {
     alert("Selecione um arquivo e certifique-se que o funcionário está definido.");
     return;
   }
+
+  // Limite de 3 MB
+  const tamanhoMaximo = 3 * 1024 * 1024;
+  if (arquivocomprovantes.size > tamanhoMaximo) {
+    alert("O arquivo não pode ser maior que 3 MB. Entre em contato com o suporte técnico: João Paulo.");
+    return;
+  }
+
+  setProcessando(true);
 
   const modoSalvamento = updateOrNot ? "update" : "novo"; 
   console.log("Modo de salvamento:", modoSalvamento);
@@ -1158,33 +1408,29 @@ const handleSalvarComprovantes = async () => {
     const dataFormatada = `${dataAtual.toLocaleDateString('pt-BR').replace(/\//g, '-')}_${dataAtual.toLocaleTimeString('pt-BR')}`;
     const nomeArquivo = `${nomeDocumentoComprovantes} - ${funcionario.abreviatura} - ${dataFormatada}`;
     const nomeArquivoLimpo = limparString(nomeArquivo);
-// 🔥 Mantendo a extensão do arquivo original
-const extensao = arquivocomprovantes?.name?.includes('.') 
-  ? arquivocomprovantes.name.substring(arquivocomprovantes.name.lastIndexOf('.'))
-  : '';
-const nomeArquivoFinal = `${nomeArquivoLimpo}${extensao}`;
 
-const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
+    // Mantendo a extensão do arquivo original
+    const extensao = arquivocomprovantes?.name?.includes('.') 
+      ? arquivocomprovantes.name.substring(arquivocomprovantes.name.lastIndexOf('.'))
+      : '';
+    const nomeArquivoFinal = `${nomeArquivoLimpo}${extensao}`;
 
-// Caminho completo no formato "Documentação de &categoria"
-const caminhoUpload = `Documentação de Comprovantes/${nomePasta}/${nomeArquivoFinal}`;
-console.log("📂 Caminho para upload via API:", caminhoUpload);
+    const nomePasta = limparString(`${funcionario.nome_completo}-${funcionario.cpf}`);
 
-// ✅ UPLOAD VIA API
-const formPayload = new FormData();
-formPayload.append("file", arquivocomprovantes);
-formPayload.append("fileName", nomeArquivoFinal); // agora com extensão
-formPayload.append("caminho", "Contracheques e Folhas de Ponto");
-formPayload.append("fornecedor", funcionario.nome_completo || "Funcionário");
-formPayload.append("tipo", "funcionarios");
-formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
+    const caminhoUpload = `Documentação de Comprovantes/${nomePasta}/${nomeArquivoFinal}`;
+    console.log("📂 Caminho para upload via API:", caminhoUpload);
 
-    const res = await fetch("/api/onedrive/upload", {
-      method: "POST",
-      body: formPayload,
-    });
+    const formPayload = new FormData();
+    formPayload.append("file", arquivocomprovantes);
+    formPayload.append("fileName", nomeArquivoFinal);
+    formPayload.append("caminho", "Contracheques e Folhas de Ponto");
+    formPayload.append("fornecedor", nomePasta);
+    formPayload.append("tipo", "funcionarios");
+    formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
 
+    const res = await fetch("/api/onedrive/upload", { method: "POST", body: formPayload });
     const json = await res.json();
+
     if (!json?.success || !json.file?.url) {
       console.error("❌ Erro no upload da API:", json);
       alert("Erro ao enviar o arquivo.");
@@ -1205,7 +1451,6 @@ formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
           referente_a: referenteA,
           nome_arquivo: novaUrl,          
         }]);
-
       if (insertError) {
         console.error("Erro ao salvar no banco:", insertError.message);
         alert("Erro ao salvar informações no banco.");
@@ -1219,7 +1464,6 @@ formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
           mes_referencia: mesReferencia,
           referente_a: referenteA,
           nome_arquivo: novaUrl,
-         
         })
         .eq("id", idComprovanteSelecionado);
 
@@ -1230,7 +1474,7 @@ formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
       }
     }
 
-    // Finalização
+    // Limpar estado e fechar modal
     setIDDocumento("");
     setNomeArquivo("");
     setNomeDocumentoComprovantes("");
@@ -1240,12 +1484,14 @@ formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
     setMostrarModalComprovantes(false);
     alert("Comprovante salvo com sucesso!");
 
-    const novos = await carregarComprovantesFuncionario(funcionario.id);
-    setComprovantesFunc(novos);
+    // Atualiza a lista de comprovantes em tempo real
+    await carregarComprovantesFuncionarioAtualizacao(funcionario.id);
 
   } catch (err) {
     console.error("Erro inesperado:", err);
     alert("Erro inesperado ao salvar o comprovante.");
+  } finally {
+    setProcessando(false);
   }
 };
 
@@ -1490,6 +1736,16 @@ const handleSalvarDocumento = async () => {
       return;
     }
 
+
+      const tamanhoMB = arquivo.size / (1024 * 1024);
+    if (tamanhoMB > 3) {
+      alert("Arquivo maior que 3MB. Contate o suporte técnico: João Paulo.");
+      return;
+    }
+
+    setProcessando(true);
+
+
     // DADOS PARA INSERÇÃO
     const nomeDocumento = documentoSelecionado || nomePersonalizado.trim();
     const dataAtual = new Date();
@@ -1503,7 +1759,7 @@ const handleSalvarDocumento = async () => {
       : '';
     const nomeArquivoFinal = `${nomeArquivoLimpo}${extensao}`;
 
-    const nomePasta = limparString(`${funcionario.cpf}-${funcionario.nome_completo}`);
+    const nomePasta = limparString(`${funcionario.nome_completo}-${funcionario.cpf}`);
     const caminhoUpload = `Documentos de ${categoriaSelecionada}`;
     console.log("📂 Caminho para upload:", caminhoUpload);
 
@@ -1512,7 +1768,7 @@ const handleSalvarDocumento = async () => {
     formPayload.append("file", arquivo);
     formPayload.append("fileName", nomeArquivoFinal); // agora com extensão
     formPayload.append("caminho", caminhoUpload);
-    formPayload.append("fornecedor", funcionario.nome_completo || "Funcionário");
+    formPayload.append("fornecedor", nomePasta);
     formPayload.append("tipo", "funcionarios");
     formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
 
@@ -1552,6 +1808,18 @@ const handleSalvarDocumento = async () => {
          
         },
       ]);
+
+
+
+
+
+
+
+
+
+
+
+
 
     if (insertError) throw insertError;
 
@@ -1630,14 +1898,29 @@ const handleSalvarDocumento = async () => {
       }
     }
 
-    alert('Documento salvo com sucesso!');
+
+  // 🔥 Atualiza lista de documentos em tempo real
+    await carregarDocumentos();
+
+    // 🔥 Fecha modal automaticamente
     setShowModal(false);
+
+    // Limpa campos
+    setDocumentoSelecionado("");
+    setNomePersonalizado("");
+    setCategoriaSelecionada("");
+    setArquivo(null);
+    setVencimento("");
+
+    alert("Documento salvo com sucesso!");
+
   } catch (err) {
     console.error(err);
-    alert('Erro ao salvar o documento');
+    alert("Erro ao salvar o documento");
+  } finally {
+    setProcessando(false);
   }
 };
-
 
 
 
@@ -1680,48 +1963,89 @@ const handleSalvarDocumento = async () => {
 
         <div className="p-6 w-full">
           <div className="flex gap-8 p-6 bg-white shadow-md b mt-6 w-full ">
-            <div className="flex flex-col items-center w-1/3">
-              {fotoUrl ? (
-                <img
-                  src={fotoUrl}
-                  alt={`Foto de ${funcionario?.nome_completo}`}
-                  className="w-[220px] h-[220px] object-cover rounded-lg border shadow"
-                />
-              ) : (
-                <div className="w-[220px] h-[220px] bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 border">
-                  Sem foto
-                </div>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleUpload}
-                hidden
-              />
+<div className="flex flex-col items-center w-1/3">
+  {fotoUrl ? (
+    <img
+      src={fotoUrl}
+      alt={`Foto de ${funcionario?.nome_completo}`}
+      className="w-[220px] h-[220px] object-cover border"
+    />
+  ) : (
+    <div className="w-[220px] h-[220px] bg-gray-50 flex items-center justify-center text-gray-400 border">
+      Sem foto
+    </div>
+  )}
+
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept="image/*"
+    onChange={handleUpload}
+    hidden
+  />
+
+  <div className="flex gap-2 mt-4">
     <button
-          className="mt-4 px-4 py-2 bg-[#5a0d0d] text-white rounded-full hover:bg-[#7a1a1a] transition-all duration-300 shadow-sm text-sm"
-          onClick={() => {
-  if (fileInputRef.current) {
-    fileInputRef.current.click();
-  }
-}}
-          disabled={uploading}
-        >
-          {uploading ? 'Enviando...' : funcionario?.fotoUrl ? 'Substituir Foto' : 'Adicionar Foto'}
-        </button>
-            </div>
+      className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-sm hover:bg-gray-200 text-sm"
+      onClick={() => {
+        if (fileInputRef.current) {
+          fileInputRef.current.click();
+        }
+      }}
+      disabled={uploading}
+    >
+      <Upload className="w-4 h-4" />
+      {uploading ? 'Enviando...' : funcionario?.fotoUrl ? 'Substituir' : 'Adicionar'}
+    </button>
+
+    {fotoUrl && (
+      <a
+        href={fotoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-sm hover:bg-gray-200 text-sm"
+      >
+        <Download className="w-4 h-4" />
+        Abrir
+      </a>
+    )}
+  </div>
+</div>
+
+
 {/* Informações do funcionário */}
-<div className="flex-1 space-y-3 text-gray-800 w-2/3 ">
+<div className="flex items-center space-x-6 text-gray-800 w-full">
+  {/* Bloco de informações */}
+  <div className="space-y-3 w-2/3">
     <h2 className="text-xl font-semibold mb-2 border-b pb-1">Informações do Colaborador</h2>
     <p><span className="font-medium">Nome:</span> <strong>{funcionario.abreviatura}</strong></p>
     <p><span className="font-medium">Cargo:</span> {funcionario.cargo}</p>
-    <p><span className="font-medium">Data de Admissão:</span>{' '}  {funcionario.data_admissao ? new Date(funcionario.data_admissao).toLocaleDateString('pt-BR') : '-'}</p>
+    <p><span className="font-medium">Data de Admissão:</span>{' '}
+      {funcionario.data_admissao ? new Date(funcionario.data_admissao).toLocaleDateString('pt-BR') : '-'}</p>
     <p><span className="font-medium">Processo:</span> {funcionario.processo}</p>
     <p><span className="font-medium">Departamento:</span> {funcionario.departamento}</p>
     <p><span className="font-medium">Filial:</span> {funcionario.filial}</p>
     <p><span className="font-medium">Observações:</span> {funcionario.observacoes || '—'}</p>
   </div>
+
+{/* Ícone da pasta */}
+<div
+  className="flex flex-col items-center justify-center text-gray-700 cursor-pointer transition transform hover:scale-110 hover:text-blue-600"
+  onClick={() => {
+    const nomePasta = limparString(`${funcionario.nome_completo}-${funcionario.cpf}`);
+    const sharepointUrl = `https://12tec-my.sharepoint.com/shared?id=%2Fsites%2FDocumentao-12TECEngenharia%2FDocumentos%20Compartilhados%2FRecursos%20Humanos%2FDocumentação%20de%20Funcionários%2F${encodeURIComponent(nomePasta)}&listurl=https%3A%2F%2F12tec%2Esharepoint%2Ecom%2Fsites%2FDocumentao-12TECEngenharia%2FDocumentos%20Compartilhados&login_hint=compras%4012tec%2Ecom%2Ebr&source=waffle&weburl=%2Fsites%2FDocumentao-12TECEngenharia`;
+    window.open(sharepointUrl, '_blank');
+  }}
+>
+  <FolderKanban className="w-8 h-8 mb-1 text-gray-900 transition-colors cursor-pointer transition transform hover:scale-110 hover:text-blue-600" />
+  <span className="text-sm font-medium">Pasta do Funcionário</span>
+  <span className="text-sm font-medium">Shared Point</span>
+</div>
+
+</div>
+
+
+
 
 
 
@@ -1760,7 +2084,7 @@ const handleSalvarDocumento = async () => {
 
 
 
-{/* Modal */}
+{/* Adicionar Documentos Avulsos */}
 <AnimatePresence>
         {showModal && (
           <>
@@ -1892,15 +2216,25 @@ const handleSalvarDocumento = async () => {
 
                 {/* Ações */}
                 <div className="flex justify-end gap-3">
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700"
-                  >
-                    Cancelar
-                  </button>
-                  <button onClick={handleSalvarDocumento} className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white">
-                    Salvar Documento
-                  </button>
+  <button
+    onClick={() => setShowModal(false)}
+    className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700"
+    disabled={processando} // bloqueia cancelar durante envio
+  >
+    Cancelar
+  </button>
+
+  {/* Botão Salvar */}
+  <button
+    onClick={handleSalvarDocumento}
+    disabled={processando} // bloqueia enquanto processa
+    className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+  >
+    {processando && (
+      <div className="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></div>
+    )}
+    {processando ? "Processando..." : "Salvar Documento"}
+  </button>
                 </div>
               </div>
             </motion.div>
@@ -1908,10 +2242,12 @@ const handleSalvarDocumento = async () => {
         )}
 </AnimatePresence>
 
+
+{/* INSERIR ou SUBSTITUIR DOCUMENTOS JÁ POSTADOS*/}
 <AnimatePresence>
   {mostrarModal && (
     <>
-      {/* Overlay com blur e escurecimento */}
+      {/* Overlay com blur */}
       <motion.div
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
         initial={{ opacity: 0 }}
@@ -1931,8 +2267,11 @@ const handleSalvarDocumento = async () => {
           className="bg-white w-full max-w-md rounded-2xl p-6 shadow-xl relative z-50"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* 🔹 Mostra o nome do documento */}
           <h2 className="text-xl font-bold mb-4 text-gray-800">
-            {docSelecionado && docSelecionado.id ? "Substituir Documento" : "Inserir Documento"}
+            {docSelecionado && docSelecionado.id
+              ? `Substituir: ${docSelecionado.nome_documento}`
+              : `Inserir: ${docSelecionado?.nome_documento || "Novo Documento"}`}
           </h2>
 
           {/* Campo de vencimento */}
@@ -1958,17 +2297,30 @@ const handleSalvarDocumento = async () => {
 
           {/* Ações */}
           <div className="flex justify-end gap-3">
+            {/* Cancelar */}
             <button
               onClick={() => setMostrarModal(false)}
-              className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700"
+              disabled={processando}
+              className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 disabled:opacity-50"
             >
               Cancelar
             </button>
+
+            {/* Salvar / Substituir */}
             <button
               onClick={handleSalvarInserirSubstituir}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={processando}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 disabled:opacity-50"
             >
-              {docSelecionado && docSelecionado.id ?  "Substituir" : "Salvar"}
+              {processando && (
+                <div className="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></div>
+              )}
+              {processando 
+                ? "Processando..." 
+                : docSelecionado && docSelecionado.id 
+                  ? "Substituir" 
+                  : "Salvar"
+              }
             </button>
           </div>
         </div>
@@ -1977,6 +2329,8 @@ const handleSalvarDocumento = async () => {
   )}
 </AnimatePresence>
 
+
+{/* COMPROVANTES: FOLHAS DE PONTO E CONTRACHEQUES*/}
 <AnimatePresence>
   {mostrarModalComprovantes && (
     <>
@@ -2054,25 +2408,114 @@ const handleSalvarDocumento = async () => {
           </div>
 
           {/* Ações */}
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={() => setMostrarModalComprovantes(false)}
-              className="px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSalvarComprovantes}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {docSelecionado && docSelecionado.id ? "Substituir" : "Salvar"}
-            </button>
-          </div>
+<div className="flex justify-end gap-3">
+  <button
+    onClick={() => setMostrarModalComprovantes(false)}
+    disabled={processando} // bloqueia o cancelar se estiver processando
+    className={`px-4 py-2 rounded-xl text-gray-700 ${processando ? 'bg-gray-100 cursor-not-allowed' : 'bg-gray-200 hover:bg-gray-300'}`}
+  >
+    Cancelar
+  </button>
+
+  <button
+    onClick={handleSalvarComprovantes}
+    disabled={processando}
+    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+  >
+    {processando && (
+      <div className="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></div>
+    )}
+    {processando ? "Processando..." : (docSelecionado && docSelecionado.id ? "Substituir" : "Salvar")}
+  </button>
+</div>
+
         </div>
       </motion.div>
     </>
   )}
 </AnimatePresence>
+
+
+{/* Comentários - Editar comentário*/}
+{/* Comentários - Editar comentário */}
+<AnimatePresence>
+  {mostrarModalComentario && docSelecionado && (
+    <motion.div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => setMostrarModalComentario(false)}
+    >
+      <motion.div
+        className="bg-white p-4 rounded-xl w-full max-w-sm border border-gray-200 shadow-sm"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="font-semibold text-gray-800 mb-2 text-lg border-b border-gray-200 pb-2">
+          Editar comentário
+        </h3>
+        <textarea
+          className="w-full border border-gray-200 p-2 rounded text-sm resize-none focus:outline-none focus:ring-1 focus:ring-gray-300 mb-4"
+          value={comentarioEditando}
+          onChange={(e) => setComentarioEditando(e.target.value)}
+          rows={4}
+        />
+        <div className="flex justify-end gap-2">
+          <button
+            className="px-2 py-1 text-sm bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded"
+            onClick={() => setMostrarModalComentario(false)}
+          >
+            Cancelar
+          </button>
+          <button
+            className="px-2 py-1 text-sm bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 rounded"
+            onClick={async () => {
+              const { error } = await supabase
+                .from("documentoscolaboradores")
+                .update({ comentario: comentarioEditando })
+                .eq("id", docSelecionado.id);
+
+              if (!error) {
+                setDocumentos((prev) =>
+                  prev.map((d) =>
+                    d.id === docSelecionado.id
+                      ? { ...d, comentario: comentarioEditando }
+                      : d
+                  )
+                );
+                setMostrarModalComentario(false);
+              }
+            }}
+          >
+            Salvar
+          </button>
+          <button
+            className="px-2 py-1 text-sm bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded"
+            onClick={async () => {
+              const { error } = await supabase
+                .from("documentoscolaboradores")
+                .update({ comentario: null })
+                .eq("id", docSelecionado.id);
+
+              if (!error) {
+                setDocumentos((prev) =>
+                  prev.map((d) =>
+                    d.id === docSelecionado.id ? { ...d, comentario: undefined } : d
+                  )
+                );
+                setMostrarModalComentario(false);
+              }
+            }}
+          >
+            Apagar
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
+
+
 
 
         </div>

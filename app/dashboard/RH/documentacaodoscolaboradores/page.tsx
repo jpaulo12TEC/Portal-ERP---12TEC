@@ -31,38 +31,50 @@ export default function Dashboard() {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
-  const DOCUMENTOS_OBRIGATORIOS = {
-    contratacao: (tipoRegime: string) => {
-      if (tipoRegime === 'CLT') {
-        return [
-          "Acordo de Compensacao",
-          "Acordo de Prorrogacao",
-          "Contrato de Experiencia",
-          "Declaracao Encargos de IR",
-          "Ficha de Registro",
-          "LGPD",
-          "Opcao de Desistencia de VT",
-          "Solicitacao de VT",
-          "Termo de Responsabilidade",
-        ];
-      }
-      if (tipoRegime === 'PJ') {
-        return ["Contrato de Prestacao de Servico"];
-      }
-      return [];
-    },
-    identificacao: [
+const DOCUMENTOS_OBRIGATORIOS = {
+  contratacao: (tipoRegime: string) => {
+    if (tipoRegime === 'CLT') {
+      return [
+        "Acordo de Compensacao",
+        "Acordo de Prorrogacao",
+        "Contrato de Experiencia",
+        "Declaracao Encargos de IR",
+        "Ficha de Registro",
+        "LGPD",
+        "Opcao de Desistencia de VT",
+        "Solicitacao de VT",
+        "Termo de Responsabilidade",
+      ];
+    }
+
+    if (tipoRegime === 'PJ') {
+      return ["Contrato de Prestacao de Servico"];
+    }
+
+    return [];
+  },
+
+  identificacao: (tipoRegime: string) => {
+    const base = [
       "RG",
       "CPF",
-      "CTPS - Digital",
-      "E-Social",
       "Comprovante de Residencia",
       "Certidao de Nascimento ou Casamento",
       "Caderneta de Vacinação",
-    ],
-    competencia: ["Certificado de Curso"],
-    seguranca: ["Ficha de EPI", "ASO", "Ordem de Serviço"],
-  };
+    ];
+
+    if (tipoRegime !== 'PJ') {
+      base.push("CTPS - Digital", "E-Social");
+    }
+
+    return base;
+  },
+
+  competencia: ["Certificado de Curso"],
+
+  seguranca: ["Ficha de EPI", "ASO", "Ordem de Serviço"],
+};
+
 
   useEffect(() => {
     async function carregarDados() {
@@ -73,53 +85,64 @@ export default function Dashboard() {
 
 const resultado = (funcionarios || []).map(func => {
   const docsFuncionario = (documentos || []).filter(d => d.funcionario_id === func.id);
+  const hoje = new Date();
 
-  const docsValidos = docsFuncionario.filter(d => d.valido && d.nome_arquivo?.trim());
-  const nomesDocsValidos = docsValidos.map(d => d.nome_documento);
+  // Garante que DocumentosNDA é array
+  const documentosNDA: string[] = Array.isArray(func.DocumentosNDA) ? func.DocumentosNDA : [];
 
-  const docsNulos = docsFuncionario
-    .filter(d => !d.nome_arquivo || d.nome_arquivo.trim() === "")
+  // Só considera documentos que NÃO estão no NDA
+  const docsValidos = docsFuncionario.filter(d => !documentosNDA.includes(d.nome_documento));
+
+  // Nomes dos documentos válidos com arquivo
+  const nomesDocsValidos = docsValidos
+    .filter(d => d.valido && d.nome_arquivo?.trim())
     .map(d => d.nome_documento);
 
-  const docsObrigatorios = [
-    ...DOCUMENTOS_OBRIGATORIOS.contratacao(func.tipo_regime),
-    ...DOCUMENTOS_OBRIGATORIOS.identificacao,
-    ...DOCUMENTOS_OBRIGATORIOS.competencia,
-    ...DOCUMENTOS_OBRIGATORIOS.seguranca
-  ];
+  // Comentários
+  const comComentario = docsValidos.filter(d => d.comentario?.trim()).length;
 
-  const faltando = [...new Set([...docsObrigatorios, ...docsNulos])]
-    .filter(doc => !nomesDocsValidos.includes(doc));
+  // Vencidos: documentos válidos que não estão no NDA
+  const docsVencidos = docsValidos.filter(d => d.vencimento && new Date(d.vencimento) < hoje);
 
-  const hoje = new Date();
+  // A vencer (até 30 dias): documentos válidos que não estão no NDA
   const docsAVencer = docsValidos.filter(d => {
     if (!d.vencimento) return false;
-    const diffDias = Math.ceil((new Date(d.vencimento).getTime() - hoje.getTime()) / (1000*60*60*24));
-    return diffDias > 0 && diffDias <= 30;
+    const dias = (new Date(d.vencimento).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
+    return dias > 0 && dias <= 30;
   });
 
-  const vencidos = docsValidos.filter(d => {
-    if (!d.vencimento) return false;
-    const diffDias = Math.ceil((new Date(d.vencimento).getTime() - hoje.getTime()) / (1000*60*60*24));
-    return diffDias <= 0;
-  });
-  
-let proximoLimite: string; // sempre string
+  // Documentos obrigatórios extras (sem arquivo ou "null")
+  const docsObrigatoriosExtra = docsValidos
+    .filter(d => !d.nome_arquivo || d.nome_arquivo.trim().toLowerCase() === "null")
+    .map(d => d.nome_documento);
 
-if (func.tipo_regime === "PJ") {
-  proximoLimite = "-";
-} else {
-  let dataAdmissao = new Date(func.data_admissao);
-  let limite = new Date(dataAdmissao);
-  limite.setFullYear(limite.getFullYear() + 1);
+  // Todos os documentos obrigatórios
+  const todosObrigatorios = [
+    ...DOCUMENTOS_OBRIGATORIOS.contratacao(func.tipo_regime),
+    ...DOCUMENTOS_OBRIGATORIOS.identificacao(func.tipo_regime),
+    ...DOCUMENTOS_OBRIGATORIOS.competencia,
+    ...DOCUMENTOS_OBRIGATORIOS.seguranca,
+    ...docsObrigatoriosExtra
+  ];
 
-  while (limite < hoje) {
+  // Faltando: remove apenas os que estão no NDA
+  const faltando = todosObrigatorios.filter(
+    doc => !nomesDocsValidos.includes(doc) && !documentosNDA.includes(doc)
+  );
+
+  // Próximo limite de férias
+  let proximoLimite: string;
+  if (func.tipo_regime === "PJ") {
+    proximoLimite = "-";
+  } else {
+    let dataAdmissao = new Date(func.data_admissao);
+    let limite = new Date(dataAdmissao);
     limite.setFullYear(limite.getFullYear() + 1);
+    while (limite < hoje) {
+      limite.setFullYear(limite.getFullYear() + 1);
+    }
+    proximoLimite = limite.toLocaleDateString('pt-BR');
   }
-
-  proximoLimite = limite.toLocaleDateString('pt-BR'); // converte pra string
-}
-
 
   return {
     id: func.id,
@@ -128,15 +151,19 @@ if (func.tipo_regime === "PJ") {
     departamento: func.departamento,
     tipo_regime: func.tipo_regime,
     situacao: func.situacao,
-    comComentario: docsFuncionario.filter(d => d.comentario?.trim()).length,
-    vencidos: vencidos.length,
+    comComentario,
+    vencidos: docsVencidos.length,
     faltando: faltando.length,
-    documentosDetalhes: docsFuncionario,
+    documentosDetalhes: docsValidos, // só exibe os que não estão no NDA
     faltandoNomes: faltando,
+    docsVencidos,
     docsAVencer,
-     proximoPeriodoFerias: proximoLimite,
+    proximoPeriodoFerias: proximoLimite,
   };
 });
+
+
+
 
 
         setColaboradores(resultado.sort((a, b) => a.nome.localeCompare(b.nome)));
@@ -220,106 +247,104 @@ const resumo = {
   afastados: afastadosList.length,
   clt: colaboradores.filter(c => c.tipo_regime === "CLT").length,
   pj: colaboradores.filter(c => c.tipo_regime === "PJ").length,
-  docsFaltando: colaboradores.reduce((acc, c) => acc + c.faltandoNomes.length, 0), // total geral
-  docsVencidos: colaboradores.reduce((acc, c) => acc + c.vencidos, 0),           // total geral
-  docsAVencer: colaboradores.reduce((acc, c) => acc + c.docsAVencer.length, 0), // total geral
-  docsComComentario: colaboradores.reduce((acc, c) => acc + c.comComentario, 0), // total geral
 
-  // resumos separados
+  docsFaltando: colaboradores.reduce((acc, c) => acc + (c.faltandoNomes?.length || 0), 0),
+  docsVencidos: colaboradores.reduce((acc, c) => acc + (c.vencidos || 0), 0),
+  docsAVencer: colaboradores.reduce((acc, c) => acc + (c.docsAVencer?.length || 0), 0),
+  docsComComentario: colaboradores.reduce((acc, c) => acc + (c.comComentario || 0), 0),
+
   ativosResumo: {
-    docsFaltando: ativosList.reduce((acc, c) => acc + c.faltandoNomes.length, 0),
-    docsVencidos: ativosList.reduce((acc, c) => acc + c.vencidos, 0),
-    docsAVencer: ativosList.reduce((acc, c) => acc + c.docsAVencer.length, 0),
-    docsComComentario: ativosList.reduce((acc, c) => acc + c.comComentario, 0),
+    docsFaltando: ativosList.reduce((acc, c) => acc + (c.faltandoNomes?.length || 0), 0),
+    docsVencidos: ativosList.reduce((acc, c) => acc + (c.vencidos || 0), 0),
+    docsAVencer: ativosList.reduce((acc, c) => acc + (c.docsAVencer?.length || 0), 0),
+    docsComComentario: ativosList.reduce((acc, c) => acc + (c.comComentario || 0), 0),
   },
   desligadosResumo: {
-    docsFaltando: desligadosList.reduce((acc, c) => acc + c.faltandoNomes.length, 0),
-    docsComComentario: desligadosList.reduce((acc, c) => acc + c.comComentario, 0),
+    docsFaltando: desligadosList.reduce((acc, c) => acc + (c.faltandoNomes?.length || 0), 0),
+    docsComComentario: desligadosList.reduce((acc, c) => acc + (c.comComentario || 0), 0),
   },
   afastadosResumo: {
-    docsFaltando: afastadosList.reduce((acc, c) => acc + c.faltandoNomes.length, 0),
-    docsComComentario: afastadosList.reduce((acc, c) => acc + c.comComentario, 0),
+    docsFaltando: afastadosList.reduce((acc, c) => acc + (c.faltandoNomes?.length || 0), 0),
+    docsComComentario: afastadosList.reduce((acc, c) => acc + (c.comComentario || 0), 0),
   }
 };
 
 
-  const renderTabela = (lista: any[], incluirVencimento: boolean = true) => (
-    <div className="overflow-hidden rounded-lg shadow-md mt-3 border border-gray-200">
-      <table className="min-w-full divide-y divide-gray-200 bg-white">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Nome</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Cargo</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Depto</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Regime</th>
-            {incluirVencimento && <th className="px-6 py-3 text-left text-sm font-semibold text-red-600">Vencidos</th>}
-            {incluirVencimento && <th className="px-6 py-3 text-left text-sm font-semibold text-yellow-600">A Vencer</th>}
-            <th className="px-6 py-3 text-left text-sm font-semibold text-orange-600">Faltando</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold text-blue-600">Com Comentário</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {lista.map(colab => (
-            <React.Fragment key={colab.id}>
-              <tr className="hover:bg-blue-50 cursor-pointer transition" onClick={() => handleToggleRow(colab.id)}>
-                <td className="px-6 py-4 text-sm text-gray-800 flex items-center justify-between">
-                  {colab.nome}
-                  {expandedRow === colab.id ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-800">{colab.cargo}</td>
-                <td className="px-6 py-4 text-sm text-gray-800">{colab.departamento}</td>
-                <td className="px-6 py-4 text-sm text-gray-800">{colab.tipo_regime}</td>
-                {incluirVencimento && <td className="px-6 py-4 text-sm font-semibold text-red-600">{colab.vencidos}</td>}
-                {incluirVencimento && <td className="px-6 py-4 text-sm font-semibold text-yellow-600">{colab.docsAVencer.length}</td>}
-                <td className="px-6 py-4 text-sm font-semibold text-orange-600">{colab.faltando}</td>
-                <td className="px-6 py-4 text-sm font-semibold text-blue-600">{colab.comComentario}</td>
-              </tr>
-              {expandedRow === colab.id && (
-                <tr className="bg-gray-50 transition-all duration-300 relative">
-                  <td colSpan={incluirVencimento ? 8 : 6} className="px-6 py-4 relative">
-                    <button
-                      className="absolute top-2 right-2 inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-all"
-                      onClick={() => router.push(`/dashboard/RH/documentacaodoscolaboradores/${colab.id}`)}
-                    >
-                      <Eye className="w-4 h-4" /> Ver Detalhes
-                    </button>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
-                      {incluirVencimento && (
-                        <>
-                          <div>
-                            <p className="font-semibold text-red-700 mb-1">Vencidos</p>
-                            <ul className="list-disc ml-5 text-gray-700">
-                              {colab.documentosDetalhes.filter((d: Documento) => d.vencimento && (new Date(d.vencimento).getTime() - new Date().getTime()) / (1000*60*60*24) <= 0).map((d: Documento) => (
-                                <li key={d.id}>{d.nome_documento} ({d.vencimento})</li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-yellow-700 mb-1">A Vencer</p>
-                            <ul className="list-disc ml-5 text-gray-700">
-                              {colab.docsAVencer.map((d: Documento) => (
-                                <li key={d.id}>{d.nome_documento} ({d.vencimento})</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </>
-                      )}
-                      <div>
-                        <p className="font-semibold text-orange-700 mb-1">Faltando</p>
-                        <ul className="list-disc ml-5 text-gray-700">
-                          {colab.faltandoNomes.map((doc: string, i: number) => <li key={i}>{doc}</li>)}
-                        </ul>
-                      </div>
+const renderTabela = (lista: any[], incluirVencimento: boolean = true) => (
+  <div className="overflow-hidden rounded-lg shadow-md mt-3 border border-gray-200">
+    <table className="min-w-full divide-y divide-gray-200 bg-white">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Nome</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Cargo</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Depto</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Regime</th>
+          {incluirVencimento && <th className="px-6 py-3 text-left text-sm font-semibold text-red-600">Vencidos</th>}
+          {incluirVencimento && <th className="px-6 py-3 text-left text-sm font-semibold text-yellow-600">A Vencer</th>}
+          <th className="px-6 py-3 text-left text-sm font-semibold text-orange-600">Faltando</th>
+          <th className="px-6 py-3 text-left text-sm font-semibold text-blue-600">Com Comentário</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-100">
+        {lista.map(colab => (
+          <React.Fragment key={colab.id}>
+            <tr className="hover:bg-blue-50 cursor-pointer transition" onClick={() => handleToggleRow(colab.id)}>
+              <td className="px-6 py-4 text-sm text-gray-800 flex items-center justify-between">
+                {colab.nome}
+                {expandedRow === colab.id ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+              </td>
+              <td className="px-6 py-4 text-sm text-gray-800">{colab.cargo}</td>
+              <td className="px-6 py-4 text-sm text-gray-800">{colab.departamento}</td>
+              <td className="px-6 py-4 text-sm text-gray-800">{colab.tipo_regime}</td>
+              {incluirVencimento && <td className="px-6 py-4 text-sm font-semibold text-red-600">{colab.vencidos || 0}</td>}
+              {incluirVencimento && <td className="px-6 py-4 text-sm font-semibold text-yellow-600">{colab.docsAVencer?.length || 0}</td>}
+              <td className="px-6 py-4 text-sm font-semibold text-orange-600">{colab.faltandoNomes?.length || 0}</td>
+              <td className="px-6 py-4 text-sm font-semibold text-blue-600">{colab.comComentario || 0}</td>
+            </tr>
+            {expandedRow === colab.id && (
+              <tr className="bg-gray-50 transition-all duration-300 relative">
+                <td colSpan={incluirVencimento ? 8 : 6} className="px-6 py-4 relative">
+                  <button
+                    className="absolute top-2 right-2 inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition-all"
+                    onClick={() => router.push(`/dashboard/RH/documentacaodoscolaboradores/${colab.id}`)}
+                  >
+                    <Eye className="w-4 h-4" /> Ver Detalhes
+                  </button>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                    {incluirVencimento && (
+                      <>
+                        <div>
+                          <p className="font-semibold text-red-700 mb-1">Vencidos</p>
+                          <ul className="list-disc ml-5 text-gray-700">
+                            {colab.documentosDetalhes?.filter((d: Documento) => d.vencimento && (new Date(d.vencimento).getTime() - new Date().getTime()) / (1000*60*60*24) <= 0)
+                              .map((d: Documento) => <li key={d.id}>{d.nome_documento} ({d.vencimento})</li>)}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-yellow-700 mb-1">A Vencer</p>
+                          <ul className="list-disc ml-5 text-gray-700">
+                            {colab.docsAVencer?.map((d: Documento) => <li key={d.id}>{d.nome_documento} ({d.vencimento})</li>)}
+                          </ul>
+                        </div>
+                      </>
+                    )}
+                    <div>
+                      <p className="font-semibold text-orange-700 mb-1">Faltando</p>
+                      <ul className="list-disc ml-5 text-gray-700">
+                        {colab.faltandoNomes?.map((doc: string, i: number) => <li key={i}>{doc}</li>)}
+                      </ul>
                     </div>
-                  </td>
-                </tr>
-              )}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+                  </div>
+                </td>
+              </tr>
+            )}
+          </React.Fragment>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
 
   return (
     <div className={`flex flex-col h-screen ${menuActive ? "ml-[300px]" : "ml-[80px]"}`}>
@@ -417,9 +442,6 @@ const resumo = {
 
 
 
-
-          {/* Seções */}
-{/* Seções com Estilo de Tabela Corporativa */}
 <div className="mt-6">
   <h2
     className="text-lg font-semibold text-blue-600 mb-2 cursor-pointer select-none"
@@ -470,16 +492,16 @@ const resumo = {
                   {colab.proximoPeriodoFerias}
                 </td>
                 <td className="px-6 py-4 text-sm font-semibold text-red-600 text-center">
-                  {colab.vencidos}
+                  {colab.docsVencidos?.length || 0}
                 </td>
                 <td className="px-6 py-4 text-sm font-semibold text-yellow-600 text-center">
-                  {colab.docsAVencer.length}
+                  {colab.docsAVencer?.length || 0}
                 </td>
                 <td className="px-6 py-4 text-sm font-semibold text-orange-600 text-center">
-                  {colab.faltando}
+                  {colab.faltando || 0}
                 </td>
                 <td className="px-6 py-4 text-sm font-semibold text-gray-800 text-center">
-                  {colab.comComentario}
+                  {colab.comComentario || 0}
                 </td>
               </tr>
 
@@ -504,18 +526,20 @@ const resumo = {
                         <h4 className="font-semibold text-red-700 border-b border-red-300 mb-2 pb-1">
                           Documentos Vencidos
                         </h4>
-                        {colab.docsVencidos.length > 0 ? (
+                        {colab.docsVencidos?.length > 0 ? (
                           <ul className="list-disc ml-5 text-gray-700">
                             {colab.docsVencidos.map((d: Documento, i: number) => (
                               <li key={i}>
                                 {`${d.nome_documento} - vencido em ${
-                                  d.vencimento ? new Date(d.vencimento).toLocaleDateString('pt-BR') : 'sem data'
+                                  d.vencimento
+                                    ? new Date(d.vencimento).toLocaleDateString('pt-BR')
+                                    : 'sem data'
                                 }`}
                               </li>
                             ))}
                           </ul>
                         ) : (
-                          <p className="text-gray-400 text-sm">Nenhum documento vencido</p>
+                          <p className="text-gray-500">Nenhum documento vencido</p>
                         )}
                       </div>
 
@@ -524,12 +548,14 @@ const resumo = {
                         <h4 className="font-semibold text-yellow-700 border-b border-yellow-300 mb-2 pb-1">
                           Documentos a Vencer (30 dias)
                         </h4>
-                        {colab.docsAVencer.length > 0 ? (
+                        {colab.docsAVencer?.length > 0 ? (
                           <ul className="list-disc ml-5 text-gray-700">
-                            {colab.docsAVencer.map((d: Documento, i: number)=> (
+                            {colab.docsAVencer.map((d: Documento, i: number) => (
                               <li key={i}>
                                 {`${d.nome_documento} - vence em ${
-                                  d.vencimento ? new Date(d.vencimento).toLocaleDateString('pt-BR') : 'sem data'
+                                  d.vencimento
+                                    ? new Date(d.vencimento).toLocaleDateString('pt-BR')
+                                    : 'sem data'
                                 }`}
                               </li>
                             ))}
@@ -544,7 +570,7 @@ const resumo = {
                         <h4 className="font-semibold text-orange-700 border-b border-orange-300 mb-2 pb-1">
                           Documentos Faltando
                         </h4>
-                        {colab.faltandoNomes.length > 0 ? (
+                        {colab.faltandoNomes?.length > 0 ? (
                           <ul className="list-disc ml-5 text-gray-700">
                             {colab.faltandoNomes.map((doc: string, i: number) => (
                               <li key={i}>{doc}</li>
@@ -565,6 +591,7 @@ const resumo = {
     </div>
   )}
 </div>
+
 
           {desligados.length > 0 && (
             <div className="mt-6">

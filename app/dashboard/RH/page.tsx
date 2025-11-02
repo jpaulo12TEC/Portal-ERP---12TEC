@@ -21,6 +21,7 @@ interface Documento {
   comentario?: string;
   valido?: boolean;
   nome_arquivo?: string;
+  Visualizar_menu:boolean
 }
 
 interface Colaborador {
@@ -91,52 +92,81 @@ interface Colaborador {
 }
 
 const resultado: Colaborador[] = (funcionarios || []).map(func => {
-  const docsFuncionario: Documento[] = (documentos || []).filter(d => d.funcionario_id === func.id);
+  const docsFuncionario: Documento[] = (documentos || []).filter(
+    d => d.funcionario_id === func.id
+  );
 
-  const nomesDocsValidos = docsFuncionario
+  const hoje = new Date();
+
+  // Garante que DocumentosNDA é array
+  const documentosNDA: string[] = Array.isArray(func.DocumentosNDA)
+    ? func.DocumentosNDA
+    : [];
+
+  // Pega nomes dos documentos ocultos (Visualizar_menu = false)
+  const docsOcultos = docsFuncionario
+    .filter(d => d.Visualizar_menu === false)
+    .map(d => d.nome_documento);
+
+  // Só considera documentos que NÃO estão no NDA
+  const docsValidos = docsFuncionario.filter(
+    d => !documentosNDA.includes(d.nome_documento)
+  );
+
+  const nomesDocsValidos = docsValidos
     .filter(d => d.valido && d.nome_arquivo)
     .map(d => d.nome_documento);
 
-  const comComentario = docsFuncionario.filter(d => d.comentario?.trim()).length;
+  const comComentario = docsValidos.filter(d => d.comentario?.trim()).length;
 
-  const docsVencidos = docsFuncionario.filter(d =>
-    d.vencimento && new Date(d.vencimento) < hoje
+  // Vencidos: só conta os que NÃO estão no NDA
+  const docsVencidos = docsValidos.filter(
+    d => d.vencimento && new Date(d.vencimento) < hoje
   );
 
-  const docsAVencer = docsFuncionario.filter(d => {
+  // A vencer (até 30 dias): só conta os que NÃO estão no NDA
+  const docsAVencer = docsValidos.filter(d => {
     if (!d.vencimento) return false;
-    const dias = (new Date(d.vencimento).getTime() - hoje.getTime()) / (1000*60*60*24);
+    const dias =
+      (new Date(d.vencimento).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
     return dias > 0 && dias <= 30;
   });
 
-  const docsObrigatoriosExtra = docsFuncionario
-    .filter(d => !d.nome_arquivo || d.nome_arquivo.trim().toLowerCase() === 'null')
+  // Documentos obrigatórios extras (sem arquivo ou "null")
+  const docsObrigatoriosExtra = docsValidos
+    .filter(d => !d.nome_arquivo || d.nome_arquivo.trim().toLowerCase() === "null")
     .map(d => d.nome_documento);
 
-  const faltando = [
+  // Todos os documentos obrigatórios para o funcionário
+  const todosObrigatorios = [
     ...DOCUMENTOS_OBRIGATORIOS.contratacao(func.tipo_regime),
     ...DOCUMENTOS_OBRIGATORIOS.identificacao(func.tipo_regime),
     ...DOCUMENTOS_OBRIGATORIOS.competencia,
     ...DOCUMENTOS_OBRIGATORIOS.seguranca,
     ...docsObrigatoriosExtra
-  ].filter(doc => !nomesDocsValidos.includes(doc));
+  ];
 
-let proximoLimite: string; // sempre string
+  // Faltando: remove os NDA e ocultos da contagem
+  const faltando = todosObrigatorios.filter(
+    doc =>
+      !nomesDocsValidos.includes(doc) && // não existe válido
+      !docsOcultos.includes(doc) &&      // não está oculto
+      !documentosNDA.includes(doc)       // não está no NDA
+  );
 
-if (func.tipo_regime === "PJ") {
-  proximoLimite = "-";
-} else {
-  let dataAdmissao = new Date(func.data_admissao);
-  let limite = new Date(dataAdmissao);
-  limite.setFullYear(limite.getFullYear() + 1);
-
-  while (limite < hoje) {
+  // cálculo de férias
+  let proximoLimite: string;
+  if (func.tipo_regime === "PJ") {
+    proximoLimite = "-";
+  } else {
+    let dataAdmissao = new Date(func.data_admissao);
+    let limite = new Date(dataAdmissao);
     limite.setFullYear(limite.getFullYear() + 1);
+    while (limite < hoje) {
+      limite.setFullYear(limite.getFullYear() + 1);
+    }
+    proximoLimite = limite.toLocaleDateString("pt-BR");
   }
-
-  proximoLimite = limite.toLocaleDateString('pt-BR'); // converte pra string
-}
-
 
   return {
     id: func.id,
@@ -148,13 +178,16 @@ if (func.tipo_regime === "PJ") {
     comComentario,
     vencidos: docsVencidos.length,
     faltando: faltando.length,
-    documentosDetalhes: docsFuncionario,
+    documentosDetalhes: docsValidos, // só exibe os que não estão no NDA
     faltandoNomes: faltando,
     docsVencidos,
     docsAVencer,
-     proximoPeriodoFerias: proximoLimite,
+    proximoPeriodoFerias: proximoLimite
   };
 });
+
+
+
 
 
         setColaboradores(resultado);
@@ -234,7 +267,7 @@ if (func.tipo_regime === "PJ") {
                 { label: 'Folha de Ponto', path: 'https://rhid.com.br/v2/#/login', external: true, icon: FileText },
                 { label: 'Análise de Folha de Ponto', path: '/dashboard/RH/controledeponto', icon: FileText },
                 { label: 'Alocar Pessoal', path: '/dashboard/RH/alocarpessoal', icon: Users },
-                { label: 'Pasta dos Funcionários', path: '/dashboard/RH/pastafuncionarios', icon: FolderKanban },
+                { label: 'Pasta dos Funcionários', path: 'https://12tec-my.sharepoint.com/shared?id=%2Fsites%2FDocumentao-12TECEngenharia%2FDocumentos%20Compartilhados%2FRecursos%20Humanos&listurl=https%3A%2F%2F12tec%2Esharepoint%2Ecom%2Fsites%2FDocumentao-12TECEngenharia%2FDocumentos%20Compartilhados&login_hint=compras%4012tec%2Ecom%2Ebr&source=waffle&weburl=%2Fsites%2FDocumentao-12TECEngenharia', icon: FolderKanban,external: true },
               ].map(({ label, path, icon: Icon, external }) => (
                 <button
                   key={label}
