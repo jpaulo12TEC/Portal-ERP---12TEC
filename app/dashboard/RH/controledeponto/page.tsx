@@ -138,6 +138,10 @@ const registrarArquivoNoBanco = async (url: string) => {
    // Ao entrar na página, pegar o último arquivo do Supabase e processar
 useEffect(() => {
   const fetchUltimoArquivo = async () => {
+    alert("Buscando o último arquivo no banco...");
+
+    console.log("Consultando tabela 'afd'...");
+
     const { data: ultimoArquivo, error } = await supabase
       .from('afd')
       .select('url, created_at')
@@ -146,23 +150,50 @@ useEffect(() => {
       .single();
 
     if (error) {
-      console.error(error);
+      console.error("Erro ao buscar arquivo:", error);
+      alert("Erro ao buscar o último arquivo:\n" + error.message);
       return;
     }
-    if (ultimoArquivo?.url) {
-      setUrlArquivo(ultimoArquivo.url);
-      processarArquivo(ultimoArquivo.url);
 
-      // Formatando a data legível
+    console.log("Resultado da busca:", ultimoArquivo);
+
+    if (!ultimoArquivo) {
+      alert("Nenhum arquivo encontrado na tabela 'afd'!");
+      console.warn("Nenhum arquivo encontrado.");
+      return;
+    }
+
+
+
+    if (ultimoArquivo.url) {
+      const urlComCacheBreak = `${ultimoArquivo.url}?t=${Date.now()}`;
+
+      console.log("URL do arquivo que será processado:", urlComCacheBreak);
+
+      setUrlArquivo(urlComCacheBreak);
+
+
+
+      processarArquivo(urlComCacheBreak);
+
+      // Formatando data pro usuário ver
       const data = new Date(ultimoArquivo.created_at);
-      const formatted = `${String(data.getDate()).padStart(2,'0')}/${
-        String(data.getMonth()+1).padStart(2,'0')
-      }/${data.getFullYear()} ${String(data.getHours()).padStart(2,'0')}:${
-        String(data.getMinutes()).padStart(2,'0')
+      const formatted = `${String(data.getDate()).padStart(2, '0')}/${
+        String(data.getMonth() + 1).padStart(2, '0')
+      }/${data.getFullYear()} ${
+        String(data.getHours()).padStart(2, '0')
+      }:${
+        String(data.getMinutes()).padStart(2, '0')
       }`;
+
+      console.log("Última atualização formatada:", formatted);
+
       setUltimaAtualizacao(formatted);
+
+      alert("Último arquivo carregado com sucesso.");
     }
   };
+
   fetchUltimoArquivo();
 }, []);
 
