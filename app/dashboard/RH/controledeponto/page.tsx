@@ -34,6 +34,21 @@ type RegistroFinal = {
 };
 
 export default function DashboardREP() {
+  const MESES = [
+  { valor: "01", nome: "Janeiro" },
+  { valor: "02", nome: "Fevereiro" },
+  { valor: "03", nome: "Março" },
+  { valor: "04", nome: "Abril" },
+  { valor: "05", nome: "Maio" },
+  { valor: "06", nome: "Junho" },
+  { valor: "07", nome: "Julho" },
+  { valor: "08", nome: "Agosto" },
+  { valor: "09", nome: "Setembro" },
+  { valor: "10", nome: "Outubro" },
+  { valor: "11", nome: "Novembro" },
+  { valor: "12", nome: "Dezembro" }
+];
+ 
 const componentRef = useRef<HTMLDivElement | null>(null);
 
   const [menuActive, setMenuActive] = useState(false);
@@ -627,13 +642,17 @@ return (
 
           {anoSelecionado && (
             <select
-              onChange={e => setMesSelecionado(e.target.value)}
-              value={mesSelecionado}
-              className="p-2 border rounded bg-white shadow-sm"
-            >
-              <option value="">Mês</option>
-              {mesesDoAno.map(m => <option key={m}>{m}</option>)}
-            </select>
+  value={mesSelecionado}
+  onChange={e => setMesSelecionado(e.target.value)}
+>
+  <option value="">Selecione o mês</option>
+  {MESES.map(m => (
+    <option key={m.valor} value={m.valor}>
+      {m.nome}
+    </option>
+  ))}
+</select>
+
           )}
         </div>
 

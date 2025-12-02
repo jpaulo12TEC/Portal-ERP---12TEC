@@ -570,32 +570,32 @@ const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
   )}
 </td>
 
-                <td className="py-2 px-4 text-center">
-                  <button
-                    className="text-blue-600 hover:text-blue-800 text-center transition-all"
-                    onClick={() => {
-                      if (docInfo) {
-                        setDocSelecionado(docInfo);
-                      } else {
-                        setDocSelecionado({
-                          nome_documento: nome,
-                          categoria: categoria,
-                          
-                        });
-                      }
-                      setMostrarModal(true);
-                    }}
-                  >
-                    {categoria === "RH"
-  ? docInfo && docInfo.nome_arquivo
-    ? "Substituir"
-    : "Inserir"
-  : docInfo
-  ? "Substituir"
-  : "Inserir"}
+<td className="py-2 px-4 text-center">
+  <button
+    className="text-blue-600 hover:text-blue-800 text-center transition-all"
+    onClick={() => {
+      if (docInfo) {
+        // aqui garante que categoria exista
+        setDocSelecionado({ ...docInfo, categoria: docInfo.tipo_documento });
+      } else {
+        setDocSelecionado({
+          nome_documento: nome,
+          categoria: categoria,
+        });
+      }
+      setMostrarModal(true);
+    }}
+  >
+    {categoria === "RH"
+      ? docInfo && docInfo.nome_arquivo
+        ? "Substituir"
+        : "Inserir"
+      : docInfo
+      ? "Substituir"
+      : "Inserir"}
+  </button>
+</td>
 
-                  </button>
-                </td>
 
               </tr>
             );
@@ -609,9 +609,8 @@ const renderDocumentos = (categoria: string, listaObrigatorios: string[]) => {
 const [processando, setProcessando] = useState(false);
 
 
-
 const handleSalvarInserirSubstituir = async () => {
-  if (processando) return; // evita múltiplos cliques
+  if (processando) return;
   if (!arquivoinserirsubstituir) {
     alert("Selecione um arquivo antes de continuar.");
     return;
@@ -627,35 +626,46 @@ const handleSalvarInserirSubstituir = async () => {
     return;
   }
 
- try {
- setProcessando(true); // ativa spinner
+  try {
+    setProcessando(true);
 
-  const dataAtual = new Date();
-  const dataFormatada = `${dataAtual.toLocaleDateString('pt-BR').replace(/\//g, '-')}_${dataAtual.toLocaleTimeString('pt-BR')}`;
-  const nomeArquivo = `${docSelecionado?.nome_documento} - ${funcionario.abreviatura} - ${dataFormatada}`;
-  const nomeArquivoLimpo = limparString(nomeArquivo);
+    const dataAtual = new Date();
+    const dataFormatada = `${dataAtual.toLocaleDateString('pt-BR').replace(/\//g, '-')}_${dataAtual.toLocaleTimeString('pt-BR')}`;
+    const nomeArquivo = `${docSelecionado?.nome_documento} - ${funcionario.abreviatura} - ${dataFormatada}`;
+    const nomeArquivoLimpo = limparString(nomeArquivo);
 
-  // 🔥 Ajuste para manter a extensão do arquivo original
-  const extensao = arquivoinserirsubstituir?.name?.includes('.') 
-    ? arquivoinserirsubstituir.name.substring(arquivoinserirsubstituir.name.lastIndexOf('.'))
-    : '';
-  const nomeArquivoFinal = `${nomeArquivoLimpo}${extensao}`;
+    const extensao = arquivoinserirsubstituir?.name?.includes('.')
+      ? arquivoinserirsubstituir.name.substring(arquivoinserirsubstituir.name.lastIndexOf('.'))
+      : '';
+    const nomeArquivoFinal = `${nomeArquivoLimpo}${extensao}`;
 
- const nomePasta = limparString(`${funcionario.nome_completo}-${funcionario.cpf}`);
-  const categoria = docSelecionado?.categoria || activeTabLocal;
-  const caminhoUpload = `Documentos de ${categoria}`;
+    const nomePasta = limparString(`${funcionario.nome_completo}-${funcionario.cpf}`);
+    const categoria = docSelecionado?.categoria || activeTabLocal;
+    const caminhoUpload = `Documentos de ${categoria}`;
 
-  // 🔥 Upload via API OneDrive
-  console.log("🌐 Preparando FormData para upload via API OneDrive...");
-  const formPayload = new FormData();
-  formPayload.append("file", arquivoinserirsubstituir);
-  formPayload.append("fileName", nomeArquivoFinal); // agora com extensão
-  formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
-  formPayload.append("fornecedor", nomePasta);
-  formPayload.append("tipo", "funcionarios");
-  formPayload.append("caminho", caminhoUpload);
+    console.log("🔍 MODO:", docSelecionado && docSelecionado.id ? "SUBSTITUIR" : "INSERIR");
+    console.log("🗂️ Categoria detectada:", categoria);
+    console.log("👤 Funcionário:", funcionario?.nome_completo);
+    console.log("📁 Caminho upload:", caminhoUpload);
+    console.log("📄 Nome final do arquivo:", nomeArquivoFinal);
 
-    console.log("📦 Enviando requisição para /api/onedrive/upload...");
+    // Upload via API OneDrive
+    const formPayload = new FormData();
+    formPayload.append("file", arquivoinserirsubstituir);
+    formPayload.append("fileName", nomeArquivoFinal);
+    formPayload.append("dataCompra", new Date().toISOString().slice(0, 10));
+    formPayload.append("fornecedor", nomePasta);
+    formPayload.append("tipo", "funcionarios");
+    formPayload.append("caminho", caminhoUpload);
+
+    console.log("📦 Payload para upload:", {
+      fileName: nomeArquivoFinal,
+      fornecedor: nomePasta,
+      tipo: "funcionarios",
+      caminho: caminhoUpload,
+    });
+
+    console.log("🌐 Enviando requisição para /api/onedrive/upload...");
     const res = await fetch("/api/onedrive/upload", {
       method: "POST",
       body: formPayload,
@@ -673,14 +683,40 @@ const handleSalvarInserirSubstituir = async () => {
     const arquivoUrl = json.file.url;
     console.log("✅ Upload concluído! URL do arquivo:", arquivoUrl);
 
+    // SE FOR SUBSTITUIR
     if (docSelecionado && docSelecionado.id) {
-      console.log("🧠 Atualizando documento existente...");
+      console.log("🧠 Entrou no modo SUBSTITUIR documento existente (ID:", docSelecionado.id, ")");
+console.log("📂 URL antiga do arquivo:", docSelecionado?.nome_arquivo);
+if (!docSelecionado?.nome_arquivo) {
+  alert("Erro: arquivo antigo não encontrado para substituição.");
+  return;
+}
+      // Exemplo de chamada ao mover arquivo antigo
+      console.log("🚚 Chamando função moveFileToOneDrive...");
+      try {
+        const moveRes = await fetch("/api/onedrive/move", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileIdOrUrl: docSelecionado.nome_arquivo,
+            newFolder: "Nao Vigentes",
+          }),
+        });
+        const moveJson = await moveRes.json();
+        console.log("📂 Resposta do moveFileToOneDrive:", moveJson);
+      } catch (moveErr) {
+        console.error("⚠️ Erro ao mover arquivo no OneDrive:", moveErr);
+      }
+
       const dadosAtualizacao = {
-        nome_arquivo: arquivoUrl,        
+        nome_arquivo: arquivoUrl,
         atualizado_por: nome,
         ultima_atualizacao: new Date().toISOString(),
         vencimento: vencimentoinserirsubstituir || null,
+        tipo_documento: categoria,
       };
+
+      console.log("📝 Dados de atualização enviados ao Supabase:", dadosAtualizacao);
 
       const { data, error: updateError } = await supabase
         .from("documentoscolaboradores")
@@ -697,11 +733,13 @@ const handleSalvarInserirSubstituir = async () => {
 
       alert("Documento substituído com sucesso!");
     } else {
-      console.log("📥 Inserindo novo documento...");
+      // INSERIR NOVO DOCUMENTO
+      console.log("🆕 Entrou no modo INSERIR novo documento...");
+
       const dadosDocumento = {
         funcionario_id: funcionario.id,
         nome_colaborador: funcionario.nome_completo,
-        tipo_documento: docSelecionado?.categoria,
+        tipo_documento: categoria,
         nome_documento: docSelecionado?.nome_documento,
         vencimento: vencimentoinserirsubstituir || null,
         comentario: "",
@@ -713,6 +751,8 @@ const handleSalvarInserirSubstituir = async () => {
         atualizado_por: nome,
         ultima_atualizacao: new Date().toISOString(),
       };
+
+      console.log("📥 Dados de inserção:", dadosDocumento);
 
       const { data, error: insertError } = await supabase
         .from("documentoscolaboradores")
@@ -733,16 +773,19 @@ const handleSalvarInserirSubstituir = async () => {
     setMostrarModal(false);
     setVencimentoInserirSubstituir("");
     setArquivoInserirSubstituir(null);
-    // Atualiza toda a lista no front
-await carregarDocumentos()
 
- } catch (err) {
-    console.error("Erro inesperado:", err);
+    console.log("♻️ Atualizando lista de documentos...");
+    await carregarDocumentos();
+    console.log("✅ Lista atualizada com sucesso!");
+  } catch (err) {
+    console.error("💥 Erro inesperado:", err);
     alert("Ocorreu um erro inesperado.");
   } finally {
-    setProcessando(false); // desativa spinner
+    setProcessando(false);
+    console.log("⏹️ Processamento finalizado");
   }
 };
+
 
 
 

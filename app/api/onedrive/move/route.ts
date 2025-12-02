@@ -12,13 +12,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'fileIdOrUrl é obrigatório' }, { status: 400 });
     }
 
-    // Pega token do backend
     const accessToken = await getAppToken();
     if (!accessToken) {
       return NextResponse.json({ error: 'Não foi possível obter o token do OneDrive' }, { status: 401 });
     }
 
-    // Chama função de mover arquivo para subpasta dentro da pasta atual
     await moveFileOnOneDrive(accessToken, fileIdOrUrl, subFolderName || "Nao Vigentes");
 
     return NextResponse.json({ message: 'Arquivo movido com sucesso!' });
